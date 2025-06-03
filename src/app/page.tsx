@@ -1,103 +1,184 @@
-import Image from "next/image";
+"use client";
+import { useState, useEffect, useRef } from "react";
+import Script from "next/script";
+
+import {
+  getDevices,
+  handleMediaToggle,
+  MIC,
+  CAMERA,
+} from "@/broadcast/utils/mediadevices";
+import {
+  leaveStage,
+  joinStage,
+  createLocalStageStream,
+} from "@/broadcast/utils/stage";
+
+import Header from "@/broadcast/components/Header";
+import Input from "@/broadcast/components/Input";
+import LocalParticipantVideo from "@/broadcast/components/LocalParticipantVideo";
+import RemoteParticipantVideos from "@/broadcast/components/RemoteParticipantVideo";
+import Select from "@/broadcast/components/Select";
+
+import {StageStream, StageParticipantInfo} from 'amazon-ivs-web-broadcast';
+
+type LocalParticipant = {
+  participant: StageParticipantInfo;
+  streams: StageStream[];
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [isInitializeComplete, setIsInitializeComplete] = useState<boolean>(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string | null>(null);
+  const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string | null>(null);
+  const [participantToken, setParticipantToken] = useState<string>("");
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [participants, setParticipants] = useState<LocalParticipant[]>([]);
+  const [localParticipant, setLocalParticipant] = useState<LocalParticipant | any>({});
+  const stageRef = useRef<any>(undefined);
+  const strategyRef = useRef<any>(undefined);
+  const [isMicMuted, setIsMicMuted] = useState<boolean>(true);
+  const [isCameraHidden, setIsCameraHidden] = useState<boolean>(false);
+
+  const handleDeviceUpdate = async () => {
+    try {
+      const { videoDevices, audioDevices } = await getDevices();
+      setVideoDevices(videoDevices);
+      setSelectedVideoDeviceId(videoDevices[0]?.deviceId || null);
+
+      setAudioDevices(audioDevices);
+      setSelectedAudioDeviceId(audioDevices[0]?.deviceId || null);
+    } catch (error) {
+      console.error("An error occurred during device update:", error);
+    }
+  };
+
+  const initialize = async () => {
+    handleDeviceUpdate();
+    setIsInitializeComplete(true);
+  };
+
+  const updateLocalParticipantMedia = async () => {
+    const { participant } = localParticipant;
+    const newVideoStream = await createLocalStageStream(selectedVideoDeviceId, CAMERA);
+    const newAudioStream = await createLocalStageStream(selectedAudioDeviceId, MIC);
+    const updatedStreams = [newVideoStream, newAudioStream];
+
+    const updatedParticipant = {
+      participant,
+      streams: updatedStreams,
+    };
+
+    setLocalParticipant(updatedParticipant);
+    strategyRef.current.updateTracks(newAudioStream, newVideoStream);
+    stageRef.current.refreshStrategy();
+  };
+
+  useEffect(() => {
+    const isInitializingStreams =
+      !strategyRef.current?.audioTrack && !strategyRef.current?.videoTrack;
+    if (!isInitializeComplete || isInitializingStreams) return;
+
+    if (localParticipant.streams) {
+      updateLocalParticipantMedia();
+    }
+  }, [selectedVideoDeviceId, selectedAudioDeviceId]);
+
+  return (
+    <div>
+      <Script
+        src="https://web-broadcast.live-video.net/1.6.0/amazon-ivs-web-broadcast.js"
+        onLoad={initialize}
+      ></Script>
+      <Header />
+      <hr />
+      <div className="row">
+        <Select
+          deviceType="Camera"
+          updateDevice={setSelectedVideoDeviceId}
+          devices={videoDevices}
+        />
+        <Select
+          deviceType="Microphone"
+          updateDevice={setSelectedAudioDeviceId}
+          devices={audioDevices}
+        />
+        <Input
+          label="Participant Token"
+          value={participantToken}
+          onChange={setParticipantToken}
+        />
+        {isInitializeComplete && (
+          <div className="button-container row">
+            <button
+              className="button"
+              onClick={() =>
+                joinStage(
+                  isInitializeComplete,
+                  participantToken,
+                  selectedAudioDeviceId,
+                  selectedVideoDeviceId,
+                  setIsConnected,
+                  setIsMicMuted,
+                  setLocalParticipant,
+                  setParticipants,
+                  strategyRef,
+                  stageRef
+                )
+              }
+            >
+              Join Stage
+            </button>
+            <button
+              className="button"
+              onClick={() => leaveStage(setIsConnected, stageRef.current)}
+            >
+              Leave Stage
+            </button>
+          </div>
+        )}
+        <br />
+      </div>
+      {isConnected && (
+        <>
+          <h3>Local Participant</h3>
+          <LocalParticipantVideo
+            localParticipantInfo={localParticipant}
+            isInitializeComplete={isInitializeComplete}
+            participantSize={participants.length}
+          />
+        </>
+      )}
+      {isConnected && (
+        <div className="static-controls">
+          <button
+            onClick={() => handleMediaToggle(MIC, stageRef, setIsMicMuted)}
+            className="button"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {isMicMuted ? "Unmute Mic" : "Mute Mic"}
+          </button>
+          <button
+            onClick={() => handleMediaToggle(CAMERA, stageRef, setIsCameraHidden)}
+            className="button"
           >
-            Read our docs
-          </a>
+            {isCameraHidden ? "Unhide Camera" : "Hide Camera"}
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+      {isConnected && (
+        <>
+          <h3>Remote Participants</h3>{" "}
+          <div className="center">
+            <RemoteParticipantVideos
+              isInitializeComplete={isInitializeComplete}
+              participants={participants}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
