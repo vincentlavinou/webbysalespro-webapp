@@ -1,19 +1,25 @@
-import React from 'react';
+import { Label } from "@/components/ui/label";
+import { Input as ShadInput } from "@/components/ui/input";
 
-interface InputProps {
+interface Props {
   label: string;
   value: string;
-  onChange: (newValue: string) => void;
+  onChange: (val: string) => void;
+  type?: string;
+  placeholder?: string;
+  disabled?: boolean;
 }
 
-const Input: React.FC<InputProps> = ({ label, value, onChange }) => {
+const Input = ({ label, value, onChange, type = "text", placeholder, disabled }: Props) => {
   return (
-    <div className="column margin-right">
-      <label>{`${label}:`}</label>
-      <input
-        type="text"
+    <div className="space-y-1">
+      <Label className="text-sm font-medium">{label}</Label>
+      <ShadInput
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
       />
     </div>
   );

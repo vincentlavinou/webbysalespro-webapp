@@ -1,44 +1,30 @@
-import React from 'react';
-import Video from './Video';
+'use client'
+import { StageParticipantInfo, StageStream } from "amazon-ivs-web-broadcast";
+import { useEffect, useRef } from "react";
 
-import {StreamType, StageStream, StageParticipantInfo} from 'amazon-ivs-web-broadcast';
-
-type LocalParticipantInfo = {
-  participant: StageParticipantInfo;
-  streams: StageStream[];
-};
-
-interface LocalParticipantVideoProps {
-  isInitializeComplete: boolean;
-  localParticipantInfo: LocalParticipantInfo;
-  participantSize: number | string;
+interface Props {
+  localParticipantInfo: {
+    participant: StageParticipantInfo;
+    streams: StageStream[];
+  };
 }
 
-const LocalParticipantVideo: React.FC<LocalParticipantVideoProps> = ({
-  isInitializeComplete,
-  localParticipantInfo,
-  participantSize,
-}) => {
-  if (!isInitializeComplete) return null; // TS requires a valid return (not just `return;`)
+const LocalParticipantVideo = ({ localParticipantInfo }: Props) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const { participant, streams } = localParticipantInfo;
-  const { username } = participant?.attributes || {};
-
-  const streamsToDisplay = streams?.filter(
-    (stream) => stream?.streamType === StreamType?.VIDEO
-  );
+  useEffect(() => {
+    const videoStream = localParticipantInfo.streams?.find(
+      (stream) => stream.mediaStreamTrack.kind === "video"
+    );
+    if (videoStream && videoRef.current) {
+      const mediaStream = new MediaStream([videoStream.mediaStreamTrack]);
+      videoRef.current.srcObject = mediaStream;
+    }
+  }, [localParticipantInfo]);
 
   return (
-    <div className="video-container">
-      <div className="column">
-        <Video
-          className="local-video"
-          participant={participant}
-          streamsToDisplay={streamsToDisplay}
-          username={username as string || `user-${participantSize}`}
-          participantSize={participantSize}
-        />
-      </div>
+    <div className="rounded-lg overflow-hidden border w-full aspect-video bg-black">
+      <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
     </div>
   );
 };

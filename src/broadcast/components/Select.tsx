@@ -1,30 +1,28 @@
-import React from 'react';
+import { Label } from "@/components/ui/label";
+import { Select as ShadSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface MediaDevice {
-  deviceId: string;
-  label: string;
+interface Props {
+  deviceType: "Camera" | "Microphone";
+  devices: MediaDeviceInfo[];
+  updateDevice: (id: string) => void;
 }
 
-interface SelectProps {
-  deviceType: string;
-  devices: MediaDevice[];
-  updateDevice: (deviceId: string) => void;
-}
-
-const Select: React.FC<SelectProps> = ({ deviceType, devices, updateDevice }) => {
+const Select = ({ deviceType, devices, updateDevice }: Props) => {
   return (
-    <div className="column">
-      <label>{`Select ${deviceType}:`}</label>
-      <select onChange={(e) => updateDevice(e.target.value)}>
-        {devices?.map((device) => (
-          <option
-            key={`${deviceType.charAt(0).toLowerCase() + deviceType.slice(1)}-${device.deviceId}`}
-            value={device.deviceId}
-          >
-            {device.label}
-          </option>
-        ))}
-      </select>
+    <div className="space-y-1">
+      <Label>{deviceType}</Label>
+      <ShadSelect onValueChange={(val) => updateDevice(val)}>
+        <SelectTrigger>
+          <SelectValue placeholder={`Select ${deviceType}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {devices.map((device) => (
+            <SelectItem key={device.deviceId} value={device.deviceId}>
+              {device.label || `${deviceType} ${device.deviceId.slice(-4)}`}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </ShadSelect>
     </div>
   );
 };
