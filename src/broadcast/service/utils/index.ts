@@ -1,33 +1,34 @@
-'use client'
+'use client';
+
 import { RefObject } from "react";
 import { DeviceType } from "../enum";
-import { 
-    LocalStageStream, 
-    StageStrategy, 
-    StageStream, 
-    Stage, 
-    StageParticipantInfo, 
-    SubscribeType, 
-    StageEvents, 
-    ConnectionState  
-} from "amazon-ivs-web-broadcast";
+
+// ✅ Type-only imports to fix SSR issues
+type Stage = import("amazon-ivs-web-broadcast").Stage;
+type StageEvents = import("amazon-ivs-web-broadcast").StageEvents;
+type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
+type StageStrategy = import("amazon-ivs-web-broadcast").StageStrategy;
+type StageStream = import("amazon-ivs-web-broadcast").StageStream;
+type LocalStageStream = import("amazon-ivs-web-broadcast").LocalStageStream;
+type SubscribeType = import("amazon-ivs-web-broadcast").SubscribeType;
+type ConnectionState = import("amazon-ivs-web-broadcast").ConnectionState;
 
 export interface LocalParticipantInfo {
-    audioStream: LocalStageStream;
-    videoStream: LocalStageStream;
+  audioStream: LocalStageStream;
+  videoStream: LocalStageStream;
 }
 
 export const toggleMedia = (
   deviceType: DeviceType,
   setIsDeviceMuted: (state: boolean) => void,
-  localParticipantRef?: RefObject<LocalParticipantInfo | null>,
+  localParticipantRef?: RefObject<LocalParticipantInfo | null>
 ): void => {
   if (!localParticipantRef?.current) return;
 
-  const isMic = deviceType === DeviceType.MIC;
-  const stream = isMic
-    ? localParticipantRef.current.audioStream
-    : localParticipantRef.current.videoStream;
+  const stream =
+    deviceType === DeviceType.MIC
+      ? localParticipantRef.current.audioStream
+      : localParticipantRef.current.videoStream;
 
   const isMuted = stream.isMuted;
   stream.setMuted(!isMuted);
@@ -46,47 +47,45 @@ export const getDevices = async () => {
 
 export const getMediaForDevices = async (
   deviceId: string,
-  mediaType: string
-) => {
-  const mediaConstraints = {
-    video: {
-      deviceId: mediaType === DeviceType.CAMERA && deviceId ? { exact: deviceId } : null,
-    },
-    audio: {
-      deviceId: mediaType === DeviceType.MIC && deviceId ? { exact: deviceId } : null,
-    },
-  } as MediaStreamConstraints;
-
-  return navigator.mediaDevices.getUserMedia(mediaConstraints);
+  mediaType: DeviceType
+): Promise<MediaStream> => {
+  const constraints: MediaStreamConstraints = {
+    video:
+      mediaType === DeviceType.CAMERA && deviceId
+        ? { deviceId: { exact: deviceId } }
+        : false,
+    audio:
+      mediaType === DeviceType.MIC && deviceId
+        ? { deviceId: { exact: deviceId } }
+        : false,
+  };
+  return navigator.mediaDevices.getUserMedia(constraints);
 };
 
 interface Strategy extends StageStrategy {
   audioTrack?: LocalStageStream;
   videoTrack?: LocalStageStream;
-  updateTracks: (audio: LocalStageStream, video: LocalStageStream) => void;
-  stageStreamsToPublish: () => LocalStageStream[];
-  shouldPublishParticipant: (participant: StageParticipantInfo) => boolean;
-  shouldSubscribeToParticipant: (participant: StageParticipantInfo) => SubscribeType;
-};
+  updateTracks: (audio: LocalStageStream, video: LocalStageStream) => void
+}
 
 export const createLocalStageStream = async (
   deviceId: string | null,
   deviceType: DeviceType
 ): Promise<LocalStageStream | undefined> => {
-  
   if (!deviceId) return;
 
-  const mediaStream: MediaStream = await getMediaForDevices(deviceId, deviceType);
-
-  const stageStream =
+  const mediaStream = await getMediaForDevices(deviceId, deviceType);
+  const track =
     deviceType === DeviceType.CAMERA
-      ? new LocalStageStream(mediaStream.getVideoTracks()[0])
-      : new LocalStageStream(mediaStream.getAudioTracks()[0]);
+      ? mediaStream.getVideoTracks()[0]
+      : mediaStream.getAudioTracks()[0];
 
-  return stageStream;
+  const { LocalStageStream } = await import("amazon-ivs-web-broadcast");
+  return new LocalStageStream(track);
 };
 
-export const setupStrategy = (): Strategy => {
+export const setupStrategy = async (): Promise<Strategy> => {
+  const { SubscribeType } = await import("amazon-ivs-web-broadcast");
 
   const strategy: Strategy = {
     audioTrack: undefined,
@@ -122,24 +121,27 @@ export const joinStage = async (
   setIsMicMuted: (muted: boolean) => void,
   setLocalParticipant: (p: { participant: StageParticipantInfo; streams: StageStream[] }) => void,
   setParticipants: React.Dispatch<React.SetStateAction<{ participant: StageParticipantInfo; streams: StageStream[] }[]>>,
-  strategyRef: React.RefObject<StageStrategy | null>,
-  stageRef: React.RefObject<Stage | null>,
-  localParticipantRef: React.RefObject<LocalParticipantInfo | null>
-) => {
+  strategyRef: RefObject<StageStrategy | null>,
+  stageRef: RefObject<Stage | null>,
+  localParticipantRef: RefObject<LocalParticipantInfo | null>
+): Promise<void> => {
+  if (!isInit) return;
 
-  const videoStream = await createLocalStageStream(camId, DeviceType.CAMERA);
-  const audioStream = await createLocalStageStream(micId, DeviceType.MIC);
+  const [videoStream, audioStream] = await Promise.all([
+    createLocalStageStream(camId, DeviceType.CAMERA),
+    createLocalStageStream(micId, DeviceType.MIC),
+  ]);
+
   if (!videoStream || !audioStream) return;
 
-  const strategy = setupStrategy();
+  const strategy = await setupStrategy();
   strategy.updateTracks(audioStream, videoStream);
   strategyRef.current = strategy;
-  localParticipantRef.current = {
-    audioStream: audioStream,
-    videoStream: videoStream
-  }
 
-  let stage: Stage | null = new Stage(participantToken, strategyRef.current);
+  localParticipantRef.current = { audioStream, videoStream };
+
+  const { Stage, StageEvents, ConnectionState } = await import("amazon-ivs-web-broadcast");
+  const stage = new Stage(participantToken, strategy);
 
   stage.on(StageEvents.STAGE_CONNECTION_STATE_CHANGED, (state: string) => {
     setIsConnected(state === ConnectionState.CONNECTED);
@@ -147,31 +149,31 @@ export const joinStage = async (
     setIsMicMuted(true);
   });
 
-  stage.on(StageEvents.STAGE_PARTICIPANT_STREAMS_ADDED, (participant: StageParticipantInfo, streams: StageStream[]) => {
+  stage.on(StageEvents.STAGE_PARTICIPANT_STREAMS_ADDED, (participant, streams) => {
     if (participant.isLocal) {
       setLocalParticipant({ participant, streams });
     } else {
-        setParticipants((prev) => {
-            const exists = prev.some((p) => p.participant.id === participant.id);
-            return exists ? prev : [...prev, { participant, streams }];
-          });
+      setParticipants((prev) =>
+        prev.some((p) => p.participant.id === participant.id)
+          ? prev
+          : [...prev, { participant, streams }]
+      );
     }
   });
 
-  stage.on(StageEvents.STAGE_PARTICIPANT_LEFT, (participant: StageParticipantInfo) => {
+  stage.on(StageEvents.STAGE_PARTICIPANT_LEFT, (participant) => {
     setParticipants((prev) =>
-      prev.filter(({ participant: current }) => current.id !== participant.id)
+      prev.filter(({ participant: p }) => p.id !== participant.id)
     );
   });
 
   try {
     await stage.join();
+    stageRef.current = stage;
   } catch (err) {
     console.error("Failed to join stage:", err);
-    stage = null;
+    stageRef.current = null;
   }
-
-  stageRef.current = stage;
 };
 
 export const leaveStage = async (
@@ -183,4 +185,3 @@ export const leaveStage = async (
     setIsConnected(false);
   }
 };
-

@@ -1,12 +1,11 @@
 'use client'
-import { StageParticipantInfo, StageStream } from "amazon-ivs-web-broadcast";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react"
 
 interface Props {
   isInitializeComplete: boolean;
   participants: {
-    participant: StageParticipantInfo;
-    streams: StageStream[];
+    participant: import("amazon-ivs-web-broadcast").StageParticipantInfo;
+    streams: import("amazon-ivs-web-broadcast").StageStream[];
   }[];
 }
 
@@ -49,7 +48,7 @@ const RemoteVideoCard = ({
   }, [track]);
 
   return (
-    <div className="rounded-md border bg-black overflow-hidden aspect-video">
+    <div className="relative rounded-md border bg-black overflow-hidden aspect-video">
       <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
       {name && (
         <div className="text-white text-xs bg-black/60 px-2 py-1 absolute bottom-0 left-0">

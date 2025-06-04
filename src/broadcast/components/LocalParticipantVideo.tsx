@@ -1,11 +1,10 @@
 'use client'
-import { StageParticipantInfo, StageStream } from "amazon-ivs-web-broadcast";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react"
 
 interface Props {
   localParticipantInfo: {
-    participant: StageParticipantInfo;
-    streams: StageStream[];
+    participant: import("amazon-ivs-web-broadcast").StageParticipantInfo;
+    streams: import("amazon-ivs-web-broadcast").StageStream[];
   };
 }
 
