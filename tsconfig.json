@@ -20,7 +20,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@broadcast/*": ["./src/broadcast/*"]
+      "@broadcast/*": ["./src/broadcast/*"],
+      "@webinar/*": ["./src/webinar/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
