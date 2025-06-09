@@ -1,12 +1,10 @@
 import { PaginationControls } from "@/components/pagination";
 import { SearchWidget } from "@/components/search";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { InfoIcon } from "@/components/ui/info-icon";
 import { Metadata } from "next";
-import Link from "next/link";
 import { getWebinars } from "@webinar/service";
-import { WebinarCard } from "@webinar/components";
+import { NoUpcomingWebinars, WebinarCard } from "@webinar/components";
 
 const DEFAULT_PAGE_SIZE = 6
 
@@ -72,11 +70,11 @@ export default async function HomePage(props: WebinarsPageProps) {
             </div>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {webinars.results.map((webinar, index) => <WebinarCard 
+          {webinars.results.length > 0 ?webinars.results.map((webinar, index) => <WebinarCard 
             key={`${webinar.id}-${index}`} 
             webinar={webinar} 
             type="upcoming"
-            />)}
+            />) : <NoUpcomingWebinars />}
         </div>
         <PaginationControls totalPages={Math.ceil(webinars.count / pageSize)} defaultPageSize={DEFAULT_PAGE_SIZE} />
       </section>

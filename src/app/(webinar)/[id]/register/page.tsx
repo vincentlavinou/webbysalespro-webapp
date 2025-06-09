@@ -23,7 +23,7 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
       )
 
   return (
-    <div className="max-w-xl mx-auto mt-10">
+    <div>
         <div className="relative w-full h-[150px] rounded overflow-hidden">
             {thumbnail?.file_url && (
             <Image src={thumbnail.file_url} alt="Thumbnail" fill className="object-cover" />

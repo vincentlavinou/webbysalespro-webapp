@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { DateTime } from 'luxon'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,6 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Webinar } from '@/webinar/service'
+import { Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
+import { ALREADY_REGISTERED_SINGLE } from '@/webinar/service/error'
 
 interface DefaultRegistrationFormProps {
     webinar: Webinar
@@ -25,6 +30,9 @@ const attendeeSchema = z.object({
 type AttendeeFormData = z.infer<typeof attendeeSchema>
 
 export const DefaultRegistrationForm = ({webinar, registerAttendee}: DefaultRegistrationFormProps) => {
+
+    const [pending, setPending] = useState(false)
+    const router = useRouter()
     
   const {
     register,
@@ -35,8 +43,52 @@ export const DefaultRegistrationForm = ({webinar, registerAttendee}: DefaultRegi
   })
 
   const onSubmit = (data: AttendeeFormData) => {
-    console.log('Submitted attendee:', data)
-    registerAttendee(new FormData())
+    const formData = new FormData()
+    formData.append("webinar_id", webinar.id)
+    formData.append("session_id", data.session_id)
+    formData.append("first_name", data.first_name)
+    formData.append("last_name", data.last_name)
+    formData.append("email", data.email)
+
+    if(data.phone) formData.append("phone", data.phone)
+
+    setPending(true)
+    registerAttendee(formData).then(() => {
+        router.push(`/${webinar.id}/register/success?session_id=${data.session_id}`)
+        setPending(false)
+    }).catch((e) => {
+        setPending(false)
+        if(e.name === ALREADY_REGISTERED_SINGLE) {
+            toast.custom((t) => (
+                <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+                    <div className="flex-1 w-0 p-4">
+                    <div className="flex items-start">
+                        <div className="ml-3 flex-1">
+                        <p className="text-sm font-medium text-gray-900">
+                            {data.first_name} {data.last_name}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                            {e.message}
+                        </p>
+                        </div>
+                    </div>
+                    </div>
+                    <div className="flex border-l border-gray-200">
+                    <button
+                        onClick={() => toast.dismiss(t.id)}
+                        className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        Change?
+                    </button>
+                    </div>
+                </div>
+            ),{
+                duration: Infinity
+            })
+        } else {
+            toast.error(e.message)
+        }
+    })
   }
 
   return (
@@ -77,7 +129,11 @@ export const DefaultRegistrationForm = ({webinar, registerAttendee}: DefaultRegi
           <Label htmlFor="phone">Phone (optional)</Label>
           <Input id="phone" {...register('phone')} />
         </div>
-        <Button type="submit">Register</Button>
+        <input type='hidden' name="webinar_id" value={webinar.id} />
+        <Button type="submit">
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
+            {pending ? 'Registering...' : 'Register'}
+        </Button>
       </form>
     </div>
   )

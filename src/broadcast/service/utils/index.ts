@@ -5,13 +5,10 @@ import { DeviceType } from "../enum";
 
 // ✅ Type-only imports to fix SSR issues
 type Stage = import("amazon-ivs-web-broadcast").Stage;
-type StageEvents = import("amazon-ivs-web-broadcast").StageEvents;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
 type StageStrategy = import("amazon-ivs-web-broadcast").StageStrategy;
 type StageStream = import("amazon-ivs-web-broadcast").StageStream;
 type LocalStageStream = import("amazon-ivs-web-broadcast").LocalStageStream;
-type SubscribeType = import("amazon-ivs-web-broadcast").SubscribeType;
-type ConnectionState = import("amazon-ivs-web-broadcast").ConnectionState;
 
 export interface LocalParticipantInfo {
   audioStream: LocalStageStream;

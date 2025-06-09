@@ -5,3 +5,7 @@ export {
 export {
     UpcomingSessionBanner
 } from './UpcomingSessionBanner'
+
+export {
+    NoUpcomingWebinars
+} from './NoUpcomingWebinars'

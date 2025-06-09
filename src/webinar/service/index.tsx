@@ -8,3 +8,7 @@ export {
     getWebinar,
     registerForWebinar,
 } from './action';
+
+export {
+    AlreadyRegisteredError
+} from './error'

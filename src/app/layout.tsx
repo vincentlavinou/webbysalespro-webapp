@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 // app/(public)/layout.tsx
 import Link from "next/link"
+import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 py-6">
         {children}
+        <Toaster position="bottom-right"/>
       </main>
 
       {/* Footer */}

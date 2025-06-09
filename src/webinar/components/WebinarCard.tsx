@@ -1,5 +1,4 @@
 'use client'
-import { useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardFooter, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +7,6 @@ import { Webinar } from '@webinar/service'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Separator } from '@/components/ui/separator'
 import { DateTime } from 'luxon'
-import { useRouter } from "next/navigation"
 
 
 interface WebinarCardProps {
