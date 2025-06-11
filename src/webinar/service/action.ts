@@ -56,3 +56,33 @@ export async function registerForWebinar(formData: FormData): Promise<void> {
         }
     }
 }
+
+export async function updateSession(formData: FormData): Promise<void> {
+    const webinarId = formData.get("webinar_id") as string
+    const sessionId = formData.get("session_id") as string
+    
+    const request = {
+        "session_ids": [sessionId],
+        "first_name": formData.get("first_name") as string,
+        "last_name": formData.get("last_name") as string,
+        "email": formData.get("email") as string
+    }
+
+    const response = await fetch(`${webinarApiUrl}/v1/webinars/${webinarId}/attendees/`,{
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        method: 'POST',
+        body: JSON.stringify(request)
+    })
+
+    if(response.status >= 400) {
+        const errorData = await response.json()
+        console.log(errorData.detail)
+        if (errorData.code === 'already_registered_single') {
+            throw new AlreadyRegisteredError(errorData.detail)
+        } else {
+            throw new Error(errorData.detail || 'Unknown error')
+        }
+    }
+}
