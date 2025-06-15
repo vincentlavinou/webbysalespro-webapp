@@ -8,6 +8,7 @@ export type QueryWebinar = {
     page?: number
     page_size?: number
     ordering?: string // Default ordering by created_at descending
+    status? : string[]
 }
 
 export type WebinarSetting = {

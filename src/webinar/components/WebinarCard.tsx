@@ -48,7 +48,7 @@ export function WebinarCard({ webinar, type = 'upcoming' }: WebinarCardProps) {
               {webinar.sessions?.map((session, index) => (
                 <p key={`${session.id}-${index}`} className="text-xs hover:shadow-2xs pb-1">
                 <Badge variant="outline">
-                  {type === 'past' ? 'Held' : 'Scheduled'}:
+                  {session.status}
                 </Badge>{' '}
                 {DateTime.fromISO(session.scheduled_start).toFormat("cccc, LLLL d'th', yyyy")}
               </p>

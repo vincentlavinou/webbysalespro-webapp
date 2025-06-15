@@ -26,11 +26,17 @@ export default async function HomePage(props: WebinarsPageProps) {
   const searchParams = await props.searchParams
     const page = searchParams.page ? parseInt(searchParams.page, 10) : 1;
     const pageSize = searchParams.page_size ? parseInt(searchParams.page_size, 10) : DEFAULT_PAGE_SIZE ;
-    const webinars = await getWebinars({ 
+    const scheduledWebinars = await getWebinars({ 
         search: searchParams.search || "",
         page: page,
         page_size: pageSize
     });
+    const liveWebinars = await getWebinars({
+        search: searchParams.search || "",
+        page: page,
+        page_size: pageSize,
+        status: ['in_progress']
+    })
 
   return (
     <div className="w-full p-6 space-y-6">
@@ -39,24 +45,27 @@ export default async function HomePage(props: WebinarsPageProps) {
                 className="w-full max-w-md p-2 relative"
                 placeholder="Search webinars by title, speaker, or topic..." />
        </div>
-      {/* <section className="w-full">
+       <section className="w-full">
         <div className="w-full flex flex-row items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">Live Webinars</h2>
+            <div className="flex flex-row items-center gap-2">
+                <h2 className="text-xl font-semibold">Live Webinars</h2>
+                <InfoIcon value="Webinar that is up coming"/>
+            </div>
             <div>
                 <Badge variant="outline" className="text-xs">
-                    {upcoming.length} Live
+                    {liveWebinars.count} Live
                 </Badge>
             </div>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {live.length > 0 ? (
-            live.map(webinar => <WebinarCard key={webinar.id} webinar={webinar} type="live" />)
-            ) : (
-            <div className="col-span-3 text-center text-gray-500">
-                No live webinars at the moment. Check back later!   
-            </div>)}
+          {liveWebinars.results.length > 0 ?liveWebinars.results.map((webinar, index) => <WebinarCard 
+            key={`${webinar.id}-${index}`} 
+            webinar={webinar} 
+            type="live"
+            />) : <NoUpcomingWebinars title="No live webinars"/>}
         </div>
-      </section> */}
+        <PaginationControls totalPages={Math.ceil(liveWebinars.count / pageSize)} defaultPageSize={DEFAULT_PAGE_SIZE} />
+      </section>
       <section className="w-full">
         <div className="w-full flex flex-row items-center justify-between mb-6">
             <div className="flex flex-row items-center gap-2">
@@ -65,18 +74,18 @@ export default async function HomePage(props: WebinarsPageProps) {
             </div>
             <div>
                 <Badge variant="outline" className="text-xs">
-                    {webinars.count} Upcoming
+                    {scheduledWebinars.count} Upcoming
                 </Badge>
             </div>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {webinars.results.length > 0 ?webinars.results.map((webinar, index) => <WebinarCard 
+          {scheduledWebinars.results.length > 0 ?scheduledWebinars.results.map((webinar, index) => <WebinarCard 
             key={`${webinar.id}-${index}`} 
             webinar={webinar} 
             type="upcoming"
-            />) : <NoUpcomingWebinars />}
+            />) : <NoUpcomingWebinars title="No upcoming webinars" />}
         </div>
-        <PaginationControls totalPages={Math.ceil(webinars.count / pageSize)} defaultPageSize={DEFAULT_PAGE_SIZE} />
+        <PaginationControls totalPages={Math.ceil(scheduledWebinars.count / pageSize)} defaultPageSize={DEFAULT_PAGE_SIZE} />
       </section>
 
       {/* <section>

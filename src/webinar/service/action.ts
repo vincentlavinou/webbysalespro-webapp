@@ -19,6 +19,8 @@ export async function getWebinars(query?: QueryWebinar) {
 
     params.set('ordering', query?.ordering || '-created_at'); // Default ordering by created_at descending
 
+    params.set('status', query?.status?.join(',') || ['scheduled'].join(','))
+
     const response = await fetch(`${webinarApiUrl}/v1/webinars/public/?${params.toString()}`)
     const data: PaginationPage<Webinar[]> = await response.json()
     return data ? data : emptyPage<Webinar[]>([]);
