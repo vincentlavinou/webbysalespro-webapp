@@ -13,13 +13,13 @@ interface LiveBroadcastPageProps {
 
 export default async function BroadcastPage(props: LiveBroadcastPageProps) {
 
-    const webinarId = (await props.params).id
+    const sessionId = (await props.params).id
     const token = (await props.searchParams).token
-    const serviceToken = await createBroadcastServiceToken(webinarId, token)
+    const serviceToken = await createBroadcastServiceToken(sessionId, token)
 
   return (
-    <div>
-        <TestBroadcast accessToken={serviceToken.service_access_token}/>
+    <div className="w-7xl">
+        <TestBroadcast token={serviceToken} session={sessionId}/>
     </div>
   );
 }

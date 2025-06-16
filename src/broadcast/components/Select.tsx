@@ -1,5 +1,9 @@
 import { Label } from "@/components/ui/label";
 import { Select as ShadSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Camera, Mic, MicOff, VideoIcon, VideoOffIcon } from "lucide-react";
+import { DeviceType } from "../service/enum";
+import { useLocalMediaDevices } from "../hooks";
+import { useLocalMedia } from "../hooks/use-strategy";
 
 interface Props {
   deviceType: "Camera" | "Microphone";
@@ -28,3 +32,65 @@ const Select = ({ deviceType, devices, updateDevice }: Props) => {
 };
 
 export default Select;
+
+
+
+export function SelectCamera() {
+  const { videoDevices, setVideoId, videoIsMuted } = useLocalMediaDevices();
+  const { toggleMedia } = useLocalMedia()
+
+  return (
+    <div className="flex gap-2 items-center">
+      {videoIsMuted ? 
+                <VideoOffIcon className="w-6 h-6 text-red-500 animate-in" onClick={() => toggleMedia(DeviceType.CAMERA)} /> 
+              : <VideoIcon className="w-6 h-6 text-green-500 animate-in" onClick={() => toggleMedia(DeviceType.CAMERA)}/>
+      }
+      <ShadSelect onValueChange={(val) => setVideoId(val)}>
+        <SelectTrigger className="">
+          {/* <VideoIcon className="w-8 h-8" /> */}
+        </SelectTrigger>
+        <SelectContent side="top">
+          {videoDevices.map((device) => (
+            <SelectItem key={device.deviceId} value={device.deviceId}>
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4" />
+                <span>{device.label}</span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </ShadSelect>
+    </div>
+
+  )
+}
+
+
+export function SelectMicrophone() {
+
+  const { audioDevices, setAudioId, audioIsMuted } = useLocalMediaDevices();
+  const { toggleMedia } = useLocalMedia()
+
+  return (
+    <div className="flex gap-2 items-center">
+      {audioIsMuted ? <MicOff className="w-6 h-6 text-red-500 animate-in" onClick={() => toggleMedia(DeviceType.MIC)} /> 
+              : <Mic className="w-6 h-6 text-green-500 animate-in" onClick={() => toggleMedia(DeviceType.MIC)}/>
+      }
+      <ShadSelect onValueChange={(val) => setAudioId(val)}>
+        <SelectTrigger className="">
+        </SelectTrigger>
+        <SelectContent side="top">
+          {audioDevices.map((device) => (
+            <SelectItem key={device.deviceId} value={device.deviceId}>
+              <div className="flex items-center gap-2">
+                <Mic className="w-8 h-8 text-black" />
+                <span>{device.label}</span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </ShadSelect>
+    </div>
+  )
+}
+

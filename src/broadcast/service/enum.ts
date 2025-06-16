@@ -3,3 +3,12 @@ export enum DeviceType {
     CAMERA = 'camera',
     SCREEN = 'screen'
 }
+
+export enum BroadcastServiceType {
+    IVS = 'IVS'
+}
+
+export enum LocalStorage {
+    VIDEO_ID = 'local-video-id',
+    AUDIO_ID = 'local-audio-id'
+}

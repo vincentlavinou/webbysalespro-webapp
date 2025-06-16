@@ -1,20 +1,21 @@
 'use client'
 import { useEffect, useRef } from "react"
+import { useStageContext } from "../context";
 
 interface Props {
+  role: 'host' | 'presenter' | 'attendee'
   isInitializeComplete: boolean;
-  participants: {
-    participant: import("amazon-ivs-web-broadcast").StageParticipantInfo;
-    streams: import("amazon-ivs-web-broadcast").StageStream[];
-  }[];
 }
 
-const RemoteParticipantVideos = ({ isInitializeComplete, participants }: Props) => {
-  if (!isInitializeComplete) return null;
+const RemoteParticipantVideos = ({ isInitializeComplete, role }: Props) => {
+
+  const { mainParticiant, participants} = useStageContext()
+
+  if (!isInitializeComplete || role === 'attendee') return null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {participants.map(({ participant, streams }) => {
+    <div className="flex flex-col gap-3">
+      {participants.filter((participant) => participant.participant.id !== mainParticiant?.participant.id).map(({ participant, streams }) => {
         const videoStream = streams.find(
           (stream) => stream.mediaStreamTrack.kind === "video"
         );
@@ -48,10 +49,16 @@ const RemoteVideoCard = ({
   }, [track]);
 
   return (
-    <div className="relative rounded-md border bg-black overflow-hidden aspect-video">
-      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+    <div className="relative w-full aspect-video max-w-[140px] rounded-md border bg-black overflow-hidden shadow-md">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="w-full h-full object-cover"
+      />
       {name && (
-        <div className="text-white text-xs bg-black/60 px-2 py-1 absolute bottom-0 left-0">
+        <div className="absolute bottom-0 left-0 text-white text-[10px] bg-black/60 px-1 py-0.5 w-full truncate">
           {name}
         </div>
       )}

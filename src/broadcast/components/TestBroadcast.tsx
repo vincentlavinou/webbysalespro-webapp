@@ -1,77 +1,96 @@
 "use client";
 
-import { useState } from "react";
 import Script from "next/script";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import Header from "@broadcast/components/Header";
-import Select from "@broadcast/components/Select";
-import LocalParticipantVideo from "@broadcast/components/LocalParticipantVideo";
 import RemoteParticipantVideos from "@broadcast/components/RemoteParticipantVideos";
 import { StageProvider, useStageContext } from "@broadcast/context";
-import { useMediaDevices } from "@broadcast/hooks";
-import { toggleMedia } from "@broadcast/service/utils";
-import { DeviceType } from "@broadcast/service/enum";
+import { HostNotStarted } from "./HostNotStarted";
+import { ChatPanel } from "./ChatPanel";
+import { LocalMediaDeviceProvider } from "../provider/LocalMediaDeviceProvider";
+import { LocalMediaProvider } from "../provider/LocalMediaProvider";
+import { useRef } from "react";
+import { LocalMediaControl } from "./LocalMediaControl";
+import { BroadcastServiceToken } from "../service/type";
+import { BroadcastServiceProvider } from "../provider/BroadcastServiceProvider";
+import MainPresenterView from "@/broadcast/components/MainPresenterView";
+
+type Stage = import("amazon-ivs-web-broadcast").Stage;
 
 interface BroadcastUIProps {
-    token: string
+    token: BroadcastServiceToken
 }
 
 const BroadcastUI = ({token}: BroadcastUIProps) => {
-  const { isConnected, localParticipant, participants, join, leave, stageRef, localParticipantRef } = useStageContext();
-  const { videoDevices, audioDevices, videoId, audioId, setVideoId, setAudioId } = useMediaDevices();
-  const [isMicMuted, setIsMicMuted] = useState(true);
-  const [isCamHidden, setIsCamHidden] = useState(false);
-
+  const { isConnected, mainParticiant, participants, join } = useStageContext();
+  
   return (
-    <div>
+    <div className="flex flex-col w-full h-screen bg-white overflow-hidden">
       <Script src="https://web-broadcast.live-video.net/1.6.0/amazon-ivs-web-broadcast.js" />
-      <Header />
-      <Card className="p-6 shadow-sm border rounded-xl max-w-5xl mx-auto mt-6 bg-white">
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
-          <div className="space-y-4">
-            <Select deviceType="Camera" updateDevice={setVideoId} devices={videoDevices} />
-            <Select deviceType="Microphone" updateDevice={setAudioId} devices={audioDevices} />
-            <div className="flex gap-2">
-              <Button onClick={() => join(token, audioId, videoId)}>Join Stage</Button>
-              <Button variant="outline" onClick={leave}>Leave</Button>
-            </div>
-            {isConnected && stageRef && (
-              <div className="flex gap-2 pt-2">
-                <Button variant="secondary" onClick={() => toggleMedia(DeviceType.MIC, setIsMicMuted, localParticipantRef)}>
-                  {isMicMuted ? "Unmute Mic" : "Mute Mic"}
-                </Button>
-                <Button variant="secondary" onClick={() => toggleMedia(DeviceType.CAMERA, setIsCamHidden, localParticipantRef)}>
-                  {isCamHidden ? "Unhide Camera" : "Hide Camera"}
-                </Button>
-              </div>
-            )}
-          </div>
-          <div>
-            {isConnected && localParticipant && (
-              <LocalParticipantVideo localParticipantInfo={localParticipant} />
-            )}
-          </div>
-        </div>
-        {isConnected && (
-          <div className="pt-6">
-            <h3 className="text-lg font-semibold">Remote Participants</h3>
-            <RemoteParticipantVideos isInitializeComplete={true} participants={participants} />
+      {token.role === 'host' && <Header />}
+
+      {/* Main area */}
+      <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
+        {/* Remote Participants (top scrollable row on mobile) */}
+        {isConnected && participants.length > 0 && (
+          <div className="w-full lg:w-[160px] flex flex-row lg:flex-col items-center gap-2 overflow-x-auto lg:overflow-y-auto p-2">
+            <RemoteParticipantVideos
+              role={token.role}
+              isInitializeComplete={true}
+            />
           </div>
         )}
-      </Card>
+
+        {/* Video + Controls */}
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 p-4 gap-4 overflow-hidden">
+          {/* Video */}
+          {/* Controls under video (always visible) */}
+          <div className="hidden md:block">
+            <LocalMediaControl />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {isConnected && mainParticiant ? (
+              <MainPresenterView participant={mainParticiant.participant} streams={mainParticiant.streams} />
+            ) : (
+              <HostNotStarted onStart={() => join(token.service_access_token)} />
+            )}
+          </div>
+
+          {/* Controls under video (always visible) */}
+          <div className="md:hidden pt-4 border-t">
+            <LocalMediaControl />
+          </div>
+        </div>
+
+        {/* Chat */}
+        <div className="w-full pt-18 lg:w-[320px] min-w-[280px] md:max-w-[400px] h-[300px] lg:h-full flex flex-col overflow-auto">
+          <ChatPanel />
+        </div>
+      </div>
     </div>
+
   );
 };
 
 interface LiveBroadcastProps {
-    accessToken: string
+    session: string
+    token: BroadcastServiceToken
 }
 
 export function TestBroadcast(props: LiveBroadcastProps) {
+
+    const stageRef = useRef<Stage | undefined>(undefined);
+
   return (
-    <StageProvider>
-      <BroadcastUI token={props.accessToken}/>
-    </StageProvider>
+    <BroadcastServiceProvider token={props.token} session={props.session}>
+      <LocalMediaDeviceProvider>
+        <LocalMediaProvider stageRef={stageRef}>
+          <StageProvider stageRef={stageRef}>
+            <BroadcastUI token={props.token}/>
+          </StageProvider>
+        </LocalMediaProvider>
+      </LocalMediaDeviceProvider>
+    </BroadcastServiceProvider>
+
+
   );
 }

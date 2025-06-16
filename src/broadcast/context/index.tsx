@@ -7,76 +7,103 @@ import {
   useRef,
   useCallback,
   ReactNode,
+  RefObject,
+  useEffect,
 } from "react";
 
 import {
+  equalsWebiSalesProParticipant,
   joinStage,
   leaveStage,
   LocalParticipantInfo,
 } from "@broadcast/service/utils";
+import { useLocalMedia } from "../hooks/use-strategy";
+import { useBroadcastService } from "../hooks/use-broadcast-service";
 
 // ✅ Use type-only imports to avoid SSR errors
 type Stage = import("amazon-ivs-web-broadcast").Stage;
-type StageStrategy = import("amazon-ivs-web-broadcast").StageStrategy;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
 type StageStream = import("amazon-ivs-web-broadcast").StageStream;
 
-type LocalParticipant = {
+export type WebiSalesProParticipant = {
   participant: StageParticipantInfo;
   streams: StageStream[];
 };
 
 type StageContextType = {
   isConnected: boolean;
-  localParticipant: LocalParticipant | null;
-  participants: LocalParticipant[];
-  join: (token: string, micId: string | null, camId: string | null) => void;
+  mainParticiant: WebiSalesProParticipant | undefined;
+  participants: WebiSalesProParticipant[];
+  join: (token: string) => void;
   leave: () => void;
-  stageRef?: React.RefObject<Stage | null>;
+  stageRef?: React.RefObject<Stage | undefined>;
   localParticipantRef?: React.RefObject<LocalParticipantInfo | null>;
 };
 
 const StageContext = createContext<StageContextType | null>(null);
 
-export const StageProvider = ({ children }: { children: ReactNode }) => {
+export const StageProvider = ({ children, stageRef }: { children: ReactNode, stageRef: RefObject<Stage | undefined> }) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
-  const [participants, setParticipants] = useState<LocalParticipant[]>([]);
+  const [mainParticiant, setMainParticipant] = useState<WebiSalesProParticipant | undefined>(undefined);
+  const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
+  
+  const { strategy, audioStream, videoStream, create: createLocalMedia } = useLocalMedia()
+  const { mainPresenterId } = useBroadcastService()
 
-  const stageRef = useRef<Stage | null>(null);
-  const strategyRef = useRef<StageStrategy | null>(null);
   const localParticipantRef = useRef<LocalParticipantInfo | null>(null);
 
+  useEffect(() => {
+    console.log('update host')
+    if(mainPresenterId === undefined) {
+      const host = participants.find((info) => info.participant.userId.includes("host-"))
+      if(!equalsWebiSalesProParticipant(host, mainParticiant)){
+        setMainParticipant(host)
+        strategy?.setMainPresenter(host)
+        stageRef.current?.refreshStrategy()
+      }
+    } else {
+      const presenter = participants.find((info) => info.participant.userId === mainPresenterId)
+      if(!equalsWebiSalesProParticipant(presenter, mainParticiant)) {
+        setMainParticipant(presenter)
+        strategy?.setMainPresenter(presenter)
+        stageRef.current?.refreshStrategy()
+      }
+    }
+  },[mainPresenterId, participants, mainParticiant, stageRef, strategy])
+
   const join = useCallback(
-    async (token: string, micId: string | null, camId: string | null) => {
+    async (token: string) => {
+      await createLocalMedia()
       await joinStage(
         true,
         token,
-        micId,
-        camId,
         setIsConnected,
-        () => {},
-        setLocalParticipant,
         setParticipants,
-        strategyRef,
         stageRef,
-        localParticipantRef
+        strategy,
       );
     },
-    []
+    [strategy, stageRef, createLocalMedia]
   );
 
   const leave = useCallback(() => {
+
+    // Clear refs
+    localParticipantRef.current = null;
+
+    // Leave the IVS stage
     leaveStage(setIsConnected, stageRef.current ?? undefined);
-    setLocalParticipant(null);
+
+    // UI cleanup
+    setMainParticipant(undefined);
     setParticipants([]);
-  }, []);
+  }, [videoStream, audioStream, stageRef]);
 
   return (
     <StageContext.Provider
       value={{
         isConnected,
-        localParticipant,
+        mainParticiant,
         participants,
         join,
         leave,
