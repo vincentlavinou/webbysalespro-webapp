@@ -2,16 +2,18 @@
 
 import { DateTime, Duration } from 'luxon'
 import { useEffect, useState } from 'react'
-import { WebinarSession } from '@webinar/service' // Adjust as needed
+import { SeriesSession } from '@webinar/service' // Adjust as needed
 
 interface UpcomingSessionBannerProps {
-  session: WebinarSession
+  session?: SeriesSession
 }
 
 export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) => {
   const [timeLeft, setTimeLeft] = useState<Duration | null>(null)
 
   useEffect(() => {
+    if(!session) return
+    
     const interval = setInterval(() => {
       const now = DateTime.local()
       const sessionTime = DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' })
@@ -29,6 +31,8 @@ export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) =
   }, [session])
 
   if (!timeLeft) return null
+
+  if(!session) return null
 
   return (
     <div className="fixed bottom-16 inset-x-0 bg-indigo-600 text-white text-sm md:text-base z-50 shadow-lg px-4 py-3">

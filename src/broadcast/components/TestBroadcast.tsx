@@ -5,7 +5,7 @@ import Header from "@broadcast/components/Header";
 import RemoteParticipantVideos from "@broadcast/components/RemoteParticipantVideos";
 import { StageProvider, useStageContext } from "@broadcast/context";
 import { HostNotStarted } from "./HostNotStarted";
-import { ChatPanel } from "./ChatPanel";
+import { ChatPanel, ChatPanelProps } from "./ChatPanel";
 import { LocalMediaDeviceProvider } from "../provider/LocalMediaDeviceProvider";
 import { LocalMediaProvider } from "../provider/LocalMediaProvider";
 import { useRef } from "react";
@@ -18,9 +18,10 @@ type Stage = import("amazon-ivs-web-broadcast").Stage;
 
 interface BroadcastUIProps {
     token: BroadcastServiceToken
+    chatPanel: ChatPanelProps
 }
 
-const BroadcastUI = ({token}: BroadcastUIProps) => {
+const BroadcastUI = ({token, chatPanel}: BroadcastUIProps) => {
   const { isConnected, mainParticiant, participants, join } = useStageContext();
   
   return (
@@ -51,7 +52,7 @@ const BroadcastUI = ({token}: BroadcastUIProps) => {
             {isConnected && mainParticiant ? (
               <MainPresenterView participant={mainParticiant.participant} streams={mainParticiant.streams} />
             ) : (
-              <HostNotStarted onStart={() => join(token.service_access_token)} />
+              <HostNotStarted onStart={() => join(token.stream_token)} />
             )}
           </div>
 
@@ -63,7 +64,7 @@ const BroadcastUI = ({token}: BroadcastUIProps) => {
 
         {/* Chat */}
         <div className="w-full pt-18 lg:w-[320px] min-w-[280px] md:max-w-[400px] h-[300px] lg:h-full flex flex-col overflow-auto">
-          <ChatPanel />
+          <ChatPanel {...chatPanel}/>
         </div>
       </div>
     </div>
@@ -74,6 +75,7 @@ const BroadcastUI = ({token}: BroadcastUIProps) => {
 interface LiveBroadcastProps {
     session: string
     token: BroadcastServiceToken
+    chatPanel: ChatPanelProps
 }
 
 export function TestBroadcast(props: LiveBroadcastProps) {
@@ -85,7 +87,7 @@ export function TestBroadcast(props: LiveBroadcastProps) {
       <LocalMediaDeviceProvider>
         <LocalMediaProvider stageRef={stageRef}>
           <StageProvider stageRef={stageRef}>
-            <BroadcastUI token={props.token}/>
+            <BroadcastUI token={props.token} chatPanel={props.chatPanel}/>
           </StageProvider>
         </LocalMediaProvider>
       </LocalMediaDeviceProvider>

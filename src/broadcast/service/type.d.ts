@@ -10,10 +10,25 @@ export interface Strategy extends StageStrategy {
     setMainPresenter: (presenter: WebiSalesProParticipant) => void
   }
 
+export type Chat = {
+    room: string
+    token: string
+    token_expiration_time: string
+    session_expiration_time: string
+    region: string
+}
+
+export type ChatService = {
+    role: 'host' |'presenter' | 'attendee'
+    webinar: string
+    chat: Chat
+}
+
 export type BroadcastServiceToken = {
-    service_access_token: string
+    stream_token: string
     role: "host" | "presenter" | "attendee"
     webinar: string
+    region: string
 }
 
 export type CreateBroadcastToken = {

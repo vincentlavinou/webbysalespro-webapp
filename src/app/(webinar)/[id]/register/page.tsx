@@ -16,6 +16,8 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
     
     const webinarId = (await props.params).id
     const webinar = await getWebinar(webinarId)
+    const sessions = webinar.series?.flatMap((series) => series.sessions)
+
     const thumbnail = webinar.media.find(
         (media) =>
           media.file_type === 'image' &&
@@ -33,7 +35,7 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
         <p className="text-muted-foreground mb-4">{webinar.description}</p>
 
         <DefaultRegistrationForm webinar={webinar} registerAttendee={registerForWebinar}/>
-        {webinar.sessions && webinar.sessions[0] && <UpcomingSessionBanner session={webinar.sessions[0]}/>}
+        {sessions && sessions[0] && <UpcomingSessionBanner session={sessions[0]}/>}
     </div>
   )
 }

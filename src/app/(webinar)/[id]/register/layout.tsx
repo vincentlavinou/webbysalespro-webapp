@@ -13,10 +13,12 @@ export default async function RegistrationLayout(props: RegistrationLayoutProps)
 
     const webinarId = (await props.params).id
     const webinar = await getWebinar(webinarId)
+    const sessions = webinar.series?.flatMap((series) => series.sessions)
+
 
 
     return  <div className="max-w-xl mx-auto mt-10">
         {props.children}
-        {webinar.sessions && webinar.sessions[0] && <UpcomingSessionBanner session={webinar.sessions[0]}/>}
+        {sessions && sessions?.at(0) && <UpcomingSessionBanner session={sessions?.at(0)}/>}
     </div>
 }

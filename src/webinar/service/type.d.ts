@@ -1,5 +1,5 @@
 import { WebinarMedia } from "../media"
-import { WebinarSessionSeriesStatus, WebinarSessionSeriesType } from "./enum"
+import { WebinarSeriesStatus, WebinarSeriesType, WebinarSessionStatus } from "./enum"
 import { Broadcast } from "@/broadcast/service"
 
 
@@ -7,8 +7,9 @@ export type QueryWebinar = {
     search?: string
     page?: number
     page_size?: number
-    ordering?: string // Default ordering by created_at descending
-    status? : string[]
+    session?: string
+    ordering?: string
+    status?: string[]
 }
 
 export type WebinarSetting = {
@@ -34,7 +35,24 @@ export type WebinarAttendee = {
     id: string
     first_name: string
     last_name: string
-    access_token?: string
+    email: string
+    phone?: string
+    registered_at: string
+    created_at: string
+    updated_at: string
+}
+
+export type WebinarAttendeeTableRow = {
+    attendee_id: string
+    first_name: string
+    last_name: string
+    email: string
+    phone?: string
+    link?: string
+    registered_at: string
+    session_id: string
+    session_scheduled_start: string
+    session_timezone: string
     created_at: string
     updated_at: string
 }
@@ -44,23 +62,34 @@ export type WebinarPresenterRequest = {
     email: string
 }
 
-export type WebinarSessionSeries = {
-    id: string,
-    status: WebinarSessionSeriesStatus,
-    type: WebinarSessionSeriesType
-}
-
-export type WebinarSession = {
+export type SeriesSession = {
     id: string
-    status: string
+    status: WebinarSessionStatus
     scheduled_start: string
     timezone: string
     attendees?: WebinarAttendee[]
 }
 
-export type WebinarSessionRequest = {
+export type WebinarSeries = {
+    id: string,
+    type: WebinarSeriesType
+    status: WebinarSeriesStatus,
+    sessions: SeriesSession[]
+}
+
+export type SeriesSessionRequest = {
+    id?: string
     scheduled_start: string
     timezone: string
+}
+
+export type WebinarSeriesRequest = {
+    type: WebinarSeriesType,
+    session: SeriesSessionRequest
+}
+
+export type ConvertWebinarSeriesRequest = {
+    type: Webinar
 }
 
 export type Webinar = {
@@ -75,7 +104,7 @@ export type Webinar = {
     media: WebinarMedia[]
     settings: WebinarSetting
     presenters: WebinarPresenter[]
-    sessions?: WebinarSession[]
+    series?: WebinarSeries[]
 }
   
 export type WebinarRequest = {

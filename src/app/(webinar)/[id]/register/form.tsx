@@ -30,9 +30,11 @@ const attendeeSchema = z.object({
 type AttendeeFormData = z.infer<typeof attendeeSchema>
 
 export const DefaultRegistrationForm = ({webinar, registerAttendee}: DefaultRegistrationFormProps) => {
+    
+  const sessions = webinar.series?.flatMap((series) => series.sessions)
 
-    const [pending, setPending] = useState(false)
-    const router = useRouter()
+  const [pending, setPending] = useState(false)
+  const router = useRouter()
     
   const {
     register,
@@ -101,8 +103,7 @@ export const DefaultRegistrationForm = ({webinar, registerAttendee}: DefaultRegi
                 {...register("session_id")}
                 className="border rounded px-3 py-2 text-sm"
             >
-                <option value="">-- Select a session --</option>
-                {webinar.sessions?.map((session) => (
+                {sessions?.map((session) => (
                 <option key={session.id} value={session.id}>
                     {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
                 </option>

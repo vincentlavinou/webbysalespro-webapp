@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BroadcastServiceContext } from "../context/BroadcastServiceContext"
 import { BroadcastServiceToken } from "../service/type";
+import { broadcastApiUrl } from "../service";
 
 interface BroadcastServiceProviderProps {
     session: string
@@ -15,7 +16,7 @@ export function BroadcastServiceProvider({ children, token, session }: Broadcast
     const [mainPresenterId, setMainPresenterId] = useState<string | undefined>(undefined);
 
     useEffect(() => {
-        const source = new EventSource(`/events/?channels=webinar-session-${session}/`);
+        const source = new EventSource(`${broadcastApiUrl}/v1/sessions/${session}/events/`);
 
         source.onmessage = (event) => {
         const data = JSON.parse(event.data);

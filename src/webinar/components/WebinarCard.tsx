@@ -15,6 +15,9 @@ interface WebinarCardProps {
 }
 
 export function WebinarCard({ webinar, type = 'upcoming' }: WebinarCardProps) {
+  
+  const sessions = webinar.series?.flatMap((series) => series.sessions)
+
   const thumbnail = webinar.media.find(
     (media) =>
       media.file_type === 'image' &&
@@ -45,7 +48,7 @@ export function WebinarCard({ webinar, type = 'upcoming' }: WebinarCardProps) {
               <p className="text-sm text-muted-foreground mb-2 line-clamp-2 min-h-[3.5rem] leading-snug">
                   {webinar.description !== "" ? webinar.description : '\u00A0'}
               </p>
-              {webinar.sessions?.map((session, index) => (
+              {sessions?.map((session, index) => (
                 <p key={`${session.id}-${index}`} className="text-xs hover:shadow-2xs pb-1">
                 <Badge variant="outline">
                   {session.status}
@@ -77,7 +80,7 @@ export function WebinarCard({ webinar, type = 'upcoming' }: WebinarCardProps) {
               </div>
             <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-xs">
-                  Total Registered {webinar.sessions?.map((session) => session.attendees?.length).reduce((total, curr) => (total||0) + (curr||0), 0)}
+                  Total Registered {sessions?.map((session) => session.attendees?.length).reduce((total, curr) => (total||0) + (curr||0), 0)}
                 </Badge>
             </div>
           </CardFooter>
