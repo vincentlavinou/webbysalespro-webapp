@@ -44,7 +44,6 @@ export function WebinarCard({ webinar, type = 'upcoming' }: WebinarCardProps) {
                   ) : <Image src="/images/default-webinar-image.jpg" alt="Thumbnail" fill className="object-cover" />}
                 </div>
               <CardTitle>{webinar.title}</CardTitle>
-              <h2 className="text-sm text-muted-foreground">Internal Name - {webinar.name}</h2>
               <p className="text-sm text-muted-foreground mb-2 line-clamp-2 min-h-[3.5rem] leading-snug">
                   {webinar.description !== "" ? webinar.description : '\u00A0'}
               </p>

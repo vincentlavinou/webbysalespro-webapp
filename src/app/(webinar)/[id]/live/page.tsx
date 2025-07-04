@@ -1,30 +1,28 @@
+'use client'
 
 import { TestBroadcast } from "@broadcast/components/TestBroadcast";
-import { createBroadcastServiceToken } from "@/broadcast/service";
 import { tokenProvider } from "@/broadcast/service/action";
 import { ChatToken } from "amazon-ivs-chat-messaging";
+import { useWebinar } from "@/webinar/hooks";
+import { redirect } from "next/navigation";
+import { WebinarSessionStatus } from "@/webinar/service/enum";
 
-interface LiveBroadcastPageProps {
-    params: Promise<{
-        id: string
-    }>
-    searchParams: Promise<{
-        token: string
-    }>
-}
+export default function BroadcastPage() {
 
-export default async function BroadcastPage(props: LiveBroadcastPageProps) {
-
-    const sessionId = (await props.params).id
-    const token = (await props.searchParams).token
-    const serviceToken = await createBroadcastServiceToken(sessionId, token)
+    const { sessionId, broadcastServiceToken, token, session } = useWebinar()
+    if (!broadcastServiceToken || !session) {
+        return <div>Loading...</div>
+    }
+    
+    if(session?.status === WebinarSessionStatus.SCHEDULED) {
+        redirect(`/${sessionId}/waiting-room?token=${token}`)
+    }
 
   return (
     <div className="w-7xl">
-        <TestBroadcast token={serviceToken} session={sessionId} chatPanel={{
-            region: serviceToken.region,
+        <TestBroadcast token={broadcastServiceToken} session={sessionId} chatPanel={{
+            region: broadcastServiceToken.region,
             provider:  async () => {
-                'use server'
                 const response = await tokenProvider(sessionId, token)
                 return {
                     token: response.chat.token,

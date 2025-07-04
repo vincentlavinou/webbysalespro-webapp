@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BroadcastServiceContext } from "../context/BroadcastServiceContext"
 import { BroadcastServiceToken } from "../service/type";
 import { broadcastApiUrl } from "../service";
+import { useSearchParams } from "next/navigation";
 
 interface BroadcastServiceProviderProps {
     session: string
@@ -14,25 +15,31 @@ interface BroadcastServiceProviderProps {
 export function BroadcastServiceProvider({ children, token, session }: BroadcastServiceProviderProps) {
 
     const [mainPresenterId, setMainPresenterId] = useState<string | undefined>(undefined);
+    const accessToken = useSearchParams().get('token')
 
     useEffect(() => {
-        const source = new EventSource(`${broadcastApiUrl}/v1/sessions/${session}/events/`);
+        const source = new EventSource(`${broadcastApiUrl}/v1/sessions/events/?channels=webinar-session-${session}&token=${accessToken}`);
 
-        source.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.event === "webinar:session:main_presenter:update") {
+        source.addEventListener("webinar:session:main_presenter:update", (event: MessageEvent) => {
+            const data = JSON.parse(event.data);
+            console.log("Main presenter update:", data);
             setMainPresenterId(data.presenter_id);
-        }
-        };
+        });
+
+        source.addEventListener("webinar:session:update", (event: MessageEvent) => {
+            const data = JSON.parse(event.data);
+            console.log("Session update received:", data);
+        });
 
         source.onerror = () => {
-        source.close();
+            console.error("EventSource error");
+            source.close();
         };
 
         return () => {
-        source.close();
+            source.close();
         };
-    }, [session]);
+    }, [session, accessToken]);
     
     return <BroadcastServiceContext.Provider value={{
         token: token,

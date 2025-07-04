@@ -1,5 +1,7 @@
 import { LocalStageStream } from "amazon-ivs-web-broadcast";
 import { BroadcastServiceType } from "./enum"
+import { SeriesSession } from "@/webinar/service";
+import { Webinar } from "@/webinar/service/type";
 type StageStrategy = import("amazon-ivs-web-broadcast").StageStrategy;
 
 export interface Strategy extends StageStrategy {
@@ -27,8 +29,10 @@ export type ChatService = {
 export type BroadcastServiceToken = {
     stream_token: string
     role: "host" | "presenter" | "attendee"
-    webinar: string
     region: string
+    session: SeriesSession
+    webinar: Webinar
+    series: string
 }
 
 export type CreateBroadcastToken = {
@@ -53,4 +57,5 @@ export type Broadcast = {
     created_at: string
     destroyed_at?: string
     webinar: string
+    session: string
 }
