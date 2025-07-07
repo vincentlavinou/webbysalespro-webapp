@@ -10,6 +10,7 @@ import { useWebinar } from '@/webinar/hooks'
 import { SeriesSession, WebinarPresenter } from '@/webinar/service'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { broadcastApiUrl } from '@/broadcast/service'
+import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
 
 export default function WaitingRoomPage() {
   const router = useRouter()
@@ -76,14 +77,7 @@ export default function WaitingRoomPage() {
   }, [sessionId, token, router, setSession])
 
   if (!session || !webinar) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading session...</span>
-        </div>
-      </div>
-    )
+    return <WaitingRoomShimmer />;
   }
 
   if (!session) {

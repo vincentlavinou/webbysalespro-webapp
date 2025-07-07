@@ -15,6 +15,7 @@ export type QueryWebinar = {
 export type WebinarSetting = {
     id: string
     is_searchable: boolean
+    waiting_room_start_time: number
     duration_minutes: number
     max_attendees: number
     branding_config: {[key: string]: string}

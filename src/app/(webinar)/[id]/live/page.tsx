@@ -6,12 +6,22 @@ import { ChatToken } from "amazon-ivs-chat-messaging";
 import { useWebinar } from "@/webinar/hooks";
 import { redirect } from "next/navigation";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
+import { DateTime } from 'luxon';
+import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
 
 export default function BroadcastPage() {
 
-    const { sessionId, broadcastServiceToken, token, session } = useWebinar()
-    if (!broadcastServiceToken || !session) {
-        return <div>Loading...</div>
+    const { sessionId, broadcastServiceToken, token, session, webinar } = useWebinar()
+    if (!broadcastServiceToken || !session || !webinar) {
+        return <WaitingRoomShimmer />;
+    }
+
+    if (session?.status === WebinarSessionStatus.SCHEDULED &&
+        DateTime.fromISO(session.scheduled_start, { zone: session.timezone })
+            .minus({ minutes: webinar.settings.waiting_room_start_time })
+            .toMillis() > DateTime.now().toMillis()) {
+        // waiting room has NOT opened yet
+        redirect(`/${sessionId}/early-access-room?token=${token}`)
     }
     
     if(session?.status === WebinarSessionStatus.SCHEDULED) {
