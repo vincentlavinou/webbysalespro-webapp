@@ -5,8 +5,11 @@ import { useLocalMedia } from "../hooks/use-strategy";
 import { ShareScreenButton } from "./ShareScreenButton";
 import { useBroadcastService } from "../hooks/use-broadcast-service";
 
+interface LocalMediaControlProps {
+  title?: string
+}
 
-export function LocalMediaControl() {
+export function LocalMediaControl({title}: LocalMediaControlProps) {
 
     const { isConnected, leave } = useStageContext();
     const {  toggleScreenShare , isScreenSharing} = useLocalMedia()
@@ -17,7 +20,11 @@ export function LocalMediaControl() {
           {token?.role !== 'attendee' && <SelectCamera />}
           {token?.role !== 'attendee' && <SelectMicrophone />}
           {token?.role !== 'attendee' && <ShareScreenButton onClick={toggleScreenShare} isConnected={isConnected} isSharing={isScreenSharing} />}
-          {token?.role === 'attendee' && <h1>Webinar Title </h1>}
+          {token?.role === 'attendee' && title &&(
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {title}
+            </h1>
+          )}
         </div>
         <div>
           <Button

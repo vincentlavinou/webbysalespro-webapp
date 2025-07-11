@@ -18,9 +18,10 @@ type Stage = import("amazon-ivs-web-broadcast").Stage;
 
 interface BroadcastUIProps {
     token: BroadcastServiceToken
+    title?: string
 }
 
-const BroadcastUI = ({token}: BroadcastUIProps) => {
+const BroadcastUI = ({token, title}: BroadcastUIProps) => {
   const { isConnected, mainParticiant, participants, join } = useStageContext();
   
   return (
@@ -45,7 +46,7 @@ const BroadcastUI = ({token}: BroadcastUIProps) => {
           {/* Video */}
           {/* Controls under video (always visible) */}
           <div className="hidden md:block pb-6">
-            <LocalMediaControl />
+            <LocalMediaControl title={title}/>
           </div>
           <div className="flex-1 overflow-hidden">
             {isConnected && mainParticiant ? (
@@ -57,7 +58,7 @@ const BroadcastUI = ({token}: BroadcastUIProps) => {
 
           {/* Controls under video (always visible) */}
           <div className="md:hidden pt-4 border-t">
-            <LocalMediaControl />
+            <LocalMediaControl title={title}/>
           </div>
         </div>
 
@@ -74,6 +75,7 @@ const BroadcastUI = ({token}: BroadcastUIProps) => {
 interface LiveBroadcastProps {
     session: string
     token: BroadcastServiceToken
+    title?: string
 }
 
 export function TestBroadcast(props: LiveBroadcastProps) {
@@ -85,7 +87,7 @@ export function TestBroadcast(props: LiveBroadcastProps) {
       <LocalMediaDeviceProvider>
         <LocalMediaProvider stageRef={stageRef}>
           <StageProvider stageRef={stageRef}>
-            <BroadcastUI token={props.token} />
+            <BroadcastUI token={props.token} title={props.title}/>
           </StageProvider>
         </LocalMediaProvider>
       </LocalMediaDeviceProvider>

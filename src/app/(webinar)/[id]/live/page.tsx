@@ -35,6 +35,7 @@ export default function BroadcastPage() {
                     <TestBroadcast 
                         token={broadcastServiceToken} 
                         session={sessionId}
+                        title={webinar.title}
                         />
             </BroadcastUserProvider>
         </BroadcastConfigurationProvider>
