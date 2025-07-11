@@ -2,6 +2,7 @@ import { getWebinar, registerForWebinar } from '@/webinar/service'
 import { DefaultRegistrationForm } from './form'
 import { UpcomingSessionBanner } from '@/webinar/components'
 import Image from 'next/image'
+import { Metadata } from 'next'
 
 interface DefaultRegistrationPageProps {
     params: Promise<{
@@ -10,6 +11,28 @@ interface DefaultRegistrationPageProps {
     searchParams: Promise<{
         token: string
     }>
+}
+
+export async function generateMetadata({ params }: DefaultRegistrationPageProps): Promise<Metadata> {
+    const webinarId = (await params).id
+    const webinar = await getWebinar(webinarId)
+
+  return {
+    title: webinar.title ?? 'Webinar Registration',
+    description: webinar.description ?? 'Register now to attend this exciting webinar session.',
+    openGraph: {
+      title: webinar.title,
+      description: webinar.description,
+      images: webinar.media
+        ?.filter((m) => m.file_type === 'image' && m.field_type === 'thumbnail')
+        .map((m) => ({ url: m.file_url })) ?? [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: webinar.title,
+      description: webinar.description,
+    },
+  }
 }
 
 export default async function DefaultRegistrationPage(props: DefaultRegistrationPageProps) {

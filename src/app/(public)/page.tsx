@@ -2,7 +2,6 @@ import { PaginationControls } from "@/components/pagination";
 import { SearchWidget } from "@/components/search";
 import { Badge } from "@/components/ui/badge";
 import { InfoIcon } from "@/components/ui/info-icon";
-import { Metadata } from "next";
 import { getWebinars } from "@webinar/service";
 import { NoUpcomingWebinars, WebinarCard } from "@webinar/components";
 
@@ -14,11 +13,6 @@ interface WebinarsPageProps {
         page?: string;
         page_size?: string;
     }>
-}
-
-export const metadata: Metadata = {
-    title: "Webinars",
-    description: "View live, upcomming, and post webinars in one place."
 }
 
 export default async function HomePage(props: WebinarsPageProps) {
