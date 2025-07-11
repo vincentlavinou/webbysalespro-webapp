@@ -24,7 +24,7 @@ const BroadcastUI = ({token}: BroadcastUIProps) => {
   const { isConnected, mainParticiant, participants, join } = useStageContext();
   
   return (
-    <div className="flex flex-col w-full h-screen overflow-hidden px-4">
+    <div className="flex flex-col w-full h-[90vh] overflow-hidden px-4">
       <Script src="https://web-broadcast.live-video.net/1.6.0/amazon-ivs-web-broadcast.js" />
       {token.role === 'host' && <Header />}
 
@@ -62,7 +62,7 @@ const BroadcastUI = ({token}: BroadcastUIProps) => {
         </div>
 
         {/* Chat */}
-        <div className="w-full pt-18 lg:w-[320px] min-w-[280px] md:max-w-[400px] h-[300px] lg:h-full flex flex-col overflow-auto">
+        <div className="w-full lg:pt-18 lg:w-[320px] min-w-[280px] lg:max-w-[400px] h-[300px] lg:h-full flex flex-col overflow-auto">
           <WebinarChat region={token.region}/>
         </div>
       </div>

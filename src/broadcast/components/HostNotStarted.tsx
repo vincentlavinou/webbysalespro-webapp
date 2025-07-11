@@ -4,7 +4,7 @@ import { PlayCircle } from "lucide-react";
 export function HostNotStarted({ onStart }: { onStart: () => void }) {
   return (
     <div
-      className="w-full h-[80vh] aspect-video rounded-md border overflow-hidden relative bg-black group cursor-pointer"
+      className="w-full max-h-[80vh] aspect-video rounded-md border overflow-hidden relative bg-black group cursor-pointer"
       onClick={onStart}
     >
       {/* Glass overlay */}
