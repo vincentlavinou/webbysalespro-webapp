@@ -13,7 +13,6 @@ export function ChatPanel() {
 
   useEffect(() => {
     if(!connected) {
-      console.log("Connect twice")
       connect()
     }
   }, [connected]);
@@ -26,7 +25,7 @@ export function ChatPanel() {
   }, [filteredMessages]);
 
   return (
-    <div className="bg-white rounded-md border h-[80vh] p-4 flex flex-col justify-between shadow">
+    <div className="bg-white rounded-md border md:h-[80vh] h-[300px] p-4 flex flex-col justify-between shadow">
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto space-y-2 pr-2 scroll-smooth"

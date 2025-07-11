@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { useChat } from "../hooks";
 import { useChatControl } from "../hooks/use-chat-control";
+import { Send } from "lucide-react";
 
 
 
@@ -28,7 +29,7 @@ export function ChatInput() {
     };
 
     return(
-        <div className="mt-2">
+        <div className="mt-2 flex gap-1">
         <input
           ref={inputRef}
           type="text"
@@ -37,8 +38,16 @@ export function ChatInput() {
           onKeyDown={handleKeyDown}
           placeholder={connected ? 'Type a message…' : 'Connecting…'}
           disabled={!connected}
-          className="w-full border rounded-md px-3 py-2 text-sm disabled:opacity-50"
+          className="w-full border rounded-md px-3 py-2 text-base disabled:opacity-50"
         />
+        <button
+            type="button"
+            onClick={handleSend}
+            disabled={!connected || !inputValue.trim()}
+            className="px-4 py-2 rounded-md bg-gray-600 text-white disabled:opacity-50"
+        >
+            <Send />
+        </button>
       </div>
     )
 }
