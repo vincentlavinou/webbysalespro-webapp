@@ -5,7 +5,6 @@ import Header from "@broadcast/components/Header";
 import RemoteParticipantVideos from "@broadcast/components/RemoteParticipantVideos";
 import { StageProvider, useStageContext } from "@broadcast/context";
 import { HostNotStarted } from "./HostNotStarted";
-import { ChatPanel, ChatPanelProps } from "./ChatPanel";
 import { LocalMediaDeviceProvider } from "../provider/LocalMediaDeviceProvider";
 import { LocalMediaProvider } from "../provider/LocalMediaProvider";
 import { useRef } from "react";
@@ -13,19 +12,19 @@ import { LocalMediaControl } from "./LocalMediaControl";
 import { BroadcastServiceToken } from "../service/type";
 import { BroadcastServiceProvider } from "../provider/BroadcastServiceProvider";
 import MainPresenterView from "@/broadcast/components/MainPresenterView";
+import { WebinarChat } from "@/chat/component";
 
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 
 interface BroadcastUIProps {
     token: BroadcastServiceToken
-    chatPanel: ChatPanelProps
 }
 
-const BroadcastUI = ({token, chatPanel}: BroadcastUIProps) => {
+const BroadcastUI = ({token}: BroadcastUIProps) => {
   const { isConnected, mainParticiant, participants, join } = useStageContext();
   
   return (
-    <div className="flex flex-col w-full h-screen bg-white overflow-hidden">
+    <div className="flex flex-col w-full h-screen overflow-hidden px-4">
       <Script src="https://web-broadcast.live-video.net/1.6.0/amazon-ivs-web-broadcast.js" />
       {token.role === 'host' && <Header />}
 
@@ -42,10 +41,10 @@ const BroadcastUI = ({token, chatPanel}: BroadcastUIProps) => {
         )}
 
         {/* Video + Controls */}
-        <div className="flex flex-col flex-1 min-w-0 min-h-0 p-4 gap-4 overflow-hidden">
+        <div className="h-[80vh]flex flex-col flex-1 min-w-0 min-h-0 p-4 gap-4 overflow-hidden">
           {/* Video */}
           {/* Controls under video (always visible) */}
-          <div className="hidden md:block">
+          <div className="hidden md:block pb-6">
             <LocalMediaControl />
           </div>
           <div className="flex-1 overflow-hidden">
@@ -64,7 +63,7 @@ const BroadcastUI = ({token, chatPanel}: BroadcastUIProps) => {
 
         {/* Chat */}
         <div className="w-full pt-18 lg:w-[320px] min-w-[280px] md:max-w-[400px] h-[300px] lg:h-full flex flex-col overflow-auto">
-          <ChatPanel {...chatPanel}/>
+          <WebinarChat region={token.region}/>
         </div>
       </div>
     </div>
@@ -75,7 +74,6 @@ const BroadcastUI = ({token, chatPanel}: BroadcastUIProps) => {
 interface LiveBroadcastProps {
     session: string
     token: BroadcastServiceToken
-    chatPanel: ChatPanelProps
 }
 
 export function TestBroadcast(props: LiveBroadcastProps) {
@@ -87,7 +85,7 @@ export function TestBroadcast(props: LiveBroadcastProps) {
       <LocalMediaDeviceProvider>
         <LocalMediaProvider stageRef={stageRef}>
           <StageProvider stageRef={stageRef}>
-            <BroadcastUI token={props.token} chatPanel={props.chatPanel}/>
+            <BroadcastUI token={props.token} />
           </StageProvider>
         </LocalMediaProvider>
       </LocalMediaDeviceProvider>

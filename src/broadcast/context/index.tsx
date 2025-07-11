@@ -14,11 +14,12 @@ import {
 import {
   equalsWebiSalesProParticipant,
   joinStage,
-  leaveStage,
-  LocalParticipantInfo,
+  leaveStage
 } from "@broadcast/service/utils";
 import { useLocalMedia } from "../hooks/use-strategy";
 import { useBroadcastService } from "../hooks/use-broadcast-service";
+import { broadcastApiUrl } from "../service";
+import { useBroadcastConfiguration } from "../hooks";
 
 // ✅ Use type-only imports to avoid SSR errors
 type Stage = import("amazon-ivs-web-broadcast").Stage;
@@ -37,7 +38,7 @@ type StageContextType = {
   join: (token: string) => void;
   leave: () => void;
   stageRef?: React.RefObject<Stage | undefined>;
-  localParticipantRef?: React.RefObject<LocalParticipantInfo | null>;
+  localParticipantRef?: React.RefObject<StageParticipantInfo | undefined>;
 };
 
 const StageContext = createContext<StageContextType | null>(null);
@@ -47,10 +48,11 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
   const [mainParticiant, setMainParticipant] = useState<WebiSalesProParticipant | undefined>(undefined);
   const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
   
-  const { strategy, audioStream, videoStream, create: createLocalMedia } = useLocalMedia()
+  const { strategy, create: createLocalMedia } = useLocalMedia()
   const { mainPresenterId } = useBroadcastService()
+  const {sessionId, seriesId, requestHeaders} = useBroadcastConfiguration()
 
-  const localParticipantRef = useRef<LocalParticipantInfo | null>(null);
+  const localParticipantRef = useRef<StageParticipantInfo | undefined>(undefined);
 
   useEffect(() => {
     console.log('update host')
@@ -80,16 +82,25 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
         setIsConnected,
         setParticipants,
         stageRef,
+        localParticipantRef,
         strategy,
       );
+      await fetch(`${broadcastApiUrl}/v1/series/${seriesId}/sessions/${sessionId}/start/`,{
+        headers: {
+          "Content-Type": "application/json",
+          ...requestHeaders
+        },
+        method: 'PATCH',
+        body: JSON.stringify({})
+      })
     },
-    [strategy, stageRef, createLocalMedia]
+    [strategy, stageRef, createLocalMedia, seriesId, sessionId, requestHeaders]
   );
 
-  const leave = useCallback(() => {
+  const leave = useCallback(async () => {
 
     // Clear refs
-    localParticipantRef.current = null;
+    localParticipantRef.current = undefined;
 
     // Leave the IVS stage
     leaveStage(setIsConnected, stageRef.current ?? undefined);
@@ -97,7 +108,15 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
     // UI cleanup
     setMainParticipant(undefined);
     setParticipants([]);
-  }, [videoStream, audioStream, stageRef]);
+    await fetch(`${broadcastApiUrl}/v1/series/${seriesId}/sessions/${sessionId}/stop/`,{
+        headers: {
+          "Content-Type": "application/json",
+          ...requestHeaders
+        },
+        method: 'PATCH',
+        body: JSON.stringify({})
+      })
+  }, [stageRef]);
 
   return (
     <StageContext.Provider

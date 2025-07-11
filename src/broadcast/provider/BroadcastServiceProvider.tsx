@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { BroadcastServiceContext } from "../context/BroadcastServiceContext"
 import { BroadcastServiceToken } from "../service/type";
+import { useBroadcastConfiguration } from "../hooks";
 import { broadcastApiUrl } from "../service";
-import { useSearchParams } from "next/navigation";
 
 interface BroadcastServiceProviderProps {
     session: string
@@ -14,32 +14,38 @@ interface BroadcastServiceProviderProps {
 
 export function BroadcastServiceProvider({ children, token, session }: BroadcastServiceProviderProps) {
 
-    const [mainPresenterId, setMainPresenterId] = useState<string | undefined>(undefined);
-    const accessToken = useSearchParams().get('token')
+    const [mainPresenterId] = useState<string | undefined>(undefined);
+    const {requestHeaders, accessToken} = useBroadcastConfiguration()
 
     useEffect(() => {
-        const source = new EventSource(`${broadcastApiUrl}/v1/sessions/events/?channels=webinar-session-${session}&token=${accessToken}`);
+        const params = new URLSearchParams();
+        params.append("channels", `webinar-session-${session}`);
+        if(requestHeaders) {
+            const authorization = (requestHeaders as {
+                Authorization: string;
+            }).Authorization
+            params.append("jwt", authorization.replace("Bearer ", "").trim());
+        } else if(accessToken) {
+            params.append("token", accessToken)
+        }
+        const source = new EventSource(`${broadcastApiUrl}/v1/sessions/events/?${params.toString()}`);
 
-        source.addEventListener("webinar:session:main_presenter:update", (event: MessageEvent) => {
+        source.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            console.log("Main presenter update:", data);
-            setMainPresenterId(data.presenter_id);
-        });
-
-        source.addEventListener("webinar:session:update", (event: MessageEvent) => {
-            const data = JSON.parse(event.data);
-            console.log("Session update received:", data);
-        });
+            console.log(data)
+            if (data.event === "webinar:session:update") {
+                console.log(data.data)
+            }
+        };
 
         source.onerror = () => {
-            console.error("EventSource error");
             source.close();
         };
 
         return () => {
-            source.close();
+        source.close();
         };
-    }, [session, accessToken]);
+    }, [session, requestHeaders]);
     
     return <BroadcastServiceContext.Provider value={{
         token: token,

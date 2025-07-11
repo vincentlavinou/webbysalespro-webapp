@@ -42,10 +42,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-6">
+      <div className="flex-1">
         {children}
         <Toaster position="bottom-right"/>
-      </main>
+      </div>
 
       {/* Footer */}
       <footer className="bg-gray-50 border-t mt-6">

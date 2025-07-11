@@ -17,6 +17,7 @@ export function LocalMediaControl() {
           {token?.role !== 'attendee' && <SelectCamera />}
           {token?.role !== 'attendee' && <SelectMicrophone />}
           {token?.role !== 'attendee' && <ShareScreenButton onClick={toggleScreenShare} isConnected={isConnected} isSharing={isScreenSharing} />}
+          {token?.role === 'attendee' && <h1>Webinar Title </h1>}
         </div>
         <div>
           <Button

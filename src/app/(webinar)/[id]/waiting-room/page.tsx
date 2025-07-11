@@ -96,7 +96,7 @@ export default function WaitingRoomPage() {
   }).toFormat("cccc, LLL d @ t ZZZZ")
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         {isRedirecting && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

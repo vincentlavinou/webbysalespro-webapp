@@ -1,0 +1,1 @@
+export const chatApiUrl = process.env.CHAT_API_URL ? process.env.CHAT_API_URL : process.env.NEXT_PUBLIC_CHAT_API_URL ? process.env.NEXT_PUBLIC_CHAT_API_URL : 'https://api.webisalespro.com/api'

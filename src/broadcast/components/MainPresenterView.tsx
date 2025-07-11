@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useStageContext } from '../context';
 
 interface Props {
   participant: import('amazon-ivs-web-broadcast').StageParticipantInfo;
@@ -13,29 +14,34 @@ const MainPresenterView = ({ participant, streams }: Props) => {
 
   const [hasScreen, setHasScreen] = useState(false);
   const [screenAspectRatio, setScreenAspectRatio] = useState('aspect-video');
+  const {mainParticiant, localParticipantRef} = useStageContext()
 
   useEffect(() => {
-    const videoStreams = streams?.filter(
-      (stream) => stream.mediaStreamTrack.kind === 'video'
-    );
-
-    if (!videoStreams?.length) return;
 
     let screenTrack: MediaStreamTrack | undefined;
     let cameraTrack: MediaStreamTrack | undefined;
+    let audioTrack: MediaStreamTrack | undefined;
 
-    videoStreams.forEach((stream) => {
-      const settings = stream.mediaStreamTrack.getSettings?.();
-      if (settings?.displaySurface) {
-        screenTrack = stream.mediaStreamTrack;
-      } else {
-        cameraTrack = stream.mediaStreamTrack;
+    
+    streams.forEach((stream) => {
+      const track = stream.mediaStreamTrack;
+
+      if (track.kind === 'audio') {
+        audioTrack = track;
+      }
+
+      if (track.kind === 'video') {
+        const settings = track.getSettings?.();
+        if (settings?.displaySurface) {
+          screenTrack = track;
+        } else {
+          cameraTrack = track;
+        }
       }
     });
-
     // Show screen share if available
-    if (screenTrack && screenRef.current) {
-      screenRef.current.srcObject = new MediaStream([screenTrack]);
+    if (screenTrack && audioTrack && screenRef.current) {
+      screenRef.current.srcObject = new MediaStream([screenTrack, audioTrack]);
       setHasScreen(true);
 
       const { width, height } = screenTrack.getSettings?.() || {};
@@ -48,8 +54,8 @@ const MainPresenterView = ({ participant, streams }: Props) => {
     }
 
     // Always attach camera if available
-    if (cameraTrack && cameraRef.current) {
-      cameraRef.current.srcObject = new MediaStream([cameraTrack]);
+    if (cameraTrack && audioTrack && cameraRef.current) {
+      cameraRef.current.srcObject = new MediaStream([cameraTrack, audioTrack]);
     }
   }, [participant, streams]);
 
@@ -59,7 +65,7 @@ const MainPresenterView = ({ participant, streams }: Props) => {
         ref={hasScreen ? screenRef : cameraRef}
         autoPlay
         playsInline
-        muted
+        muted={mainParticiant?.participant.id === localParticipantRef?.current?.id}
         className="w-full h-full object-contain"
       />
 
@@ -70,7 +76,7 @@ const MainPresenterView = ({ participant, streams }: Props) => {
             ref={cameraRef}
             autoPlay
             playsInline
-            muted
+            muted={mainParticiant?.participant.id === localParticipantRef?.current?.id}
             className="w-full h-full object-cover"
           />
         </div>

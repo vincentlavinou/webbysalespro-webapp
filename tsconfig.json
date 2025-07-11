@@ -21,7 +21,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@broadcast/*": ["./src/broadcast/*"],
-      "@webinar/*": ["./src/webinar/*"]
+      "@webinar/*": ["./src/webinar/*"],
+      "@chat/*": ["./src/chat/*"],
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

@@ -1,18 +1,18 @@
 'use client'
 
 import { TestBroadcast } from "@broadcast/components/TestBroadcast";
-import { tokenProvider } from "@/broadcast/service/action";
-import { ChatToken } from "amazon-ivs-chat-messaging";
 import { useWebinar } from "@/webinar/hooks";
 import { redirect } from "next/navigation";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
+import { BroadcastConfigurationProvider } from "@/broadcast/provider";
+import { BroadcastUserProvider } from "@/broadcast/provider/BroadcastUserProvider";
 
 export default function BroadcastPage() {
 
     const { sessionId, broadcastServiceToken, token, session, webinar } = useWebinar()
-    if (!broadcastServiceToken || !session || !webinar) {
+    if (!broadcastServiceToken || !session || !webinar || !token) {
         return <WaitingRoomShimmer />;
     }
 
@@ -29,18 +29,15 @@ export default function BroadcastPage() {
     }
 
   return (
-    <div className="w-7xl">
-        <TestBroadcast token={broadcastServiceToken} session={sessionId} chatPanel={{
-            region: broadcastServiceToken.region,
-            provider:  async () => {
-                const response = await tokenProvider(sessionId, token)
-                return {
-                    token: response.chat.token,
-                    sessionExpirationTime: response.chat.session_expiration_time,
-                    tokenExpirationTime: response.chat.token_expiration_time
-                } as ChatToken
-            }
-        }}/>
-    </div>
-  );
+    <div className="w-full flex items-center justify-center">
+        <BroadcastConfigurationProvider sessionId={sessionId} seriesId={broadcastServiceToken.series} accessToken={token}>
+            <BroadcastUserProvider userId={broadcastServiceToken.user_id}>
+                    <TestBroadcast 
+                        token={broadcastServiceToken} 
+                        session={sessionId}
+                        />
+            </BroadcastUserProvider>
+        </BroadcastConfigurationProvider>
+    </div>);
+ 
 }
