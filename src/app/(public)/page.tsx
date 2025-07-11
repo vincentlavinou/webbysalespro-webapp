@@ -87,25 +87,6 @@ export default async function HomePage(props: WebinarsPageProps) {
         </div>
         <PaginationControls totalPages={Math.ceil(scheduledWebinars.count / pageSize)} defaultPageSize={DEFAULT_PAGE_SIZE} />
       </section>
-
-      {/* <section>
-      <div className="w-full flex flex-row items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">Past Webinars</h2>
-            <div>
-                <Badge variant="outline" className="text-xs">
-                    {past.length} Past
-                </Badge>
-                <Link href="/webinars/archives/" className="ml-4">
-                    <Button variant="outline" size="sm">
-                        More ...
-                    </Button>
-                </Link>
-            </div>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {past.map(webinar => <WebinarCard key={webinar.id} webinar={webinar} type="past" />)}
-        </div>
-      </section> */}
     </div>
   )
 }
