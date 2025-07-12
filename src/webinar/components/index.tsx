@@ -9,3 +9,7 @@ export {
 export {
     NoUpcomingWebinars
 } from './NoUpcomingWebinars'
+
+export {
+    NoAvailableSessionsMessage
+} from './NoAvailableSessionsMessage'

@@ -1,6 +1,6 @@
 import { getWebinar, registerForWebinar } from '@/webinar/service'
 import { DefaultRegistrationForm } from './form'
-import { UpcomingSessionBanner } from '@/webinar/components'
+import { NoAvailableSessionsMessage, UpcomingSessionBanner } from '@/webinar/components'
 import Image from 'next/image'
 import { Metadata } from 'next'
 
@@ -57,8 +57,12 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
         <h1 className="text-2xl font-bold mb-2">{webinar.title}</h1>
         <p className="text-muted-foreground mb-4">{webinar.description}</p>
 
-        <DefaultRegistrationForm webinar={webinar} registerAttendee={registerForWebinar}/>
-        {sessions && sessions[0] && <UpcomingSessionBanner session={sessions[0]}/>}
+        {sessions && sessions[0] ? (
+            <>
+                <DefaultRegistrationForm webinar={webinar} registerAttendee={registerForWebinar}/>
+                <UpcomingSessionBanner session={sessions[0]}/>
+            </>
+        ) : <NoAvailableSessionsMessage />}
     </div>
   )
 }
