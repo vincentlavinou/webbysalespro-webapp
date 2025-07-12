@@ -6,9 +6,11 @@ import { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatInput } from './ChatInput';
 import { ChatControl } from './ChatControl';
 import { ChatMessageBubble } from './ChatMessageBubble';
+import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 
 export function ChatPanel() {
   const { connect, filteredMessages, connected } = useChat();
+  const {userId} = useBroadcastUser()
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export function ChatPanel() {
                 name={msg.sender.attributes?.name || "unknown"}
                 content={msg.content}
                 time={timeString}
+                isSelf={msg.sender.userId === userId}
                 />
             </div>
           )
