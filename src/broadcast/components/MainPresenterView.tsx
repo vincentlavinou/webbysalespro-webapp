@@ -14,14 +14,13 @@ const MainPresenterView = ({ participant, streams }: Props) => {
 
   const [hasScreen, setHasScreen] = useState(false);
   const [screenAspectRatio, setScreenAspectRatio] = useState('aspect-video');
-  const {mainParticiant, localParticipantRef} = useStageContext()
+  const {localParticipantRef} = useStageContext()
 
   useEffect(() => {
 
     let screenTrack: MediaStreamTrack | undefined;
     let cameraTrack: MediaStreamTrack | undefined;
     let audioTrack: MediaStreamTrack | undefined;
-
     
     streams.forEach((stream) => {
       const track = stream.mediaStreamTrack;
@@ -32,6 +31,7 @@ const MainPresenterView = ({ participant, streams }: Props) => {
 
       if (track.kind === 'video') {
         const settings = track.getSettings?.();
+        console.log("Media Track Settings", settings)
         if (settings?.displaySurface) {
           screenTrack = track;
         } else {
@@ -65,7 +65,7 @@ const MainPresenterView = ({ participant, streams }: Props) => {
         ref={hasScreen ? screenRef : cameraRef}
         autoPlay
         playsInline
-        muted={mainParticiant?.participant.id === localParticipantRef?.current?.id}
+        muted={participant.id === localParticipantRef?.current?.id}
         className="w-full h-full object-contain"
       />
 
@@ -76,7 +76,7 @@ const MainPresenterView = ({ participant, streams }: Props) => {
             ref={cameraRef}
             autoPlay
             playsInline
-            muted={mainParticiant?.participant.id === localParticipantRef?.current?.id}
+            muted={participant.id === localParticipantRef?.current?.id}
             className="w-full h-full object-cover"
           />
         </div>

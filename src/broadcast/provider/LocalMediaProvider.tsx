@@ -91,7 +91,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
           const { LocalStageStream } = await import("amazon-ivs-web-broadcast");
           const composite = new LocalStageStream(result.track);
       
-          setScreenCleanup(() => result.cleanup); // 👈 store cleanup callback
+          setScreenCleanup(() => result.cleanup);
           strategy.updateTracks(audioStream, composite);
           setVideoStream(composite);
           setIsScreenSharing(true);

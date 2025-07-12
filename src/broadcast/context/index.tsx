@@ -18,7 +18,7 @@ import {
 } from "@broadcast/service/utils";
 import { useLocalMedia } from "../hooks/use-strategy";
 import { useBroadcastService } from "../hooks/use-broadcast-service";
-import { broadcastApiUrl } from "../service";
+import { recordEvent, sessionController } from "../service";
 import { useBroadcastConfiguration } from "../hooks";
 
 // ✅ Use type-only imports to avoid SSR errors
@@ -50,15 +50,15 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
   
   const { strategy, create: createLocalMedia } = useLocalMedia()
   const { mainPresenterId } = useBroadcastService()
-  const {sessionId, seriesId, requestHeaders} = useBroadcastConfiguration()
+  const {sessionId, seriesId, requestHeaders, accessToken} = useBroadcastConfiguration()
 
   const localParticipantRef = useRef<StageParticipantInfo | undefined>(undefined);
 
   useEffect(() => {
-    console.log('update host')
     if(mainPresenterId === undefined) {
       const host = participants.find((info) => info.participant.userId.includes("host-"))
       if(!equalsWebiSalesProParticipant(host, mainParticiant)){
+        console.log("setting main partipant as host")
         setMainParticipant(host)
         strategy?.setMainPresenter(host)
         stageRef.current?.refreshStrategy()
@@ -85,16 +85,13 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
         localParticipantRef,
         strategy,
       );
-      await fetch(`${broadcastApiUrl}/v1/series/${seriesId}/sessions/${sessionId}/start/`,{
-        headers: {
-          "Content-Type": "application/json",
-          ...requestHeaders
-        },
-        method: 'PATCH',
-        body: JSON.stringify({})
-      })
+      if(requestHeaders) {
+        await sessionController("start", seriesId, sessionId, requestHeaders)
+      } else if(accessToken) {
+        recordEvent("joined", sessionId, accessToken)
+      }
     },
-    [strategy, stageRef, createLocalMedia, seriesId, sessionId, requestHeaders]
+    [strategy, stageRef, createLocalMedia, seriesId, sessionId, requestHeaders, accessToken]
   );
 
   const leave = useCallback(async () => {
@@ -108,14 +105,11 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
     // UI cleanup
     setMainParticipant(undefined);
     setParticipants([]);
-    await fetch(`${broadcastApiUrl}/v1/series/${seriesId}/sessions/${sessionId}/stop/`,{
-        headers: {
-          "Content-Type": "application/json",
-          ...requestHeaders
-        },
-        method: 'PATCH',
-        body: JSON.stringify({})
-      })
+    if(requestHeaders) {
+        await sessionController("stop", seriesId, sessionId, requestHeaders)
+      } else if(accessToken) {
+        recordEvent("left", sessionId, accessToken)
+      }
   }, [stageRef]);
 
   return (

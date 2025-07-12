@@ -1,5 +1,7 @@
 export {
-    createBroadcastServiceToken
+    createBroadcastServiceToken,
+    sessionController,
+    recordEvent
 } from './action'
 
 export type {
