@@ -60,7 +60,7 @@ const MainPresenterView = ({ participant, streams }: Props) => {
   }, [participant, streams]);
 
   return (
-    <div className={`relative w-full h-full ${screenAspectRatio} rounded-md border overflow-hidden bg-black`}>
+    <div className={`w-full max-h-[80vh] ${screenAspectRatio} rounded-md border overflow-hidden relative bg-black group cursor-pointer`}>
       <video
         ref={hasScreen ? screenRef : cameraRef}
         autoPlay
@@ -71,7 +71,7 @@ const MainPresenterView = ({ participant, streams }: Props) => {
 
       {/* Picture-in-picture camera if screen sharing is active */}
       {hasScreen && (
-        <div className="absolute bottom-3 right-3 w-40 aspect-video border-2 border-white rounded overflow-hidden shadow-lg">
+        <div className="absolute bottom-3 right-3 w-40 aspect-video border-2  rounded overflow-hidden shadow-lg">
           <video
             ref={cameraRef}
             autoPlay

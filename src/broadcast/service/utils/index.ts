@@ -29,7 +29,7 @@ export const getMediaForDevices = async (
   const constraints: MediaStreamConstraints = {
     video:
       mediaType === DeviceType.CAMERA && deviceId
-        ? { deviceId: { exact: deviceId } }
+        ? { deviceId: { exact: deviceId }, aspectRatio: 1.7777777778 }
         : false,
     audio:
       mediaType === DeviceType.MIC && deviceId

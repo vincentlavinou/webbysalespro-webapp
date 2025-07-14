@@ -25,7 +25,7 @@ const BroadcastUI = ({token, title}: BroadcastUIProps) => {
   const { isConnected, mainParticiant, participants, join } = useStageContext();
   
   return (
-    <div className="flex flex-col w-full h-[90vh] overflow-hidden px-4">
+    <div className="flex flex-col w-full h-[90vh] overflow-hidden md:px-4">
       <Script src="https://web-broadcast.live-video.net/1.6.0/amazon-ivs-web-broadcast.js" />
       {token.role === 'host' && <Header />}
 
@@ -42,7 +42,7 @@ const BroadcastUI = ({token, title}: BroadcastUIProps) => {
         )}
 
         {/* Video + Controls */}
-        <div className="h-[80vh]flex flex-col flex-1 min-w-0 min-h-0 p-4 gap-4 overflow-hidden">
+        <div className="h-[80vh]flex flex-col flex-1 min-w-0 min-h-0 md:p-2 px-2 gap-4 overflow-hidden">
           {/* Video */}
           {/* Controls under video (always visible) */}
           <div className="hidden md:block pb-6">
@@ -63,7 +63,7 @@ const BroadcastUI = ({token, title}: BroadcastUIProps) => {
         </div>
 
         {/* Chat */}
-        <div className="w-full lg:pt-18 lg:w-[320px] min-w-[280px] lg:max-w-[400px] h-[300px] lg:h-full flex flex-col overflow-auto">
+        <div className="w-full lg:pt-18 lg:w-[320px] min-w-[280px] lg:max-w-[400px] h-[300px] lg:h-full flex flex-col overflow-auto px-2">
           <WebinarChat region={token.region}/>
         </div>
       </div>

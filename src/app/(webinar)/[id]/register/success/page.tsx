@@ -20,6 +20,8 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
     const sessions = webinar.series?.flatMap((series) => series.sessions)
     const session = sessions?.find((session) => session.id === sessionId)
 
+    // get attendee link to live session
+
 
 
     if(!session) return null
