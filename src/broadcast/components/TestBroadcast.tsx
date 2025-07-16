@@ -83,7 +83,7 @@ export function TestBroadcast(props: LiveBroadcastProps) {
     const stageRef = useRef<Stage | undefined>(undefined);
 
   return (
-    <BroadcastServiceProvider token={props.token} session={props.session}>
+    <BroadcastServiceProvider token={props.token}>
       <LocalMediaDeviceProvider>
         <LocalMediaProvider stageRef={stageRef}>
           <StageProvider stageRef={stageRef}>
