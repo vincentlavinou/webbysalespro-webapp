@@ -42,13 +42,13 @@ const BroadcastUI = ({token, title}: BroadcastUIProps) => {
         )}
 
         {/* Video + Controls */}
-        <div className="h-[80vh]flex flex-col flex-1 min-w-0 min-h-0 md:p-2 px-2 gap-4 overflow-hidden">
+        <div className="h-[80vh]flex flex-col flex-1 min-w-0 min-h-0 md:p-2 gap-4 overflow-hidden">
           {/* Video */}
           {/* Controls under video (always visible) */}
           <div className="hidden md:block pb-6">
             <LocalMediaControl title={title}/>
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="sticky top-0 z-10 bg-black">
             {isConnected && mainParticiant ? (
               <MainPresenterView participant={mainParticiant.participant} streams={mainParticiant.streams} />
             ) : (
@@ -57,7 +57,7 @@ const BroadcastUI = ({token, title}: BroadcastUIProps) => {
           </div>
 
           {/* Controls under video (always visible) */}
-          <div className="md:hidden pt-4 border-t">
+          <div className="md:hidden pt-4 border-t px-2">
             <LocalMediaControl title={title}/>
           </div>
         </div>
