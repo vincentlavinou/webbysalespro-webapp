@@ -7,7 +7,7 @@ import { StageProvider, useStageContext } from "@broadcast/context";
 import { HostNotStarted } from "./HostNotStarted";
 import { LocalMediaDeviceProvider } from "../provider/LocalMediaDeviceProvider";
 import { LocalMediaProvider } from "../provider/LocalMediaProvider";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { LocalMediaControl } from "./LocalMediaControl";
 import { BroadcastServiceToken } from "../service/type";
 import { BroadcastServiceProvider } from "../provider/BroadcastServiceProvider";
@@ -22,7 +22,20 @@ interface BroadcastUIProps {
 }
 
 const BroadcastUI = ({token, title}: BroadcastUIProps) => {
-  const { isConnected, mainParticiant, participants, join } = useStageContext();
+  const { isConnected, mainParticiant, participants, join, leave } = useStageContext();
+
+  useEffect(() => {
+    return () => {
+      const cleanup = async () => {
+        try {
+          leave();
+        } catch (err) {
+          console.error("Failed to leave:", err);
+        }
+      };
+      cleanup();
+    };
+  }, [leave]);
   
   return (
     <div className="flex flex-col w-full h-[90vh] overflow-hidden md:px-4">
