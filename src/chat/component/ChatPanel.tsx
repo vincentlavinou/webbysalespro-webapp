@@ -10,12 +10,12 @@ import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 
 export function ChatPanel() {
   const { connect, filteredMessages, connected } = useChat();
-  const {userId} = useBroadcastUser()
+  const { userId } = useBroadcastUser();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if(!connected) {
-      connect()
+    if (!connected) {
+      connect();
     }
   }, [connected]);
 
@@ -27,35 +27,31 @@ export function ChatPanel() {
   }, [filteredMessages]);
 
   return (
-    <div className="bg-white rounded-md border md:h-[80vh] min-h-[300px] p-4 flex flex-col justify-between shadow">
+    <div className="flex flex-col flex-1 min-h-0 rounded-md border p-2 shadow bg-background">
+      {/* Scrollable message list */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto space-y-2 pr-2 scroll-smooth"
+        className="flex-1 overflow-y-auto pr-2 scroll-smooth"
       >
         {filteredMessages.length === 0 ? (
-          <div className="text-sm text-gray-600">No messages yet</div>
+          <div className="text-sm text-muted-foreground">No messages yet</div>
         ) : (
-
           filteredMessages.map((msg: ChatMessage) => {
-            const timeString = msg.sendTime.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-            hour12: true,
-                });
             return (
-            <div key={msg.id} className="text-sm text-gray-800">
-              <ChatMessageBubble
-                name={msg.sender.attributes?.name || "unknown"}
-                content={msg.content}
-                time={timeString}
-                isSelf={msg.sender.userId === userId}
+              <div key={msg.id} className="text-sm text-foreground">
+                <ChatMessageBubble
+                  name={msg.sender.attributes?.name || 'unknown'}
+                  content={msg.content}
+                  isSelf={msg.sender.userId === userId}
                 />
-            </div>
-          )
+              </div>
+            );
           })
         )}
       </div>
-      <div>
+
+      {/* Controls pinned at bottom */}
+      <div className="mt-2 border-t pt-2">
         <ChatControl />
         <ChatInput />
       </div>

@@ -10,7 +10,6 @@ interface ChatMessageProps {
   name: string;
   avatarUrl?: string;
   content: string;
-  time: string;
   reactions?: Reaction[];
   isSelf?: boolean;
 }
@@ -19,43 +18,45 @@ export function ChatMessageBubble({
   name,
   avatarUrl,
   content,
-  time,
   reactions = [],
   isSelf = false,
 }: ChatMessageProps) {
   return (
-    <div className="flex gap-3 items-start px-4 py-2">
-      <Avatar className="h-8 w-8 mt-1">
+    <div className="flex items-center px-4 py-1 text-sx">
+      {/* Avatar */}
+      <Avatar className="h-6 w-6 mt-1 mr-2 shrink-0">
         <AvatarImage src={avatarUrl} />
-        <AvatarFallback>{name[0]}</AvatarFallback>
-      </Avatar>
-
-      <div className="flex-1">
-        <div className="flex justify-between items-center text-sm">
-          <span className="font-medium text-gray-900">{isSelf ? "You" : name}</span>
-          <span className="text-xs text-muted-foreground">{time}</span>
-        </div>
-
-        <div
+        <AvatarFallback
           className={cn(
-            "mt-1 inline-block px-3 py-2 rounded-xl text-sm max-w-[75%] whitespace-pre-wrap",
-            isSelf
-              ? "bg-blue-100 text-gray-900"
-              : "bg-gray-100 text-gray-900"
+            "bg-muted text-muted-foreground",
+            isSelf && "bg-primary text-primary-foreground"
           )}
         >
-          {content}
+          {name[0]}
+        </AvatarFallback>
+      </Avatar>
+
+      {/* Message Content */}
+      <div className="flex-1">
+        <div className="w-full min-w-0 text-sm leading-snug text-foreground">
+          <span
+            className={cn(
+              "font-semibold whitespace-nowrap mr-1",
+              isSelf ? "text-primary" : "text-foreground"
+            )}
+          >
+            {isSelf ? "You" : name}
+          </span>
+          <span className="break-all">{content}</span>
         </div>
 
+        {/* Reactions */}
         {reactions.length > 0 && (
-          <div className="flex gap-3 mt-1 ml-1 text-sm">
+          <div className="flex gap-2 mt-1 ml-1 text-xs text-muted-foreground">
             {reactions.map((r, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-1 text-sm text-gray-700"
-              >
+              <div key={i} className="flex items-center gap-1">
                 <span>{r.emoji}</span>
-                <span className="text-xs">{r.count}</span>
+                <span>{r.count}</span>
               </div>
             ))}
           </div>
