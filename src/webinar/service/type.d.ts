@@ -63,12 +63,32 @@ export type WebinarPresenterRequest = {
     email: string
 }
 
+export type WebinarOffer = {
+  id: string;
+  webinar: string; // UUID of the parent webinar
+  nternal_name: string;
+  headline: string;
+  description: string;
+  price: number;
+  currency: string; // e.g., 'USD', 'EUR'
+  media: WebinarMedia[]
+  is_active?: boolean;
+  quantity_limit?: number | null;
+  start_time?: string | null; // ISO 8601 string
+  end_time?: string | null;   // ISO 8601 string
+  currency_display: string; // e.g., 'US Dollar'
+  created_at: string;
+  updated_at: string;
+};
+
 export type SeriesSession = {
     id: string
     status: WebinarSessionStatus
     scheduled_start: string
     timezone: string
     attendees?: WebinarAttendee[]
+    offer_visible: boolean
+    offer_shown_at?: string
 }
 
 export type WebinarSeries = {
@@ -106,6 +126,7 @@ export type Webinar = {
     settings: WebinarSetting
     presenters: WebinarPresenter[]
     series?: WebinarSeries[]
+    offers: WebinarOffer[]
 }
   
 export type WebinarRequest = {
@@ -122,4 +143,10 @@ export type CloneWebinarRequest = {
     description?: string
     clone_presenters: boolean
     clone_attendees: boolean
+}
+
+export type SessionOfferVisibilityUpdate = {
+  session_id: string; // e.g. "Offer visibility updated"
+  visible: boolean;
+  shown_at?: string; // ISO 8601 datetime or null
 }
