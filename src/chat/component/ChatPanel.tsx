@@ -8,7 +8,7 @@ import { ChatControl } from './ChatControl';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 import { useWebinar } from '@/webinar/hooks';
-import { VisibleOffer } from '@/webinar/components';
+import { VisibleOffersCarousel } from '@/webinar/components';
 import { Button } from '@/components/ui/button';
 
 export function ChatPanel() {
@@ -58,7 +58,7 @@ export function ChatPanel() {
       {/* Offer pinned above input */}
       {session?.offer_visible && !isOfferOpen && webinar && (
         <div className="mt-2">
-          <VisibleOffer offer={webinar.offers[0]} onClick={() => setOfferOpen(true)} />
+          <VisibleOffersCarousel offers={webinar.offers} onOfferClick={() => setOfferOpen(true)} />
         </div>
       )}
 

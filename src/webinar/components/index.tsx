@@ -15,5 +15,5 @@ export {
 } from './NoAvailableSessionsMessage'
 
 export {
-    VisibleOffer
+    VisibleOffersCarousel
 } from './VisibibleOffer'

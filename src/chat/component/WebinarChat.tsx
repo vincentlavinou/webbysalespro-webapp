@@ -14,10 +14,10 @@ export interface WebinarChatProps {
 
 export function WebinarChat({region}: WebinarChatProps) {
 
-    const { sessionId, requestHeaders, accessToken } = useBroadcastConfiguration()
+    const { sessionId, getRequestHeaders, accessToken } = useBroadcastConfiguration()
 
     return <ChatConfigurationProvider region={region} tokenProvider={async () => {
-        const response = await tokenProvider(sessionId, accessToken, requestHeaders)
+        const response = await tokenProvider(sessionId, accessToken, getRequestHeaders)
         return {
             token: response.chat.token,
             sessionExpirationTime: response.chat.session_expiration_time,

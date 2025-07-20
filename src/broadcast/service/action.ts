@@ -34,14 +34,14 @@ export const setMainPresenter = async (webinarId: string, sessionId?: string, pr
     return await response.json() as BroadcastServiceToken
 }
 
-export const sessionController = async (action: string, seriesId: string, sessionId: string, requestHeaders: RequestHeaders) => {
+export const sessionController = async (action: string, seriesId: string, sessionId: string, body: Record<string, unknown>, requestHeaders: () => Promise<RequestHeaders | undefined>) => {
     await fetch(`${broadcastApiUrl}/v1/series/${seriesId}/sessions/${sessionId}/${action}/`,{
         headers: {
           "Content-Type": "application/json",
-          ...requestHeaders
+          ... (await requestHeaders())
         },
         method: 'PATCH',
-        body: JSON.stringify({})
+        body: JSON.stringify(body)
       })
 }
 

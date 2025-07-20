@@ -2,11 +2,11 @@ import { RequestHeaders } from "next/dist/client/components/router-reducer/fetch
 import { ChatService } from "./type"
 import { chatApiUrl } from "."
 
-export const tokenProvider = async (session: string, accessToken?: string, headers?: RequestHeaders) : Promise<ChatService> => {
+export const tokenProvider = async (session: string, accessToken?: string, getRequestHeaders?: () => Promise<RequestHeaders | undefined>) : Promise<ChatService> => {
     const response = await fetch(`${chatApiUrl}/v1/chat/token/`,{
         headers: {
             'Content-Type': 'application/json',
-            ...headers
+            ...(await getRequestHeaders?.())
         },
         method: 'POST',
         body: JSON.stringify({

@@ -5,6 +5,9 @@ import { useLocalMedia } from "../hooks/use-strategy";
 import { ShareScreenButton } from "./ShareScreenButton";
 import { useBroadcastService } from "../hooks/use-broadcast-service";
 import { ChartNoAxesColumnIncreasingIcon } from "lucide-react";
+import { useBroadcastConfiguration } from "../hooks";
+import { sessionController } from "../service";
+import { useCallback, useState } from "react";
 
 interface LocalMediaControlProps {
   title?: string
@@ -21,8 +24,17 @@ function openSmallWindow(url: string) {
 export function LocalMediaControl({title}: LocalMediaControlProps) {
 
     const { isConnected, leave } = useStageContext();
-    const {  toggleScreenShare , isScreenSharing} = useLocalMedia()
+    const {  toggleScreenShare , isScreenSharing } = useLocalMedia()
     const { token } = useBroadcastService()
+    const { sessionId, seriesId, getRequestHeaders} = useBroadcastConfiguration()
+    const [offerVisible, setOfferVisible] = useState<boolean>(false)
+
+    const toggleOffer = useCallback(async() => {
+      if(getRequestHeaders) {
+        await sessionController('toggle-offer', seriesId, sessionId, {visible: !offerVisible}, getRequestHeaders)
+        setOfferVisible(prev => !prev)
+      }
+    },[offerVisible, setOfferVisible, getRequestHeaders])
 
     return (<div className="w-full flex flex-wrap gap-2 items-center justify-between">
         <div className="flex gap-2">
@@ -36,11 +48,21 @@ export function LocalMediaControl({title}: LocalMediaControlProps) {
           )}
         </div>
         <div className="flex gap-4">
-          {token?.role === 'host' && <Button variant="outline" onClick={() => {
+          {token?.role === 'host' && <Button 
+            variant="outline"
+            disabled={!isConnected}
+            onClick={() => {
             openSmallWindow(`/analytics/live?session=${token?.session.id}/`)
             return false
           }} className='text-blue-500 hover:underline'>
               <ChartNoAxesColumnIncreasingIcon />Live Analytics 
+          </Button>}
+          {token?.role === 'host' && <Button 
+            disabled={!isConnected}
+            onClick={ async () => {
+              await toggleOffer()
+          }}> 
+            {offerVisible ? "Hide Offer" : "Drop Offer!"}
           </Button>}
           <Button
             variant="destructive"

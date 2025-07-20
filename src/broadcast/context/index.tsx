@@ -50,7 +50,7 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
   
   const { strategy, create: createLocalMedia } = useLocalMedia()
   const { mainPresenterId } = useBroadcastService()
-  const {sessionId, seriesId, requestHeaders, accessToken} = useBroadcastConfiguration()
+  const {sessionId, seriesId, getRequestHeaders, accessToken} = useBroadcastConfiguration()
 
   const localParticipantRef = useRef<StageParticipantInfo | undefined>(undefined);
 
@@ -85,13 +85,13 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
         localParticipantRef,
         strategy,
       );
-      if(requestHeaders) {
-        await sessionController("start", seriesId, sessionId, requestHeaders)
+      if(getRequestHeaders) {
+        await sessionController("start", seriesId, sessionId, {}, getRequestHeaders)
       } else if(accessToken) {
         recordEvent("joined", sessionId, accessToken)
       }
     },
-    [strategy, stageRef, createLocalMedia, seriesId, sessionId, requestHeaders, accessToken]
+    [strategy, stageRef, createLocalMedia, seriesId, sessionId, getRequestHeaders, accessToken]
   );
 
   const leave = useCallback(async () => {
@@ -105,12 +105,12 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
     // UI cleanup
     setMainParticipant(undefined);
     setParticipants([]);
-    if(requestHeaders) {
-        await sessionController("stop", seriesId, sessionId, requestHeaders)
+    if(getRequestHeaders) {
+        await sessionController("stop", seriesId, sessionId, {}, getRequestHeaders)
       } else if(accessToken) {
         recordEvent("left", sessionId, accessToken)
       }
-  }, [stageRef]);
+  }, [stageRef, getRequestHeaders]);
 
   return (
     <StageContext.Provider

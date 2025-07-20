@@ -62,7 +62,7 @@ const BroadcastUI = ({ token, title }: BroadcastUIProps) => {
             </div>
 
             {/* Controls (desktop) */}
-            <div className="hidden md:block px-2 pb-2">
+            <div className="hidden md:block pb-2 ">
               <LocalMediaControl title={title} />
             </div>
           </div>

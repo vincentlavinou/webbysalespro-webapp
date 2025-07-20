@@ -5,7 +5,7 @@ import { BroadcastConfigurationContext } from "../context/BroadcastConfiguration
 export type BroadcastConfigurationProviderProps = {
     sessionId: string,
     seriesId: string,
-    requestHeaders?: RequestHeaders
+    getRequestHeaders?: () => Promise<RequestHeaders | undefined>
     accessToken?: string
     children: React.ReactNode
 }
@@ -13,7 +13,7 @@ export type BroadcastConfigurationProviderProps = {
 export function BroadcastConfigurationProvider({
     sessionId,
     seriesId,
-    requestHeaders,
+    getRequestHeaders,
     accessToken,
     children
 } : BroadcastConfigurationProviderProps) {
@@ -21,7 +21,7 @@ export function BroadcastConfigurationProvider({
     return <BroadcastConfigurationContext value={{
         sessionId,
         seriesId,
-        requestHeaders,
+        getRequestHeaders,
         accessToken
     }}>
         {children}
