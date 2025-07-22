@@ -15,7 +15,7 @@ import { WebinarOffer } from '@/webinar/service';
 
 export function ChatPanel() {
   const { connect, filteredMessages, connected } = useChat();
-  const { userId } = useBroadcastUser();
+  const { userId, email } = useBroadcastUser();
   const { session, webinar, token } = useWebinar();
 
   const [selectedOffer, setSelectedOffer] = useState<WebinarOffer | undefined>(undefined);
@@ -81,7 +81,7 @@ export function ChatPanel() {
             </>
           ) : (
             <div className="pt-2">
-              {webinar && token && <StripeCheckout offerId={selectedOffer.id} webinarId={webinar.id} token={token}/>}
+              {webinar && token && email && <StripeCheckout offerId={selectedOffer.id} webinarId={webinar.id} token={token} email={email}/>}
               <Button variant="ghost" className="mt-2 w-full text-xs" onClick={() => setIsCheckingOut(false)}>
                 ← Back to Offer
               </Button>

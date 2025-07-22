@@ -4,7 +4,7 @@ import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { StripeCheckoutForm } from './StripeCheckoutForm'
 import { paymentProviderApiUrl } from '@/paymentprovider/service'
 
-export function StripeCheckout({ offerId, webinarId, token }: { offerId: string, webinarId: string, token: string }) {
+export function StripeCheckout({ offerId, webinarId, token, email }: { offerId: string, webinarId: string, token: string, email: string }) {
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
 
@@ -35,7 +35,7 @@ export function StripeCheckout({ offerId, webinarId, token }: { offerId: string,
 
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <StripeCheckoutForm clientSecret={clientSecret}/>
+      <StripeCheckoutForm email={email}/>
     </Elements>
   )
 }

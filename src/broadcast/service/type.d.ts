@@ -18,6 +18,7 @@ export type BroadcastServiceToken = {
     series: string
     region: string
     user_id: string
+    email?: string
     webinar: Webinar
     session: SeriesSession
 }

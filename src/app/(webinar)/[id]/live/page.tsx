@@ -31,7 +31,7 @@ export default function BroadcastPage() {
   return (
     <div className="w-full flex items-center justify-center">
         <BroadcastConfigurationProvider sessionId={sessionId} seriesId={broadcastServiceToken.series} accessToken={token}>
-            <BroadcastUserProvider userId={broadcastServiceToken.user_id}>
+            <BroadcastUserProvider userId={broadcastServiceToken.user_id} email={broadcastServiceToken.email}>
                     <TestBroadcast 
                         token={broadcastServiceToken} 
                         session={sessionId}
