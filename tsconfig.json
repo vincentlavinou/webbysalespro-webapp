@@ -23,6 +23,7 @@
       "@broadcast/*": ["./src/broadcast/*"],
       "@webinar/*": ["./src/webinar/*"],
       "@chat/*": ["./src/chat/*"],
+      "@paymentprovider/": ["./src/paymentprovider/*"],
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
