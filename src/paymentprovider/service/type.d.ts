@@ -11,6 +11,7 @@ export interface CreatePaymentProviderPayload {
 export interface PaymentProvider {
   id: string; // UUID
   provider: PaymentProviderType;
+  provider_display: string
   public_key: string | null;
   secret_key: string | null;
   webhook_secret: string | null;

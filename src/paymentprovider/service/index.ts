@@ -7,3 +7,7 @@ export {
     updatePaymentProvider,
     deletePaymentProvider
 } from './action'
+
+export type {
+    PaymentProvider
+} from './type'

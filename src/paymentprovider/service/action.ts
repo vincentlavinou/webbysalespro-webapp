@@ -46,6 +46,7 @@ export async function getPaymentProvider(
 
 
 export async function createPaymentProvider(data: CreatePaymentProviderPayload, getRequestHeaders: () => Promise<RequestHeaders | undefined>): Promise<PaymentProvider> {
+  console.log(data)
   const res = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/`, {
     method: 'POST',
     headers: {
