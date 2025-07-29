@@ -1,4 +1,3 @@
-export type PaymentProviderType = 'stripe' | 'paypal' | 'fan_basis' | 'network_merchant_inc';
 
 export interface CreatePaymentProviderPayload {
   provider: PaymentProviderType;

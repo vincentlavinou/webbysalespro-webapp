@@ -11,3 +11,7 @@ export {
 export type {
     PaymentProvider
 } from './type'
+
+export {
+    PaymentProviderType
+} from './enum'

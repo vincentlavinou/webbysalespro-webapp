@@ -45,8 +45,11 @@ export const WebinarProvider = ({ children, sessionId }: Props ) => {
             switch(data.status) {
                 case WebinarSessionStatus.IN_PROGRESS:
                     router.replace(`/${sessionId}/live?token=${token}`)
+                    break;
                 case WebinarSessionStatus.COMPLETED:
-                    router.replace(`/${sessionId}/completed?token${token}`)
+                    router.replace(`/${sessionId}/completed?token=${token}`)
+                    source.close()
+                    break;
             }
             
         })

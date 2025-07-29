@@ -12,6 +12,8 @@ import { VisibleOffersCarousel } from '@/webinar/components';
 import { Button } from '@/components/ui/button';
 import { StripeCheckout } from '@/paymentprovider/component/stripe';
 import { WebinarOffer } from '@/webinar/service';
+import { getPaymentProviderLabel, PaymentProviderType } from '@/paymentprovider/service/enum';
+import { FanBasisCheckout } from '@/paymentprovider/component/fanbasis';
 
 export function ChatPanel() {
   const { connect, filteredMessages, connected } = useChat();
@@ -81,7 +83,8 @@ export function ChatPanel() {
             </>
           ) : (
             <div className="pt-2">
-              {webinar && token && email && <StripeCheckout offerId={selectedOffer.id} webinarId={webinar.id} token={token} email={email}/>}
+              {webinar && token && email && selectedOffer.provider_display === getPaymentProviderLabel(PaymentProviderType.STRIPE) && <StripeCheckout offerId={selectedOffer.id} webinarId={webinar.id} token={token} email={email}/>}
+              {webinar && token && email && selectedOffer.provider_display === getPaymentProviderLabel(PaymentProviderType.FAN_BASIS) && <FanBasisCheckout offerId={selectedOffer.id} webinarId={webinar.id} token={token} />}
               <Button variant="ghost" className="mt-2 w-full text-xs" onClick={() => setIsCheckingOut(false)}>
                 ← Back to Offer
               </Button>

@@ -66,6 +66,8 @@ export type WebinarPresenterRequest = {
 export type WebinarOffer = {
   id: string;
   webinar: string; // UUID of the parent webinar
+  provider: string;
+  provider_display: string;
   nternal_name: string;
   headline: string;
   description: string;

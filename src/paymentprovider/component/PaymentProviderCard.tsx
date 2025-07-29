@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 // schemas/payment-provider-schema.ts
 
 import { z } from 'zod';
-import { PaymentProvider, PaymentProviderType } from '../service/type';
+import { PaymentProvider } from '../service/type';
+import { PaymentProviderType } from '../service';
 
 export const paymentProviderSchema = z
   .object({
