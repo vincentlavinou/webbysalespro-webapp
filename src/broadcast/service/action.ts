@@ -54,7 +54,8 @@ export const recordEvent = async (name: string, sessionId: string, token: string
         },
         method: 'POST',
         body: JSON.stringify({
-            name: name
+            event_type: name,
+            event_timestamp: new Date().toISOString()
         })
       })
 }
