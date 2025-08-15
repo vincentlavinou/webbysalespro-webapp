@@ -83,7 +83,15 @@ export function ChatPanel() {
             </>
           ) : (
             <div className="pt-2">
-              {webinar && token && email && selectedOffer.provider_display === getPaymentProviderLabel(PaymentProviderType.STRIPE) && <StripeCheckout offerId={selectedOffer.id} webinarId={webinar.id} token={token} email={email}/>}
+              {webinar && token && email && session && selectedOffer.provider_display === getPaymentProviderLabel(PaymentProviderType.STRIPE) && (
+                  <StripeCheckout 
+                    offerId={selectedOffer.id} 
+                    webinarId={webinar.id} 
+                    token={token} 
+                    email={email}
+                    sessionId={session?.id}
+                    />
+                )}
               {webinar && token && email && selectedOffer.provider_display === getPaymentProviderLabel(PaymentProviderType.FAN_BASIS) && <FanBasisCheckout offerId={selectedOffer.id} webinarId={webinar.id} token={token} />}
               <Button variant="ghost" className="mt-2 w-full text-xs" onClick={() => setIsCheckingOut(false)}>
                 ← Back to Offer

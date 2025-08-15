@@ -4,14 +4,20 @@ import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { StripeCheckoutForm } from './StripeCheckoutForm'
 import { paymentProviderApiUrl } from '@/paymentprovider/service'
 
-export function StripeCheckout({ offerId, webinarId, token, email }: { offerId: string, webinarId: string, token: string, email: string }) {
+export function StripeCheckout({ 
+  offerId, 
+  webinarId, 
+  token, 
+  email,
+  sessionId 
+}: { offerId: string, webinarId: string, token: string, email: string, sessionId: string }) {
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchCheckoutInfo = async () => {
       const res = await fetch(
-        `${paymentProviderApiUrl}/v1/webinars/${webinarId}/offers/${offerId}/checkout/?token=${token}`,
+        `${paymentProviderApiUrl}/v1/webinars/${webinarId}/offers/${offerId}/checkout/?token=${token}&session=${sessionId}`,
         {
           method: 'post',
           headers: {
@@ -29,7 +35,7 @@ export function StripeCheckout({ offerId, webinarId, token, email }: { offerId: 
     }
 
     fetchCheckoutInfo()
-  }, [offerId, webinarId])
+  }, [])
 
   if (!stripePromise || !clientSecret) return <div>Loading payment...</div>
 
