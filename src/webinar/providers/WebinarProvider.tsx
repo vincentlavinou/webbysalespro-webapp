@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { WebinarContext } from "../context/WebinarContext"
 import { SeriesSession, SessionOfferVisibilityUpdate, Webinar, webinarApiUrl } from "../service"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createBroadcastServiceToken } from "@/broadcast/service"
+import { createBroadcastServiceToken, recordEvent } from "@/broadcast/service"
 import { BroadcastServiceToken } from "@/broadcast/service/type"
 import { WebinarSessionStatus } from "../service/enum"
 
@@ -70,9 +70,27 @@ export const WebinarProvider = ({ children, sessionId }: Props ) => {
       }, [sessionId, token, router, setSession])
 
 
+    const recordSessionEvent = useCallback(async (name: string) => {
+        if(!token) return
+        try {
+            await recordEvent(name, sessionId, token)
+        } catch(e) {
+            console.log(e)
+        }
+        
+    },[sessionId, token])
+
 
     return (
-        <WebinarContext.Provider value={{ session, setSession, sessionId, broadcastServiceToken, token, webinar }}>
+        <WebinarContext.Provider value={{ 
+            session, 
+            setSession, 
+            sessionId, 
+            broadcastServiceToken, 
+            token, 
+            webinar,
+            recordEvent: recordSessionEvent 
+            }}>
             {children}
         </WebinarContext.Provider>
     )

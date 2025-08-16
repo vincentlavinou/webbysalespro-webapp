@@ -7,6 +7,7 @@ import { DefaultChatRecipient } from "../service/enum";
 import { useChatConfiguration } from "../hooks/use-chat-configuration";
 import { useChatControl } from "../hooks/use-chat-control";
 import { useBroadcastUser } from "@/broadcast/hooks/use-broadcast-user";
+import { useWebinar } from "@/webinar/hooks";
 
 export type ChatProviderProps = {
     children: React.ReactNode
@@ -15,9 +16,9 @@ export type ChatProviderProps = {
 export function ChatProvider({children}: ChatProviderProps) {
 
     const {userId} = useBroadcastUser()
+     const {recordEvent} = useWebinar()
     const {region, tokenProvider} = useChatConfiguration()
     const {recipient} = useChatControl()
-    
     const roomRef = useRef<ChatRoom | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [filteredMessages, setFilteredMessages] = useState<ChatMessage[]>([])
@@ -97,6 +98,7 @@ export function ChatProvider({children}: ChatProviderProps) {
     
         try {
             await room.sendMessage(request);
+            await recordEvent("chat_message")
         } catch (err) {
             console.error('[IVS Chat] Failed to send message', err);
         }

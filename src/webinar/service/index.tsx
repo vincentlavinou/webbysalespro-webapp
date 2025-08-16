@@ -4,8 +4,7 @@ export type {
     WebinarPresenter, 
     WebinarSeries, 
     SeriesSession, 
-    SessionOfferVisibilityUpdate, 
-    WebinarOffer 
+    SessionOfferVisibilityUpdate
 } from './type';
 
 export const webinarApiUrl = process.env.WEBINAR_BASE_API_URL ? process.env.WEBINAR_BASE_API_URL : process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL ? process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL : 'https://api.webisalespro.com/api'

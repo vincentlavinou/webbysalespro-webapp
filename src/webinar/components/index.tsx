@@ -13,7 +13,3 @@ export {
 export {
     NoAvailableSessionsMessage
 } from './NoAvailableSessionsMessage'
-
-export {
-    VisibleOffersCarousel
-} from './VisibibleOffer'

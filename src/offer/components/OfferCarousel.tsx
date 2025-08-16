@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { WebinarOffer } from '@webinar/service';
+import { WebinarOffer } from '@/offer/service';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
@@ -48,7 +48,7 @@ interface VisibleOffersCarouselProps {
   onOfferClick: (offer: WebinarOffer) => void;
 }
 
-export function VisibleOffersCarousel({
+export function OfferCarousel({
   offers,
   onOfferClick,
 }: VisibleOffersCarouselProps) {
