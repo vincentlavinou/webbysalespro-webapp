@@ -38,7 +38,8 @@ export async function registerForWebinar(formData: FormData): Promise<void> {
         "session_ids": [sessionId],
         "first_name": formData.get("first_name") as string,
         "last_name": formData.get("last_name") as string,
-        "email": formData.get("email") as string
+        "email": formData.get("email") as string,
+        "phone": formData.get("phone") as string | null,
     }
     const response = await fetch(`${webinarApiUrl}/v1/webinars/${webinarId}/attendees/`,{
         headers: {
