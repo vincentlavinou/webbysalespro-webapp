@@ -33,10 +33,10 @@ export const WebinarProvider = ({ children, sessionId }: Props ) => {
 
      useEffect(() => {
     
-        if (!token || !sessionId) return
+        if (!token || !broadcastServiceToken) return
     
         const source = new EventSource(
-          `${webinarApiUrl}/v1/sessions/events/?channels=webinar-session-${sessionId}&token=${token}`
+          `${webinarApiUrl}/v1/sessions/events/?channels=webinar-session-${broadcastServiceToken.session.id}&token=${token}`
         )
     
         source.addEventListener('webinar:session:update', (event: MessageEvent) => {
