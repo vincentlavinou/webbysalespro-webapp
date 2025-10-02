@@ -36,7 +36,7 @@ export default Select;
 
 
 export function SelectCamera() {
-  const { videoDevices, setVideoId, videoIsMuted } = useLocalMediaDevices();
+  const { videoDevices, setVideoId, videoIsMuted, selectedVideoId } = useLocalMediaDevices();
   const { toggleMedia } = useLocalMedia()
 
   return (
@@ -45,7 +45,7 @@ export function SelectCamera() {
                 <VideoOffIcon className="w-6 h-6 text-red-500 animate-in" onClick={() => toggleMedia(DeviceType.CAMERA)} /> 
               : <VideoIcon className="w-6 h-6 text-green-500 animate-in" onClick={() => toggleMedia(DeviceType.CAMERA)}/>
       }
-      <ShadSelect onValueChange={(val) => setVideoId(val)}>
+      <ShadSelect onValueChange={(val) => setVideoId(val)} value={selectedVideoId || ""}>
         <SelectTrigger className="">
           {/* <VideoIcon className="w-8 h-8" /> */}
         </SelectTrigger>
@@ -68,7 +68,7 @@ export function SelectCamera() {
 
 export function SelectMicrophone() {
 
-  const { audioDevices, setAudioId, audioIsMuted } = useLocalMediaDevices();
+  const { audioDevices, setAudioId, audioIsMuted, selectedAudioId } = useLocalMediaDevices();
   const { toggleMedia } = useLocalMedia()
 
   return (
@@ -76,7 +76,7 @@ export function SelectMicrophone() {
       {audioIsMuted ? <MicOff className="w-6 h-6 text-red-500 animate-in" onClick={() => toggleMedia(DeviceType.MIC)} /> 
               : <Mic className="w-6 h-6 text-green-500 animate-in" onClick={() => toggleMedia(DeviceType.MIC)}/>
       }
-      <ShadSelect onValueChange={(val) => setAudioId(val)}>
+      <ShadSelect onValueChange={(val) => setAudioId(val)} value={selectedAudioId || ""}>
         <SelectTrigger className="">
         </SelectTrigger>
         <SelectContent side="top">

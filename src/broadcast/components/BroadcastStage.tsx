@@ -3,25 +3,19 @@
 import Script from "next/script";
 import Header from "@broadcast/components/Header";
 import RemoteParticipantVideos from "@broadcast/components/RemoteParticipantVideos";
-import { StageProvider, useStageContext } from "@broadcast/context";
 import { HostNotStarted } from "./HostNotStarted";
-import { LocalMediaDeviceProvider } from "../provider/LocalMediaDeviceProvider";
-import { LocalMediaProvider } from "../provider/LocalMediaProvider";
-import { useRef } from "react";
 import { LocalMediaControl } from "./LocalMediaControl";
 import { BroadcastServiceToken } from "../service/type";
-import { BroadcastServiceProvider } from "../provider/BroadcastServiceProvider";
 import MainPresenterView from "@/broadcast/components/MainPresenterView";
 import { WebinarChat } from "@/chat/component";
-
-type Stage = import("amazon-ivs-web-broadcast").Stage;
+import { useStageContext } from "../hooks/use-stage";
 
 interface BroadcastUIProps {
   token: BroadcastServiceToken;
   title?: string;
 }
 
-const BroadcastUI = ({ token, title }: BroadcastUIProps) => {
+export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
   const { isConnected, mainParticiant, participants, join } = useStageContext();
 
   return (
@@ -76,25 +70,3 @@ const BroadcastUI = ({ token, title }: BroadcastUIProps) => {
     </div>
   );
 };
-
-interface LiveBroadcastProps {
-  session: string;
-  token: BroadcastServiceToken;
-  title?: string;
-}
-
-export function TestBroadcast(props: LiveBroadcastProps) {
-  const stageRef = useRef<Stage | undefined>(undefined);
-
-  return (
-    <BroadcastServiceProvider token={props.token}>
-      <LocalMediaDeviceProvider>
-        <LocalMediaProvider stageRef={stageRef}>
-          <StageProvider stageRef={stageRef}>
-            <BroadcastUI token={props.token} title={props.title} />
-          </StageProvider>
-        </LocalMediaProvider>
-      </LocalMediaDeviceProvider>
-    </BroadcastServiceProvider>
-  );
-}

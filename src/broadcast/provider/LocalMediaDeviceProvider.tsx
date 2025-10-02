@@ -48,6 +48,7 @@ export function LocalMediaDeviceProvider({ children }: LocalMediaDeviceProviderP
 
         setAudioId(savedAudioId || null)
         setVideoId(savedVideoId || null)
+        console.log(savedVideoId)
         
       };
       init();

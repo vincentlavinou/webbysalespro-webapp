@@ -47,3 +47,10 @@ export type Broadcast = {
     webinar: string
     session: string
 }
+
+export type Media = {
+    stageStream: LocalStageStream
+    track: MediaStreamTrack
+    deviceId: string | undefined
+    cleanup: () => void
+}

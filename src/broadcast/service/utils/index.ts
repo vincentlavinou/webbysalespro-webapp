@@ -2,29 +2,29 @@
 
 import { RefObject } from "react";
 import { DeviceType } from "../enum";
-import { WebiSalesProParticipant } from "@/broadcast/context";
+import { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
+import { Media } from "../type";
 
 // ✅ Type-only imports to fix SSR issues
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
 type StageStrategy = import("amazon-ivs-web-broadcast").StageStrategy;
 type StageStream = import("amazon-ivs-web-broadcast").StageStream;
-type LocalStageStream = import("amazon-ivs-web-broadcast").LocalStageStream;
 
 export const getDevices = async () => {
-  await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  const streams = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
   const devices = await navigator.mediaDevices.enumerateDevices();
 
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
   const audioDevices = devices.filter((d) => d.kind === "audioinput");
 
-  return { videoDevices, audioDevices };
+  return { videoDevices, audioDevices, mediaStreams: streams };
 };
 
 export const getMediaForDevices = async (
   mediaType: DeviceType,
   deviceId: string,
-): Promise<MediaStream | null> => {
+): Promise<MediaStream> => {
 
   const constraints: MediaStreamConstraints = {
     video:
@@ -39,22 +39,23 @@ export const getMediaForDevices = async (
   return navigator.mediaDevices.getUserMedia(constraints);
 };
 
-interface Strategy extends StageStrategy {
-  audioTrack?: LocalStageStream;
-  videoTrack?: LocalStageStream;
-  mainPresenter?: WebiSalesProParticipant
-  updateTracks: (audio: LocalStageStream, video: LocalStageStream) => void
-  setMainPresenter: (presenter: WebiSalesProParticipant) => void
-}
-
 export const createLocalStageStream = async (
   deviceId: string | undefined,
   deviceType: DeviceType
-): Promise<LocalStageStream | undefined> => {
+): Promise<Media | undefined> => {
 
-  if(deviceId === undefined) return
+  let currentDeviceId: string | undefined = deviceId
+  console.log(`Device Id: ${deviceId}`)
+  if(currentDeviceId === undefined) {
+    const {videoDevices, audioDevices} = await getDevices()
+    currentDeviceId = deviceType === DeviceType.CAMERA ? videoDevices[0]?.deviceId : deviceType === DeviceType.MIC ? audioDevices[0]?.deviceId : undefined
+  }
 
-  const mediaStream = await getMediaForDevices(deviceType, deviceId);
+  if(!currentDeviceId) return
+
+  console.log(`Device Type: ${deviceType} - Id: ${currentDeviceId}`)
+
+  const mediaStream = await getMediaForDevices(deviceType, currentDeviceId);
   const track =
     deviceType === DeviceType.CAMERA
       ? mediaStream?.getVideoTracks()[0]
@@ -64,61 +65,17 @@ export const createLocalStageStream = async (
 
   if(track === undefined) return undefined
   const { LocalStageStream } = await import("amazon-ivs-web-broadcast");
-  return new LocalStageStream(track);
-};
 
-export const setupStrategy = async (
-  role: 'host' | 'presenter' | 'attendee' | undefined
-): Promise<Strategy> => {
-  const { SubscribeType } = await import("amazon-ivs-web-broadcast");
-
-  const strategy: Strategy = {
-    audioTrack: undefined,
-    videoTrack: undefined,
-    mainPresenter: undefined,
-
-    updateTracks(audio, video) {
-      this.audioTrack = audio;
-      this.videoTrack = video;
-    },
-
-    setMainPresenter(presenter) {
-      this.mainPresenter = presenter
-    },
-
-    stageStreamsToPublish() {
-      // Host and Presenter can publish
-      return role === "host" || role === "presenter"
-        ? [this.audioTrack!, this.videoTrack!]
-        : [];
-    },
-
-    shouldPublishParticipant() {
-      return role === "host" || role === "presenter";
-    },
-
-    shouldSubscribeToParticipant(participant) {
-      const participantRole = participant.attributes?.role;
-      const isPresenter = participantRole === "host" || participantRole === "presenter";
-       // 🧑‍💼 Attendee logic
-      if (role === "attendee") {
-        const main = this.mainPresenter?.participant;
-
-        // ✅ Fallback to host if no main presenter is assigned
-        if (!main && participant.userId.includes('host')) {
-          return SubscribeType.AUDIO_VIDEO
-        }
-
-        return participant.userId === main?.userId
-          ? SubscribeType.AUDIO_VIDEO
-          : SubscribeType.NONE;
-      }
-
-      // Host/presenters can see all presenters (but not attendees)
-      return isPresenter ? SubscribeType.AUDIO_VIDEO : SubscribeType.NONE;
-    }
-  };
-  return strategy;
+  const clean = () => {
+    console.log(`Device: ${deviceType} - Cleaning up`)
+    track.stop()
+  }
+  return {
+    stageStream: new LocalStageStream(track), 
+    track,
+    deviceId: deviceId,
+    cleanup: clean
+  }
 };
 
 export const joinStage = async (
@@ -165,7 +122,6 @@ export const joinStage = async (
       }
 
       console.log("update participant", participant.userId)
-
       return prev.map(p =>
         p.participant.id === participant.id
           ? { participant, streams }
@@ -199,6 +155,7 @@ export const joinStage = async (
 
   // Join the stage
   try {
+    console.log("joinning stream...")
     await stage.join();
     stageRef.current = stage;
   } catch (err) {
@@ -221,16 +178,13 @@ export const createCompositeVideoTrack = async ({
   deviceId,
 }: {
   deviceId?: string;
-}): Promise<{
-  track: MediaStreamTrack;
-  cleanup: () => void;
-} | null> => {
+}): Promise<Media | undefined> => {
   console.log("create composite enter");
 
   // Check screen sharing support
   if (!navigator.mediaDevices.getDisplayMedia) {
     console.warn("Screen sharing not supported in this browser.");
-    return null;
+    return undefined;
   }
 
   // Get screen stream
@@ -239,22 +193,18 @@ export const createCompositeVideoTrack = async ({
     screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
   } catch (e) {
     console.log("Screen share failed", e);
-    return null;
+    return undefined;
   }
   console.log("Got screen stream");
 
   // Get camera stream
   let cameraStream: MediaStream;
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia(
-      deviceId !== undefined
-        ? { video: { deviceId: { exact: deviceId } } }
-        : { video: true }
-    );
+    cameraStream = await getMediaForDevices(DeviceType.CAMERA, deviceId || "")
   } catch (e) {
     console.error("Camera access failed:", e);
     screenStream.getTracks().forEach((t) => t.stop());
-    return null;
+    return undefined;
   }
   console.log("Got camera stream");
 
@@ -279,7 +229,7 @@ export const createCompositeVideoTrack = async ({
   canvas.height = screenVideo.videoHeight || 720;
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
+  if (!ctx) return undefined;
 
   let rafId: number;
 
@@ -311,14 +261,19 @@ export const createCompositeVideoTrack = async ({
   const compositeTrack = canvasStream.getVideoTracks()[0];
 
   const cleanup = () => {
+    console.log(`Device: ScreenShare - Cleaning up`)
     cancelAnimationFrame(rafId);
     compositeTrack.stop();
     screenTrack.stop();
     cameraTrack.stop();
   };
 
+  const { LocalStageStream } = await import("amazon-ivs-web-broadcast");
+
   return {
+    stageStream: new LocalStageStream(compositeTrack),
     track: compositeTrack,
+    deviceId: deviceId,
     cleanup,
   };
 };

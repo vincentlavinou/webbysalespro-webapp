@@ -59,4 +59,3 @@ export const recordEvent = async (name: string, sessionId: string, token: string
         })
       })
 }
-

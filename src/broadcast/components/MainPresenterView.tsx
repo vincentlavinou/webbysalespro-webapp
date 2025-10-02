@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useStageContext } from '../context';
+import { useStageContext } from '../hooks/use-stage';
 
 interface Props {
   participant: import('amazon-ivs-web-broadcast').StageParticipantInfo;
@@ -16,6 +16,10 @@ const MainPresenterView = ({ participant, streams }: Props) => {
   const [screenAspectRatio, setScreenAspectRatio] = useState('aspect-video');
   const {localParticipantRef} = useStageContext()
 
+  const audioRef = useRef<MediaStreamTrack | undefined>(undefined)
+  const videoRef = useRef<MediaStreamTrack | undefined>(undefined)
+
+
   useEffect(() => {
 
     let screenTrack: MediaStreamTrack | undefined;
@@ -27,21 +31,22 @@ const MainPresenterView = ({ participant, streams }: Props) => {
 
       if (track.kind === 'audio') {
         audioTrack = track;
+        audioRef.current = audioTrack
       }
 
       if (track.kind === 'video') {
         const settings = track.getSettings?.();
-        console.log("Media Track Settings", settings)
         if (settings?.displaySurface) {
           screenTrack = track;
         } else {
           cameraTrack = track;
         }
+        videoRef.current = track
       }
     });
     // Show screen share if available
-    if (screenTrack && audioTrack && screenRef.current) {
-      screenRef.current.srcObject = new MediaStream([screenTrack, audioTrack]);
+    if (screenTrack && audioRef.current && screenRef.current) {
+      screenRef.current.srcObject = new MediaStream([screenTrack, audioRef.current]);
       setHasScreen(true);
 
       const { width, height } = screenTrack.getSettings?.() || {};
@@ -54,8 +59,9 @@ const MainPresenterView = ({ participant, streams }: Props) => {
     }
 
     // Always attach camera if available
-    if (cameraTrack && audioTrack && cameraRef.current) {
-      cameraRef.current.srcObject = new MediaStream([cameraTrack, audioTrack]);
+    console.log(`Camera: ${cameraTrack} - Audio: ${audioTrack} - ${cameraRef.current}`)
+    if (cameraTrack && audioRef.current && cameraRef.current) {
+      cameraRef.current.srcObject = new MediaStream([cameraTrack, audioRef.current]);
     }
   }, [participant, streams]);
 

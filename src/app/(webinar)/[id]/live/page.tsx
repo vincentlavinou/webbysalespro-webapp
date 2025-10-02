@@ -1,13 +1,11 @@
 'use client'
 
-import { TestBroadcast } from "@broadcast/components/TestBroadcast";
 import { useWebinar } from "@/webinar/hooks";
 import { redirect } from "next/navigation";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
-import { BroadcastConfigurationProvider } from "@/broadcast/provider";
-import { BroadcastUserProvider } from "@/broadcast/provider/BroadcastUserProvider";
+import { BroadcastClient } from "@/broadcast/BroadcastClient";
 
 export default function BroadcastPage() {
 
@@ -28,17 +26,7 @@ export default function BroadcastPage() {
         redirect(`/${sessionId}/waiting-room?token=${token}`)
     }
 
-  return (
-    <div className="w-full flex items-center justify-center">
-        <BroadcastConfigurationProvider sessionId={sessionId} seriesId={broadcastServiceToken.series} accessToken={token}>
-            <BroadcastUserProvider userId={broadcastServiceToken.user_id} email={broadcastServiceToken.email}>
-                    <TestBroadcast 
-                        token={broadcastServiceToken} 
-                        session={sessionId}
-                        title={webinar.title}
-                        />
-            </BroadcastUserProvider>
-        </BroadcastConfigurationProvider>
-    </div>);
- 
+    return (
+        <BroadcastClient sessionId={sessionId} accessToken={token} broadcastToken={broadcastServiceToken} title={webinar.title}/>
+    )
 }

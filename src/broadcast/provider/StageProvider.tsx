@@ -1,8 +1,6 @@
 'use client'
 
 import {
-  createContext,
-  useContext,
   useState,
   useRef,
   useCallback,
@@ -20,45 +18,31 @@ import { useLocalMedia } from "../hooks/use-strategy";
 import { useBroadcastService } from "../hooks/use-broadcast-service";
 import { recordEvent, sessionController } from "../service";
 import { useBroadcastConfiguration } from "../hooks";
+import { useRouter } from "next/navigation";
+import { StageContext, WebiSalesProParticipant } from "../context/StageContext";
+import { useMediaStrategy } from "../hooks/use-media-strategy";
 
 // ✅ Use type-only imports to avoid SSR errors
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
-type StageStream = import("amazon-ivs-web-broadcast").StageStream;
-
-export type WebiSalesProParticipant = {
-  participant: StageParticipantInfo;
-  streams: StageStream[];
-};
-
-type StageContextType = {
-  isConnected: boolean;
-  mainParticiant: WebiSalesProParticipant | undefined;
-  participants: WebiSalesProParticipant[];
-  join: (token: string) => void;
-  leave: () => void;
-  stageRef?: React.RefObject<Stage | undefined>;
-  localParticipantRef?: React.RefObject<StageParticipantInfo | undefined>;
-};
-
-const StageContext = createContext<StageContextType | null>(null);
 
 export const StageProvider = ({ children, stageRef }: { children: ReactNode, stageRef: RefObject<Stage | undefined> }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [mainParticiant, setMainParticipant] = useState<WebiSalesProParticipant | undefined>(undefined);
   const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
   
-  const { strategy, create: createLocalMedia } = useLocalMedia()
+  const { strategy } = useMediaStrategy()
+  const { create: createLocalMedia } = useLocalMedia()
   const { mainPresenterId } = useBroadcastService()
   const {sessionId, seriesId, getRequestHeaders, accessToken} = useBroadcastConfiguration()
 
   const localParticipantRef = useRef<StageParticipantInfo | undefined>(undefined);
+  const router = useRouter()
 
   useEffect(() => {
     if(mainPresenterId === undefined) {
       const host = participants.find((info) => info.participant.userId.includes("host-"))
       if(!equalsWebiSalesProParticipant(host, mainParticiant)){
-        console.log("setting main partipant as host")
         setMainParticipant(host)
         strategy?.setMainPresenter(host)
         stageRef.current?.refreshStrategy()
@@ -107,6 +91,7 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
     setParticipants([]);
     if(getRequestHeaders) {
         await sessionController("stop", seriesId, sessionId, {}, getRequestHeaders)
+        router.replace("/webinars")
       } else if(accessToken) {
         recordEvent("left", sessionId, accessToken)
       }
@@ -127,10 +112,4 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
       {children}
     </StageContext.Provider>
   );
-};
-
-export const useStageContext = () => {
-  const ctx = useContext(StageContext);
-  if (!ctx) throw new Error("useStageContext must be used inside StageProvider");
-  return ctx;
 };

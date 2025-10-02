@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef } from "react"
-import { useStageContext } from "../context";
+import { useStageContext } from "../hooks/use-stage";
 
 interface Props {
   role: 'host' | 'presenter' | 'attendee'
