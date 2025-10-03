@@ -8,6 +8,11 @@ import { Media } from "../service/type";
 
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 
+interface RefreshMediaOption {
+  cleanupVideo?: boolean,
+  cleanupAudio?: boolean
+}
+
 interface LocalMediaProviderProps {
   stageRef: RefObject<Stage | undefined>
   children: React.ReactNode
@@ -42,7 +47,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     return stream
   }, [selectedVideoId])
 
-  const startScreenShare = useCallback(async () => {
+  const startScreenShareStream = useCallback(async () => {
     const stream = await createCompositeVideoTrack({
       deviceId: selectedVideoId
     });
@@ -60,7 +65,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     return stream
   }, [selectedAudioId])
 
-  const refreshVideoAndAudioStreamIfDefined = useCallback((video: Media | undefined, audio: Media | undefined) => {
+  const refreshVideoAndAudioStreamIfDefined = useCallback((video: Media | undefined, audio: Media | undefined, options?: RefreshMediaOption) => {
     if (!video) {
       console.log("unable to refresh, no video")
       return
@@ -70,11 +75,16 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
       return
     }
 
-    videoCleanUpRef.current?.()
-    videoCleanUpRef.current = video.cleanup;
-
-    audioCleanUpRef.current?.()
-    audioCleanUpRef.current = audio.cleanup
+    if(options?.cleanupVideo) {
+      videoCleanUpRef.current?.()
+      videoCleanUpRef.current = video.cleanup;
+    }
+    
+    if(options?.cleanupAudio) {
+      audioCleanUpRef.current?.()
+      audioCleanUpRef.current = audio.cleanup
+    }
+    
 
     strategy.updateTracks(video.stageStream, audio.stageStream);
     stageRef.current?.refreshStrategy();
@@ -85,15 +95,20 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     const videoStageStream = await startVideoStageStream()
     const audioStageStream = await startAudioStageStream()
 
-    refreshVideoAndAudioStreamIfDefined(videoStageStream, audioStageStream)
-  }, [stageRef, strategy, startVideoStageStream, startAudioStageStream]);
+    refreshVideoAndAudioStreamIfDefined(videoStageStream, audioStageStream, {
+      cleanupVideo: true,
+      cleanupAudio: true
+    })
+  }, [stageRef, strategy, startVideoStageStream, startAudioStageStream, refreshVideoAndAudioStreamIfDefined]);
 
   useEffect(() => {
     const refreshVideoStream = async () => {
       if (selectedVideoId != videoStream?.deviceId) {
         // TODO - update to support screen share. Create a screen share Provider, be able to grab the screen share and update the camera
         const videoStageStream = await startVideoStageStream()
-        refreshVideoAndAudioStreamIfDefined(videoStageStream, audioStream)
+        refreshVideoAndAudioStreamIfDefined(videoStageStream, audioStream,{
+          cleanupVideo: true
+        })
       }
     }
 
@@ -104,7 +119,9 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     const refreshAudioStream = async () => {
       if (selectedAudioId != audioStream?.deviceId) {
         const audioStageStream = await startAudioStageStream()
-        refreshVideoAndAudioStreamIfDefined(videoStream, audioStageStream)
+        refreshVideoAndAudioStreamIfDefined(videoStream, audioStageStream, {
+          cleanupAudio: true
+        })
       }
     }
 
@@ -129,7 +146,8 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
         setVideoMuted(videoStream?.stageStream?.isMuted === true);
         break;
     }
-  }, [audioStream, videoStream]);
+    refreshVideoAndAudioStreamIfDefined(videoStream, audioStream)
+  }, [audioStream, videoStream, refreshVideoAndAudioStreamIfDefined]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!strategy || !audioStream) return;
@@ -137,14 +155,18 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     if (isScreenSharing) {
       // Stop composite + screen
       const fallback = await startVideoStageStream()
-      refreshVideoAndAudioStreamIfDefined(fallback, audioStream)
+      refreshVideoAndAudioStreamIfDefined(fallback, audioStream, {
+        cleanupVideo: true
+      })
       setIsScreenSharing(false);
     } else {
-      const result = await startScreenShare()
-      refreshVideoAndAudioStreamIfDefined(result, audioStream)
+      const result = await startScreenShareStream()
+      refreshVideoAndAudioStreamIfDefined(result, audioStream,{
+        cleanupVideo: true
+      })
       setIsScreenSharing(true);
     }
-  }, [audioStream, isScreenSharing, stageRef, strategy, startScreenShare, refreshVideoAndAudioStreamIfDefined]);
+  }, [audioStream, isScreenSharing, stageRef, strategy, startScreenShareStream, refreshVideoAndAudioStreamIfDefined]);
 
 
   return (
