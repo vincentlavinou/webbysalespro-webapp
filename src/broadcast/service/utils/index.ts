@@ -46,12 +46,12 @@ export const createLocalStageStream = async (
 
   let currentDeviceId: string | undefined = deviceId
   console.log(`Device Id: ${deviceId}`)
-  if(currentDeviceId === undefined) {
-    const {videoDevices, audioDevices} = await getDevices()
+  if (currentDeviceId === undefined) {
+    const { videoDevices, audioDevices } = await getDevices()
     currentDeviceId = deviceType === DeviceType.CAMERA ? videoDevices[0]?.deviceId : deviceType === DeviceType.MIC ? audioDevices[0]?.deviceId : undefined
   }
 
-  if(!currentDeviceId) return
+  if (!currentDeviceId) return
 
   console.log(`Device Type: ${deviceType} - Id: ${currentDeviceId}`)
 
@@ -60,10 +60,10 @@ export const createLocalStageStream = async (
     deviceType === DeviceType.CAMERA
       ? mediaStream?.getVideoTracks()[0]
       : deviceType === DeviceType.MIC
-      ? mediaStream?.getAudioTracks()[0]
-      : mediaStream?.getVideoTracks()[0]; // SCREEN uses video
+        ? mediaStream?.getAudioTracks()[0]
+        : mediaStream?.getVideoTracks()[0]; // SCREEN uses video
 
-  if(track === undefined) return undefined
+  if (track === undefined) return undefined
   const { LocalStageStream } = await import("amazon-ivs-web-broadcast");
 
   const clean = () => {
@@ -71,7 +71,7 @@ export const createLocalStageStream = async (
     track.stop()
   }
   return {
-    stageStream: new LocalStageStream(track), 
+    stageStream: new LocalStageStream(track),
     track,
     deviceId: deviceId,
     cleanup: clean
@@ -136,14 +136,21 @@ export const joinStage = async (
       prev.map((p) =>
         p.participant.id === participant.id
           ? {
-              participant,
-              streams: p.streams.filter(
-                (s) => !removedStreams.find((r) => r.mediaStreamTrack.id === s.mediaStreamTrack.id)
-              ),
-            }
+            participant,
+            streams: p.streams.filter(
+              (s) => !removedStreams.find((r) => r.mediaStreamTrack.id === s.mediaStreamTrack.id)
+            ),
+          }
           : p
       )
     );
+  });
+
+  stage.on(StageEvents.STAGE_STREAM_MUTE_CHANGED, (participant, updatedStream) => {
+    setParticipants(prev => prev.map(previous => previous.participant.id === participant.id ? {
+      participant: participant,
+      streams: previous.streams.map(stream => stream.id === updatedStream.id ? updatedStream : stream)
+    } : previous));
   });
 
   // Handle participant leave

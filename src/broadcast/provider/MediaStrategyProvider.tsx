@@ -34,8 +34,7 @@ export const MediaStrategyProvider = (props: MediaStrategyProviderProps) => {
         if (!token?.role) return
 
         const setupStrategy = async (role: 'host' | 'presenter' | 'attendee'): Promise<void> => {
-            const { SubscribeType } = await import("amazon-ivs-web-broadcast");
-
+      
             const strategy: Strategy = {
                 audioTrack: undefined,
                 videoTrack: undefined,
@@ -70,16 +69,16 @@ export const MediaStrategyProvider = (props: MediaStrategyProviderProps) => {
 
                         // ✅ Fallback to host if no main presenter is assigned
                         if (!main && participant.userId.includes('host')) {
-                            return SubscribeType.AUDIO_VIDEO
+                            return "audio_video" as SubscribeType
                         }
 
                         return participant.userId === main?.userId
-                            ? SubscribeType.AUDIO_VIDEO
-                            : SubscribeType.NONE;
+                            ? "audio_video" as SubscribeType
+                            : "none" as SubscribeType;
                     }
 
                     // Host/presenters can see all presenters (but not attendees)
-                    return isPresenter ? SubscribeType.AUDIO_VIDEO : SubscribeType.NONE;
+                    return isPresenter ? "audio_video" as SubscribeType : "none" as SubscribeType;
                 }
             };
             setCurrentStategy(strategy)
