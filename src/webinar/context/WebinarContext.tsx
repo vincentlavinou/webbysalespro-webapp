@@ -11,7 +11,7 @@ export type WebinarContextType = {
     webinar?: Webinar
     token?: string
     setSession: (session: SeriesSession) => void
-    recordEvent: (name: string) => Promise<void>
+    recordEvent: (name: string, payload?: Record<string, unknown>) => Promise<void>
 }
 
 export const WebinarContext = createContext<WebinarContextType>({

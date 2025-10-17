@@ -32,7 +32,9 @@ export function OfferChatBubble() {
     const handleCheckoutSuccess = async (ref?: string) => {
     if (selectedOffer && session) {
         setPurchaseSuccess({ offer: selectedOffer, reference: ref });
-        await recordEvent("purchase_succeeded")
+        await recordEvent("purchase_succeeded", {
+            "amount_cents": selectedOffer.price * 100 // cents
+        })
         }
     };
 

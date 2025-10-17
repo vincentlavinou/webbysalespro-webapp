@@ -45,7 +45,7 @@ export const sessionController = async (action: string, seriesId: string, sessio
       })
 }
 
-export const recordEvent = async (name: string, sessionId: string, token: string) => {
+export const recordEvent = async (name: string, sessionId: string, payload: Record<string, unknown> | undefined, token: string) => {
     const params = new URLSearchParams()
     params.set("token", token)
     await fetch(`${broadcastApiUrl}/v1/sessions/${sessionId}/events/?${params.toString()}`,{
@@ -55,7 +55,8 @@ export const recordEvent = async (name: string, sessionId: string, token: string
         method: 'POST',
         body: JSON.stringify({
             event_type: name,
-            event_timestamp: new Date().toISOString()
+            event_timestamp: new Date().toISOString(),
+            payload: payload
         })
       })
 }
