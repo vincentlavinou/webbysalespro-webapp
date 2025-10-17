@@ -73,7 +73,7 @@ export const WebinarProvider = ({ children, sessionId }: Props ) => {
     const recordSessionEvent = useCallback(async (name: string, payload: Record<string, unknown> | undefined) => {
         if(!token) return
         try {
-            await recordEvent(name, sessionId, payload, token)
+            await recordEvent(name, sessionId, token, payload)
         } catch(e) {
             console.log(e)
         }
