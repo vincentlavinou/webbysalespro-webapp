@@ -20,6 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@sanity/*": ["./sanity/*"],
       "@broadcast/*": ["./src/broadcast/*"],
       "@webinar/*": ["./src/webinar/*"],
       "@chat/*": ["./src/chat/*"],

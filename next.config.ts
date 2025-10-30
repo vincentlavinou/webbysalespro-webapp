@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
+        hostname: "webbysalespro-production.s3.amazonaws.com",
+      },
+      {
+        protocol: "https",
         hostname: "webisalespro-bucket.s3.amazonaws.com",
       },
     ],

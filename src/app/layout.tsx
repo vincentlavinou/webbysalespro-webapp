@@ -56,8 +56,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <div className="max-w-7xl mx-auto py-6 px-4 text-sm text-muted-foreground flex justify-between items-center">
           <span>© {new Date().getFullYear()} WebiSalesPro. All rights reserved.</span>
           <div className="space-x-4">
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/terms">Terms</Link>
+            <Link href="/privacy-policy">Privacy</Link>
+            <Link href="/terms-of-service">Terms</Link>
             <Link href="/contact">Contact</Link>
           </div>
         </div>
