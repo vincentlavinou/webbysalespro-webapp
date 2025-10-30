@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
     title: {
-        default: "WebiSalesPro",
-        template: "%s | WebiSalesPro"
+        default: "WebbySalesPro",
+        template: "%s | WebbySalesPro"
     },
     description: "View live, upcomming, and post webinars in one place."
 }
@@ -36,7 +36,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <header className="bg-white shadow-md px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <Link href="/" className="text-xl font-bold text-primary">
-            WebiSalesPro
+            WebbySalesPro
           </Link>
           <nav className="space-x-6 text-sm text-muted-foreground">
             {/* <Link href="/login">Login</Link>
@@ -54,7 +54,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       {/* Footer */}
       <footer className="bg-gray-50 border-t mt-6">
         <div className="max-w-7xl mx-auto py-6 px-4 text-sm text-muted-foreground flex justify-between items-center">
-          <span>© {new Date().getFullYear()} WebiSalesPro. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} WebbySalesPro. All rights reserved.</span>
           <div className="space-x-4">
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms-of-service">Terms</Link>
