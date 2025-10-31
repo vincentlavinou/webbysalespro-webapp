@@ -50,6 +50,7 @@ export function LocalMediaDeviceProvider({ children }: LocalMediaDeviceProviderP
         setVideoId(savedVideoId || null)
         
       };
+      
       init();
     }, [token]);
   

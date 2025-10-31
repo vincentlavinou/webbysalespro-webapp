@@ -30,10 +30,11 @@ type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantI
 interface StageProviderProps {
   children: ReactNode,
   stageRef: RefObject<Stage | undefined>
+  isViewer: boolean
   onStreamEvent: (event: LocalStreamEvent) => void
 }
 
-export const StageProvider = ({ children, stageRef, onStreamEvent }: StageProviderProps) => {
+export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: StageProviderProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [mainParticiant, setMainParticipant] = useState<WebiSalesProParticipant | undefined>(undefined);
   const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
@@ -66,7 +67,10 @@ export const StageProvider = ({ children, stageRef, onStreamEvent }: StageProvid
 
   const join = useCallback(
     async (token: string) => {
-      await createLocalMedia()
+      if(!isViewer) {
+        await createLocalMedia()
+      }
+
       await joinStage(
         true,
         token,

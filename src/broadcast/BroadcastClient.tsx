@@ -22,6 +22,7 @@ interface BroadcastClientProps {
     accessToken?: string
     broadcastToken: BroadcastServiceToken
     onStreamEvent?: (event: LocalStreamEvent) => void
+    isViewer?: boolean
     title?: string,
     presentations?: WebinarPresentation[],
     videoInjections?: WebinarVideoInjection[]
@@ -39,7 +40,7 @@ export function BroadcastClient(props: BroadcastClientProps) {
                         <MediaStrategyProvider>
                             <LocalMediaDeviceProvider>
                                 <LocalMediaProvider stageRef={stageRef}>
-                                    <StageProvider stageRef={stageRef} onStreamEvent={props.onStreamEvent ? props.onStreamEvent : () => {}}>
+                                    <StageProvider stageRef={stageRef} onStreamEvent={props.onStreamEvent ? props.onStreamEvent : () => {}} isViewer={props.isViewer || false}>
                                         <BroadcastStage token={props.broadcastToken} title={props.title} />
                                     </StageProvider>
                                 </LocalMediaProvider>

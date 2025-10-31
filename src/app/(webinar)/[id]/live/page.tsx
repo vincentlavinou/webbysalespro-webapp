@@ -38,6 +38,7 @@ export default function BroadcastPage() {
                 setSession({...session, offer_visible: event.payload["visible"] as boolean})
             }
         }}
+        isViewer
         />
     )
 }
