@@ -6,10 +6,11 @@ import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
 import { BroadcastClient } from "@/broadcast/BroadcastClient";
+import { LocalStreamEventType } from "@/broadcast/service/enum";
 
 export default function BroadcastPage() {
 
-    const { sessionId, broadcastServiceToken, token, session, webinar } = useWebinar()
+    const { sessionId, broadcastServiceToken, token, session, webinar, setSession } = useWebinar()
     if (!broadcastServiceToken || !session || !webinar || !token) {
         return <WaitingRoomShimmer />;
     }
@@ -27,6 +28,16 @@ export default function BroadcastPage() {
     }
 
     return (
-        <BroadcastClient sessionId={sessionId} accessToken={token} broadcastToken={broadcastServiceToken} title={webinar.title}/>
+        <BroadcastClient 
+        sessionId={sessionId} 
+        accessToken={token} 
+        broadcastToken={broadcastServiceToken} 
+        title={webinar.title}
+        onStreamEvent={(event) => {
+            if(event.type === LocalStreamEventType.OFFER_EVENT) {
+                setSession({...session, offer_visible: event.payload["visible"] as boolean})
+            }
+        }}
+        />
     )
 }

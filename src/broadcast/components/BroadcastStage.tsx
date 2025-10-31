@@ -2,13 +2,17 @@
 
 import Script from "next/script";
 import Header from "@broadcast/components/Header";
-import RemoteParticipantVideos from "@broadcast/components/RemoteParticipantVideos";
+import RemoteParticipantVideos from "@/broadcast/components/views/RemoteParticipantVideos";
 import { HostNotStarted } from "./HostNotStarted";
 import { LocalMediaControl } from "./LocalMediaControl";
 import { BroadcastServiceToken } from "../service/type";
-import MainPresenterView from "@/broadcast/components/MainPresenterView";
+import MainPresenterView from "@/broadcast/components/views/MainPresenterView";
 import { WebinarChat } from "@/chat/component";
 import { useStageContext } from "../hooks/use-stage";
+import { usePresentation } from "../hooks/use-presentation";
+import { PresentationView } from "./views/PresentationView";
+import { useVideoInjection } from "../hooks/use-video-injection";
+import { VideoInjectionView } from "./views/VideoInjectionView";
 
 interface BroadcastUIProps {
   token: BroadcastServiceToken;
@@ -17,6 +21,36 @@ interface BroadcastUIProps {
 
 export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
   const { isConnected, mainParticiant, participants, join } = useStageContext();
+  const {isActive: presentationIsActive, selectedPresentation} = usePresentation()
+  const {isActive: videoInjectionIsActive, selectedVideoInjection} = useVideoInjection()
+
+  const sideLayout = () => {
+    if(isConnected) {
+      if(presentationIsActive || videoInjectionIsActive) {
+        return <RemoteParticipantVideos role={token.role} isInitializeComplete={true} />
+      } else if(participants.length > 1) {
+        return <RemoteParticipantVideos role={token.role} isInitializeComplete={true} />
+      }
+    }
+  }
+
+  const mainLayout = () => {
+    if(isConnected) {
+      if(presentationIsActive && selectedPresentation?.download_url) {
+        return <PresentationView presentation={{
+          downloadUrl: selectedPresentation.download_url,
+          active: selectedPresentation?.is_active
+        }}/>
+      } else if(videoInjectionIsActive && selectedVideoInjection) {
+        return <VideoInjectionView injection={selectedVideoInjection}/>
+      } 
+      else if(mainParticiant) {
+        return <MainPresenterView participant={mainParticiant} />
+      }
+    } else {
+      return <HostNotStarted onStart={() => join(token.stream_token)} />
+    }
+  }
 
   return (
     <div className="flex flex-col w-full h-[90vh] overflow-hidden md:px-4">
@@ -27,11 +61,7 @@ export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
       <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
 
         {/* Remote Participants */}
-        {isConnected && participants.length > 0 && (
-          <div className="w-full lg:w-[160px] flex flex-row lg:flex-col items-center gap-2 overflow-x-auto lg:overflow-y-auto p-2">
-            <RemoteParticipantVideos role={token.role} isInitializeComplete={true} />
-          </div>
-        )}
+        {sideLayout()}
 
         {/* Video + Controls + Chat container (stacked on mobile) */}
         <div className="flex flex-col flex-1 min-h-0 lg:flex-row overflow-hidden gap-2">
@@ -40,14 +70,7 @@ export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
           <div className="flex flex-col w-full lg:flex-1 max-h-[calc(100vh-100px)] min-h-0">
             {/* Video sticky at top */}
             <div className="sticky top-0 z-10 bg-black">
-              {isConnected && mainParticiant ? (
-                <MainPresenterView
-                  participant={mainParticiant.participant}
-                  streams={mainParticiant.streams}
-                />
-              ) : (
-                <HostNotStarted onStart={() => join(token.stream_token)} />
-              )}
+              {mainLayout()}
             </div>
 
             {/* Controls below video (mobile) */}

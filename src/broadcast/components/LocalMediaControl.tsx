@@ -1,13 +1,18 @@
 import { Button } from "@/components/ui/button";
-import { SelectCamera, SelectMicrophone } from "./Select";
+import { SelectCamera, SelectMicrophone } from "./controls/Select";
 import { useLocalMedia } from "../hooks/use-strategy";
-import { ShareScreenButton } from "./ShareScreenButton";
+import { ShareScreenButton } from "./controls/ShareScreenButton";
 import { useBroadcastService } from "../hooks/use-broadcast-service";
 import { ChartNoAxesColumnIncreasingIcon } from "lucide-react";
 import { useBroadcastConfiguration } from "../hooks";
 import { sessionController } from "../service";
 import { useCallback, useState } from "react";
 import { useStageContext } from "../hooks/use-stage";
+import { usePresentation } from "../hooks/use-presentation";
+import { PresentationPicker } from "./controls/PresentationPicker";
+import { useVideoInjection } from "../hooks/use-video-injection";
+import { VideoInjectionPicker } from "./controls/VideoInjectionPicker";
+import { LocalStreamEventType } from "../service/enum";
 
 interface LocalMediaControlProps {
   title?: string
@@ -24,14 +29,19 @@ function openSmallWindow(url: string) {
 export function LocalMediaControl({ title }: LocalMediaControlProps) {
 
   const { isConnected, leave } = useStageContext();
-  const { toggleScreenShare, isScreenSharing } = useLocalMedia()
+  const { toggleScreenShare, isScreenSharing, toggleVideoInjection, sendStreamEvent } = useLocalMedia()
   const { token } = useBroadcastService()
   const { sessionId, seriesId, getRequestHeaders } = useBroadcastConfiguration()
   const [offerVisible, setOfferVisible] = useState<boolean>(false)
+  const { isActive: presentationIsActive, setSelectedPresentation } = usePresentation()
+  const { isActive: videoInjectionIsActive } = useVideoInjection()
 
   const toggleOffer = useCallback(async () => {
     if (getRequestHeaders) {
       await sessionController('toggle-offer', seriesId, sessionId, { visible: !offerVisible }, getRequestHeaders)
+      sendStreamEvent(LocalStreamEventType.OFFER_EVENT, {
+        "visible": !offerVisible
+      })
       setOfferVisible(prev => !prev)
     }
   }, [offerVisible, setOfferVisible, getRequestHeaders])
@@ -40,7 +50,23 @@ export function LocalMediaControl({ title }: LocalMediaControlProps) {
     <div className="flex gap-2">
       {token?.role !== 'attendee' && <SelectCamera />}
       {token?.role !== 'attendee' && <SelectMicrophone />}
-      {token?.role !== 'attendee' && <ShareScreenButton onClick={toggleScreenShare} isConnected={isConnected} isSharing={isScreenSharing} />}
+      {token?.role !== 'attendee' && isConnected && !presentationIsActive && !videoInjectionIsActive ? (
+        <>
+        {<ShareScreenButton onClick={toggleScreenShare} isConnected={isConnected} isSharing={isScreenSharing} />}
+        </>
+      ) : null}
+      {token?.role !== 'attendee' && isConnected && !isScreenSharing && !videoInjectionIsActive ? (
+        <>
+          {presentationIsActive ? <Button onClick={() => setSelectedPresentation(undefined)}> Stop Presenting</Button> : <PresentationPicker />}
+        </>
+      ) : null}
+      {token?.role !== 'attendee' && isConnected && !isScreenSharing && !presentationIsActive ? (
+        <>
+          {videoInjectionIsActive ? <Button onClick={() => toggleVideoInjection(undefined)}>
+            Stop Video
+          </Button> : <VideoInjectionPicker />}
+        </>
+      ) : null}
       {token?.role === 'attendee' && title && (
         <h1 className="text-2xl font-semibold tracking-tight">
           {title}

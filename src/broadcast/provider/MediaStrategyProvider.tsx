@@ -34,7 +34,7 @@ export const MediaStrategyProvider = (props: MediaStrategyProviderProps) => {
         if (!token?.role) return
 
         const setupStrategy = async (role: 'host' | 'presenter' | 'attendee'): Promise<void> => {
-      
+
             const strategy: Strategy = {
                 audioTrack: undefined,
                 videoTrack: undefined,
@@ -79,6 +79,13 @@ export const MediaStrategyProvider = (props: MediaStrategyProviderProps) => {
 
                     // Host/presenters can see all presenters (but not attendees)
                     return isPresenter ? "audio_video" as SubscribeType : "none" as SubscribeType;
+                },
+                subscribeConfiguration: () => {
+                    return {
+                        inBandMessaging: {
+                            enabled: true
+                        }
+                    }
                 }
             };
             setCurrentStategy(strategy)

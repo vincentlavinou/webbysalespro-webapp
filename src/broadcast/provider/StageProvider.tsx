@@ -21,12 +21,19 @@ import { useBroadcastConfiguration } from "../hooks";
 import { useRouter } from "next/navigation";
 import { StageContext, WebiSalesProParticipant } from "../context/StageContext";
 import { useMediaStrategy } from "../hooks/use-media-strategy";
+import { LocalStreamEvent } from "../service/type";
 
 // ✅ Use type-only imports to avoid SSR errors
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
 
-export const StageProvider = ({ children, stageRef }: { children: ReactNode, stageRef: RefObject<Stage | undefined> }) => {
+interface StageProviderProps {
+  children: ReactNode,
+  stageRef: RefObject<Stage | undefined>
+  onStreamEvent: (event: LocalStreamEvent) => void
+}
+
+export const StageProvider = ({ children, stageRef, onStreamEvent }: StageProviderProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [mainParticiant, setMainParticipant] = useState<WebiSalesProParticipant | undefined>(undefined);
   const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
@@ -68,6 +75,7 @@ export const StageProvider = ({ children, stageRef }: { children: ReactNode, sta
         stageRef,
         localParticipantRef,
         strategy,
+        onStreamEvent
       );
       if(getRequestHeaders) {
         await sessionController("start", seriesId, sessionId, {}, getRequestHeaders)

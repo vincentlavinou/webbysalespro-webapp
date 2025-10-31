@@ -3,13 +3,21 @@
 import { RefObject } from "react";
 import { DeviceType } from "../enum";
 import { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
-import { Media } from "../type";
+import { LocalStreamEvent, Media, WebinarVideoInjection } from "../type";
 
 // ✅ Type-only imports to fix SSR issues
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
 type StageStrategy = import("amazon-ivs-web-broadcast").StageStrategy;
 type StageStream = import("amazon-ivs-web-broadcast").StageStream;
+type SeiMessage = import("amazon-ivs-web-broadcast").SeiMessage;
+type StageVideoConfiguration = import("amazon-ivs-web-broadcast").StageVideoConfiguration;
+
+export function getPlaybackUrl(v: WebinarVideoInjection): string | undefined {
+
+    return v.playbackUrl || v.originalUrl || v.fileUrl || undefined
+}
+
 
 export const getDevices = async () => {
   const streams = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -64,6 +72,13 @@ export const createLocalStageStream = async (
         : mediaStream?.getVideoTracks()[0]; // SCREEN uses video
 
   if (track === undefined) return undefined
+
+  const config: StageVideoConfiguration | undefined = deviceType === DeviceType.CAMERA ? {
+    inBandMessaging: {
+      enabled: true
+    }
+  } : undefined
+
   const { LocalStageStream } = await import("amazon-ivs-web-broadcast");
 
   const clean = () => {
@@ -71,7 +86,7 @@ export const createLocalStageStream = async (
     track.stop()
   }
   return {
-    stageStream: new LocalStageStream(track),
+    stageStream: new LocalStageStream(track, config),
     track,
     deviceId: deviceId,
     cleanup: clean
@@ -85,16 +100,28 @@ export const joinStage = async (
   setParticipants: React.Dispatch<React.SetStateAction<{ participant: StageParticipantInfo; streams: StageStream[] }[]>>,
   stageRef: RefObject<Stage | undefined>,
   localParticipantRef: RefObject<StageParticipantInfo | undefined>,
-  strategy: StageStrategy | undefined
+  strategy: StageStrategy | undefined,
+  onStreamEvent: (event: LocalStreamEvent) => void
 ): Promise<void> => {
   if (!isInit || !strategy) return;
 
   const { Stage, StageEvents, ConnectionState } = await import("amazon-ivs-web-broadcast");
   const stage = new Stage(participantToken, strategy);
+  const processedMessages: Record<string, LocalStreamEvent> = {}
 
   // Connection state tracking
   stage.on(StageEvents.STAGE_CONNECTION_STATE_CHANGED, (state: string) => {
     setIsConnected(state === ConnectionState.CONNECTED);
+  });
+
+  stage.on(StageEvents.STAGE_STREAM_SEI_MESSAGE_RECEIVED, (participant: StageParticipantInfo, seiMessage: SeiMessage) => {
+    const eventPayloadString = new TextDecoder().decode(seiMessage.payload);
+    const message = JSON.parse(eventPayloadString) as LocalStreamEvent
+    if (processedMessages[message.id] === undefined) {
+      processedMessages[message.id] = message
+      onStreamEvent(message)
+    }
+
   });
 
   // Handle new or updated streams
@@ -180,112 +207,6 @@ export const leaveStage = async (
     setIsConnected(false);
   }
 };
-
-export const createCompositeVideoTrack = async ({
-  deviceId,
-}: {
-  deviceId?: string;
-}): Promise<Media | undefined> => {
-  console.log("create composite enter");
-
-  // Check screen sharing support
-  if (!navigator.mediaDevices.getDisplayMedia) {
-    console.warn("Screen sharing not supported in this browser.");
-    return undefined;
-  }
-
-  // Get screen stream
-  let screenStream: MediaStream;
-  try {
-    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-  } catch (e) {
-    console.log("Screen share failed", e);
-    return undefined;
-  }
-  console.log("Got screen stream");
-
-  // Get camera stream
-  let cameraStream: MediaStream;
-  try {
-    cameraStream = await getMediaForDevices(DeviceType.CAMERA, deviceId || "")
-  } catch (e) {
-    console.error("Camera access failed:", e);
-    screenStream.getTracks().forEach((t) => t.stop());
-    return undefined;
-  }
-  console.log("Got camera stream");
-
-  // Extract video tracks
-  const screenTrack = screenStream.getVideoTracks()[0];
-  const cameraTrack = cameraStream.getVideoTracks()[0];
-
-  // Set up video elements
-  const screenVideo = document.createElement("video");
-  const cameraVideo = document.createElement("video");
-
-  screenVideo.srcObject = new MediaStream([screenTrack]);
-  cameraVideo.srcObject = new MediaStream([cameraTrack]);
-  screenVideo.muted = true;
-  cameraVideo.muted = true;
-
-  await Promise.all([screenVideo.play(), cameraVideo.play()]);
-
-  // Create and size canvas
-  const canvas = document.createElement("canvas");
-  canvas.width = screenVideo.videoWidth || 1280;
-  canvas.height = screenVideo.videoHeight || 720;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return undefined;
-
-  let rafId: number;
-
-  const draw = () => {
-    if (screenVideo.readyState >= 2) {
-      ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
-    }
-
-    if (cameraVideo.readyState >= 2) {
-      const pipHeight = 160;
-      const aspect = cameraVideo.videoWidth / cameraVideo.videoHeight || 4 / 3;
-      const pipWidth = pipHeight * aspect;
-
-      ctx.drawImage(
-        cameraVideo,
-        canvas.width - pipWidth - 20,
-        canvas.height - pipHeight - 20,
-        pipWidth,
-        pipHeight
-      );
-    }
-
-    rafId = requestAnimationFrame(draw);
-  };
-
-  draw();
-
-  const canvasStream = canvas.captureStream(30);
-  const compositeTrack = canvasStream.getVideoTracks()[0];
-
-  const cleanup = () => {
-    console.log(`Device: ScreenShare - Cleaning up`)
-    cancelAnimationFrame(rafId);
-    compositeTrack.stop();
-    screenTrack.stop();
-    cameraTrack.stop();
-  };
-
-  const { LocalStageStream } = await import("amazon-ivs-web-broadcast");
-
-  return {
-    stageStream: new LocalStageStream(compositeTrack),
-    track: compositeTrack,
-    deviceId: deviceId,
-    cleanup,
-  };
-};
-
-
 
 export function equalsWebiSalesProParticipant(
   a?: WebiSalesProParticipant,

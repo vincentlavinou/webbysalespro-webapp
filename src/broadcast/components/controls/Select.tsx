@@ -1,9 +1,9 @@
 import { Label } from "@/components/ui/label";
 import { Select as ShadSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, Mic, MicOff, VideoIcon, VideoOffIcon } from "lucide-react";
-import { DeviceType } from "../service/enum";
-import { useLocalMediaDevices } from "../hooks";
-import { useLocalMedia } from "../hooks/use-strategy";
+import { DeviceType } from "../../service/enum";
+import { useLocalMediaDevices } from "../../hooks";
+import { useLocalMedia } from "../../hooks/use-strategy";
 
 interface Props {
   deviceType: "Camera" | "Microphone";

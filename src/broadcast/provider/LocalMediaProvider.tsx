@@ -1,10 +1,14 @@
 import React, { RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { LocalMediaContext } from "../context/LocalMediaContext";
-import { createCompositeVideoTrack, createLocalStageStream } from "../service/utils";
-import { DeviceType, LocalStorage } from "../service/enum";
+import { createLocalStageStream, getPlaybackUrl } from "../service/utils";
+import { DeviceType, LocalStorage, LocalStreamEventType } from "../service/enum";
 import { useLocalMediaDevices } from "../hooks";
 import { useMediaStrategy } from "../hooks/use-media-strategy";
-import { Media } from "../service/type";
+import { LocalStreamEvent, Media } from "../service/type";
+import { createScreenShareComposite, createVideoInjectionComposite } from "../service/video";
+import { useVideoInjection } from "../hooks/use-video-injection";
+import { WebinarVideoInjection } from '@/broadcast/service/type'
+import { useBroadcastUser } from "../hooks/use-broadcast-user";
 
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 
@@ -21,10 +25,12 @@ interface LocalMediaProviderProps {
 export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderProps) {
 
   const { strategy } = useMediaStrategy()
+  const { userId } = useBroadcastUser()
   const [videoStream, setVideoStream] = useState<Media | undefined>(undefined);
   const [audioStream, setAudioStream] = useState<Media | undefined>(undefined);
   const { selectedVideoId, selectedAudioId, setAudioMuted, setVideoMuted, saveSelectedMedia } = useLocalMediaDevices();
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const { setSelectedVideoInjection } = useVideoInjection()
 
   const videoCleanUpRef = useRef<(() => void) | undefined>(undefined);
   const audioCleanUpRef = useRef<(() => void) | undefined>(undefined);
@@ -39,29 +45,55 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     setIsScreenSharing(false);
   }, [videoStream, audioStream, setIsScreenSharing]);
 
+  const updateVideoState = useCallback((video: Media) => {
+    setVideoStream(video);
+    setVideoMuted(video.stageStream.isMuted === true);
+    saveSelectedMedia(video.deviceId, LocalStorage.VIDEO_ID);
+  }, [setVideoStream, setVideoMuted, saveSelectedMedia])
+
+  const updateAudioState = useCallback((audio: Media) => {
+    setAudioStream(audio);
+    setAudioMuted(audio?.stageStream.isMuted === true);
+    saveSelectedMedia(audio.deviceId, LocalStorage.AUDIO_ID);
+  }, [setVideoStream, setVideoMuted, saveSelectedMedia])
+
   const startVideoStageStream = useCallback(async () => {
     const stream = await createLocalStageStream(selectedVideoId, DeviceType.CAMERA)
-    setVideoStream(stream);
-    setVideoMuted(stream?.stageStream.isMuted === true);
-    saveSelectedMedia(selectedVideoId, LocalStorage.VIDEO_ID);
+    if (stream) updateVideoState(stream)
     return stream
   }, [selectedVideoId])
 
   const startScreenShareStream = useCallback(async () => {
-    const stream = await createCompositeVideoTrack({
+    const stream = await createScreenShareComposite({
       deviceId: selectedVideoId
     });
-    setVideoStream(stream);
-    setVideoMuted(stream?.stageStream.isMuted === true);
-    saveSelectedMedia(selectedVideoId, LocalStorage.VIDEO_ID);
+    if (stream) updateVideoState(stream)
     return stream
   }, [selectedVideoId])
 
+  const startVieoInjectionStream = useCallback(async (injection: WebinarVideoInjection) => {
+
+    const playbackUrl = getPlaybackUrl(injection)
+    if (!playbackUrl) return undefined
+
+    const composite = await createVideoInjectionComposite({
+      source: playbackUrl,
+      cameraDeviceId: selectedVideoId,
+      micDeviceId: selectedAudioId,
+      includeMicrophone: true,
+      gains: { video: 0.9, mic: 1.0 },
+      fps: 30,
+      pip: { enabled: false, height: 180, corner: 'bottom-right' },
+      crossOriginAnonymous: true, // if your CDN sends proper CORS headers
+    });
+    if (composite?.videoMedia) updateVideoState(composite.videoMedia)
+    if (composite?.audioMedia) updateAudioState(composite.audioMedia)
+    return composite
+  }, [selectedVideoId, selectedAudioId])
+
   const startAudioStageStream = useCallback(async () => {
     const stream = await createLocalStageStream(selectedAudioId, DeviceType.MIC)
-    setAudioStream(stream);
-    setAudioMuted(stream?.stageStream.isMuted === true);
-    saveSelectedMedia(selectedAudioId, LocalStorage.AUDIO_ID);
+    if (stream) updateAudioState(stream)
     return stream
   }, [selectedAudioId])
 
@@ -75,20 +107,20 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
       return
     }
 
-    if(options?.cleanupVideo) {
+    if (options?.cleanupVideo) {
       videoCleanUpRef.current?.()
       videoCleanUpRef.current = video.cleanup;
     }
-    
-    if(options?.cleanupAudio) {
+
+    if (options?.cleanupAudio) {
       audioCleanUpRef.current?.()
       audioCleanUpRef.current = audio.cleanup
     }
-    
+
 
     strategy.updateTracks(video.stageStream, audio.stageStream);
     stageRef.current?.refreshStrategy();
-  },[stageRef, strategy])
+  }, [stageRef, strategy])
 
   const createMedia = useCallback(async () => {
 
@@ -106,7 +138,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
       if (selectedVideoId != videoStream?.deviceId) {
         // TODO - update to support screen share. Create a screen share Provider, be able to grab the screen share and update the camera
         const videoStageStream = await startVideoStageStream()
-        refreshVideoAndAudioStreamIfDefined(videoStageStream, audioStream,{
+        refreshVideoAndAudioStreamIfDefined(videoStageStream, audioStream, {
           cleanupVideo: true
         })
       }
@@ -161,12 +193,51 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
       setIsScreenSharing(false);
     } else {
       const result = await startScreenShareStream()
-      refreshVideoAndAudioStreamIfDefined(result, audioStream,{
+      refreshVideoAndAudioStreamIfDefined(result, audioStream, {
         cleanupVideo: true
       })
       setIsScreenSharing(true);
     }
   }, [audioStream, isScreenSharing, stageRef, strategy, startScreenShareStream, refreshVideoAndAudioStreamIfDefined]);
+
+  const toggleVideoInjection = useCallback(async (injection: WebinarVideoInjection | undefined) => {
+    if (!injection) {
+      const videoMedia = await startVideoStageStream()
+      const audioMedia = await startAudioStageStream()
+      refreshVideoAndAudioStreamIfDefined(videoMedia, audioMedia, {
+        cleanupVideo: true,
+        cleanupAudio: true
+      })
+      setSelectedVideoInjection(undefined)
+      return
+    }
+
+    const streams = await startVieoInjectionStream(injection)
+    console.log("Video Injection Streams", streams)
+    refreshVideoAndAudioStreamIfDefined(streams?.videoMedia, streams?.audioMedia ?? audioStream, {
+      cleanupVideo: true,
+      cleanupAudio: streams?.audioMedia !== undefined
+    })
+    setSelectedVideoInjection(injection)
+  }, [setSelectedVideoInjection, startVieoInjectionStream, startAudioStageStream, startVideoStageStream, refreshVideoAndAudioStreamIfDefined])
+
+  const sendStreamEvent = useCallback((type: LocalStreamEventType, payload: Record<string, unknown>) => {
+    const bytes = new TextEncoder().encode(
+      JSON.stringify({
+        id: (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)),
+        userId,
+        timestamp: new Date().toISOString(),
+        type,
+        payload,
+      } as LocalStreamEvent)
+    );
+
+    // Materialize a real ArrayBuffer (not just ArrayBufferLike)
+    const event = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(event).set(bytes);
+
+    videoStream?.stageStream.insertSeiMessage(event, { repeatCount: 5 });
+  }, [videoStream, userId])
 
 
   return (
@@ -175,6 +246,8 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
         toggleMedia,
         isScreenSharing,
         toggleScreenShare, // expose to children
+        toggleVideoInjection,
+        sendStreamEvent,
         create: createMedia
       }}
     >
