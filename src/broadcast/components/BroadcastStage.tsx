@@ -13,6 +13,7 @@ import { usePresentation } from "../hooks/use-presentation";
 import { PresentationView } from "./views/PresentationView";
 import { useVideoInjection } from "../hooks/use-video-injection";
 import { VideoInjectionView } from "./views/VideoInjectionView";
+import { StreamParticipantConfig } from '@/broadcast/service/type'
 
 interface BroadcastUIProps {
   token: BroadcastServiceToken;
@@ -21,34 +22,40 @@ interface BroadcastUIProps {
 
 export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
   const { isConnected, mainParticiant, participants, join } = useStageContext();
-  const {isActive: presentationIsActive, selectedPresentation} = usePresentation()
-  const {isActive: videoInjectionIsActive, selectedVideoInjection} = useVideoInjection()
+  const { isActive: presentationIsActive, selectedPresentation } = usePresentation()
+  const { isActive: videoInjectionIsActive, selectedVideoInjection } = useVideoInjection()
 
   const sideLayout = () => {
-    if(isConnected) {
-      if(presentationIsActive || videoInjectionIsActive) {
+    if (isConnected) {
+      if (presentationIsActive || videoInjectionIsActive) {
         return <RemoteParticipantVideos role={token.role} isInitializeComplete={true} />
-      } else if(participants.length > 1) {
+      } else if (participants.length > 1) {
         return <RemoteParticipantVideos role={token.role} isInitializeComplete={true} />
       }
     }
   }
 
   const mainLayout = () => {
-    if(isConnected) {
-      if(presentationIsActive && selectedPresentation?.download_url) {
+    if (isConnected) {
+      if (presentationIsActive && selectedPresentation?.download_url) {
         return <PresentationView presentation={{
           downloadUrl: selectedPresentation.download_url,
           active: selectedPresentation?.is_active
-        }}/>
-      } else if(videoInjectionIsActive && selectedVideoInjection) {
-        return <VideoInjectionView injection={selectedVideoInjection}/>
-      } 
-      else if(mainParticiant) {
+        }} />
+      } else if (videoInjectionIsActive && selectedVideoInjection) {
+        return <VideoInjectionView injection={selectedVideoInjection} />
+      }
+      else if (mainParticiant) {
         return <MainPresenterView participant={mainParticiant} />
       }
     } else {
-      return <HostNotStarted onStart={() => join(token.stream_token)} />
+      if (token.stream.kind == "realtime") {
+        const config = token.stream.config as StreamParticipantConfig
+        return <HostNotStarted onStart={() => join(config.participant_token)} />
+      } else {
+        // Support url here
+        return <HostNotStarted onStart={() => { }} />
+      }
     }
   }
 
@@ -86,7 +93,7 @@ export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
 
           {/* Chat container (grows under controls) */}
           <div className="flex flex-col w-full lg:w-[320px] min-w-[280px] lg:max-w-[400px] flex-1 overflow-y-auto px-2">
-            <WebinarChat region={token.region} />
+            <WebinarChat region={token.stream.region} />
           </div>
         </div>
       </div>

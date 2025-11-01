@@ -1,12 +1,12 @@
 'use client'
 import { createContext } from "react"
 import { SeriesSession } from "../service"
-import { BroadcastServiceToken } from "@/broadcast/service/type"
+import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type"
 import { Webinar } from "../service/type"
 
 export type WebinarContextType = {
     sessionId: string
-    broadcastServiceToken?: BroadcastServiceToken
+    broadcastServiceToken?: AttendeeBroadcastServiceToken
     session?: SeriesSession
     webinar?: Webinar
     token?: string

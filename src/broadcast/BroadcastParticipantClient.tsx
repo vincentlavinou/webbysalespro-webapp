@@ -28,7 +28,7 @@ interface BroadcastClientProps {
     videoInjections?: WebinarVideoInjection[]
 }
 
-export function BroadcastClient(props: BroadcastClientProps) {
+export function BroadcastParticipantClient(props: BroadcastClientProps) {
 
     const stageRef = useRef<Stage | undefined>(undefined);
     return (

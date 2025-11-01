@@ -12,8 +12,41 @@ export interface Strategy extends StageStrategy {
     setMainPresenter: (presenter: WebiSalesProParticipant) => void
   }
 
+export type StreamAttendeeConfig = {
+    channel_arn: string
+    playback_url: string
+}
+
+export type StreamParticipantConfig = {
+    stage_arn: string
+    participant_token: string
+}
+
+export type StreamConfig = {
+    kind: "realtime" | "channel"
+    region: string
+    config: StreamAttendeeConfig | StreamParticipantConfig
+}
+
 export type BroadcastServiceToken = {
-    stream_token: string
+    stream: StreamConfig
+    role: "host" | "presenter" | "attendee"
+    series: string
+    region: string
+    user_id: string
+    email?: string
+    webinar: Webinar
+    session: SeriesSession
+}
+
+export type AttendeeStreamConfig = {
+    kind: "realtime" | "channel"
+    region: string
+    config: StreamAttendeeConfig
+}
+
+export type AttendeeBroadcastServiceToken = {
+    stream?: AttendeeStreamConfig
     role: "host" | "presenter" | "attendee"
     series: string
     region: string

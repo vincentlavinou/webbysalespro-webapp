@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
-import { BroadcastClient } from "@/broadcast/BroadcastClient";
 import { LocalStreamEventType } from "@/broadcast/service/enum";
+import { AttendeePlayerClient } from "@/broadcast/AttendeePlayerClient";
 
 export default function BroadcastPage() {
 
@@ -22,23 +22,22 @@ export default function BroadcastPage() {
         // waiting room has NOT opened yet
         redirect(`/${sessionId}/early-access-room?token=${token}`)
     }
-    
-    if(session?.status === WebinarSessionStatus.SCHEDULED) {
+
+    if (session?.status === WebinarSessionStatus.SCHEDULED) {
         redirect(`/${sessionId}/waiting-room?token=${token}`)
     }
 
     return (
-        <BroadcastClient 
-        sessionId={sessionId} 
-        accessToken={token} 
-        broadcastToken={broadcastServiceToken} 
-        title={webinar.title}
-        onStreamEvent={(event) => {
-            if(event.type === LocalStreamEventType.OFFER_EVENT) {
-                setSession({...session, offer_visible: event.payload["visible"] as boolean})
-            }
-        }}
-        isViewer
+        <AttendeePlayerClient
+            sessionId={sessionId}
+            accessToken={token}
+            broadcastToken={broadcastServiceToken}
+            title={webinar.title}
+            onStreamEvent={(event) => {
+                if (event.type === LocalStreamEventType.OFFER_EVENT) {
+                    setSession({ ...session, offer_visible: event.payload["visible"] as boolean })
+                }
+            }}
         />
     )
 }

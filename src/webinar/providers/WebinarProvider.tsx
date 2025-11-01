@@ -3,9 +3,10 @@ import { useState, useEffect, useCallback } from "react"
 import { WebinarContext } from "../context/WebinarContext"
 import { SeriesSession, SessionOfferVisibilityUpdate, Webinar, webinarApiUrl } from "../service"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createBroadcastServiceToken, recordEvent } from "@/broadcast/service"
-import { BroadcastServiceToken } from "@/broadcast/service/type"
+import { recordEvent } from "@/broadcast/service"
+import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type"
 import { WebinarSessionStatus } from "../service/enum"
+import { createAttendeeBroadcastServiceToken } from "@/broadcast/service/action"
 
 interface Props {
     sessionId: string
@@ -14,7 +15,7 @@ interface Props {
 
 export const WebinarProvider = ({ children, sessionId }: Props ) => {
     const [session, setSession] = useState<SeriesSession | undefined>(undefined)  
-    const [broadcastServiceToken, setBroadcastServiceToken] = useState<BroadcastServiceToken | undefined>(undefined)
+    const [broadcastServiceToken, setBroadcastServiceToken] = useState<AttendeeBroadcastServiceToken | undefined>(undefined)
     const [token, setToken] = useState<string | undefined>(undefined)
     const [webinar, setWebinar] = useState<Webinar | undefined>(undefined)
     const searchParams = useSearchParams() 
@@ -22,7 +23,7 @@ export const WebinarProvider = ({ children, sessionId }: Props ) => {
 
     useEffect(() => {
         const token = searchParams.get('token') || undefined    
-        createBroadcastServiceToken(sessionId, token).then((serviceToken) => {
+        createAttendeeBroadcastServiceToken(sessionId, token).then((serviceToken) => {
             console.log('serviceToken', serviceToken)
             setSession(serviceToken.session)
             setBroadcastServiceToken(serviceToken)

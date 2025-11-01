@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "mkdir -p public/ivs && cp node_modules/amazon-ivs-player/dist/assets/* public/ivs/"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.0",
