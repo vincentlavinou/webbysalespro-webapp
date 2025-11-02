@@ -70,15 +70,6 @@ export default function IVSPlayer({
                         resolution: `${player.getDisplayWidth()}x${player.getDisplayHeight()}`,
                         state: player.getState(),
                     }));
-                    try {
-                        const v = videoRef.current!;
-                        const keep = v.controls;
-                        v.controls = false; // workaround for setQuality quirk
-                        const qs = player.getQualities();
-                        const best = qs.sort((a, b) => b.bitrate - a.bitrate)[0];
-                        if (best) player.setQuality(best);
-                        v.controls = keep;
-                    } catch { }
                 };
 
                 const onError = (e: PlayerError) => {
@@ -94,6 +85,18 @@ export default function IVSPlayer({
                 };
 
                 player.addEventListener(PlayerState.READY, onState);
+                player.addEventListener(PlayerState.READY, () => {
+                    try {
+                        const v = videoRef.current!;
+                        const keep = v.controls;
+                        v.controls = false; // workaround for setQuality quirk
+                        const qs = player.getQualities();
+                        const best = qs.sort((a, b) => b.bitrate - a.bitrate)[0];
+                        if (best) player.setQuality(best);
+                        v.controls = keep;
+                    } catch { }
+                });
+
                 player.addEventListener(PlayerState.PLAYING, onState);
                 player.addEventListener(PlayerState.BUFFERING, onState);
                 player.addEventListener(PlayerState.IDLE, onState);
