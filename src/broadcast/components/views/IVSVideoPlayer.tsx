@@ -66,7 +66,7 @@ export default function IVSPlayer({
                     setStats((s) => ({
                         ...s,
                         latency: player.getLiveLatency(),
-                        bitrate: Math.round(player.getPlaybackRate() / 1000), // kbps
+                        bitrate: Math.round(player.getQuality().bitrate / 1000), // kbps
                         resolution: `${player.getDisplayWidth()}x${player.getDisplayHeight()}`,
                         state: player.getState(),
                     }));
