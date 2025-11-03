@@ -7,10 +7,27 @@ import { DateTime } from 'luxon';
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
 import { LocalStreamEventType } from "@/broadcast/service/enum";
 import { AttendeePlayerClient } from "@/broadcast/AttendeePlayerClient";
+import { useEffect } from "react";
 
-export default function BroadcastPage() {
+interface Props {
+    searchParams: Promise<{
+        token: string
+    }>
+}
 
-    const { sessionId, broadcastServiceToken, token, session, webinar, setSession } = useWebinar()
+export default function BroadcastPage({searchParams}: Props) {
+
+    const { sessionId, broadcastServiceToken, token, session, webinar, setSession, regenerateBroadcastToken } = useWebinar()
+
+    useEffect(() => {
+        const init = async () => {
+            const token = (await searchParams).token
+            await regenerateBroadcastToken(token)
+        }
+
+        init()
+    },[searchParams])
+
     if (!broadcastServiceToken || !session || !webinar || !token) {
         return <WaitingRoomShimmer />;
     }
@@ -25,6 +42,10 @@ export default function BroadcastPage() {
 
     if (session?.status === WebinarSessionStatus.SCHEDULED) {
         redirect(`/${sessionId}/waiting-room?token=${token}`)
+    }
+
+    if (session?.status === WebinarSessionStatus.COMPLETED) {
+        redirect(`/${sessionId}/completed?token=${token}`)
     }
 
     return (

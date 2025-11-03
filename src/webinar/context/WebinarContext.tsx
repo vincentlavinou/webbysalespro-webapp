@@ -12,6 +12,7 @@ export type WebinarContextType = {
     token?: string
     setSession: (session: SeriesSession) => void
     recordEvent: (name: string, payload?: Record<string, unknown>) => Promise<void>
+    regenerateBroadcastToken: (token: string) => Promise<void>
 }
 
 export const WebinarContext = createContext<WebinarContextType>({
@@ -20,5 +21,6 @@ export const WebinarContext = createContext<WebinarContextType>({
     broadcastServiceToken: undefined,
     token: undefined,
     setSession: () => {},
-    recordEvent: async () => {}
+    recordEvent: async () => {},
+    regenerateBroadcastToken: async () => {}
 })
