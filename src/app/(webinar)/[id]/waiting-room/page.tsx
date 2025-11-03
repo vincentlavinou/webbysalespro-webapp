@@ -1,25 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { DateTime } from 'luxon'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Clock, Users, Calendar } from 'lucide-react'
 import { useWebinar } from '@/webinar/hooks'
-import { SeriesSession, WebinarPresenter } from '@/webinar/service'
-import { WebinarSessionStatus } from '@/webinar/service/enum'
-import { broadcastApiUrl } from '@/broadcast/service'
+import { WebinarPresenter } from '@/webinar/service'
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
 
 export default function WaitingRoomPage() {
-  const router = useRouter()
 
   const [timeLeft, setTimeLeft] = useState<string>('')
-  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [isRedirecting ] = useState(false)
 
   // Use the webinar hook to get session information
-  const { sessionId, session, webinar, token, setSession } = useWebinar()
+  const { session, webinar } = useWebinar()
 
 
   useEffect(() => {
@@ -41,40 +37,8 @@ export default function WaitingRoomPage() {
 
     updateCountdown()
     const interval = setInterval(updateCountdown, 1000)
-
     return () => clearInterval(interval)
   }, [session])
-
-  useEffect(() => {
-
-    if (!token || !sessionId) return
-
-    const source = new EventSource(
-      `${broadcastApiUrl}/v1/sessions/events/?channels=webinar-session-${sessionId}&token=${token}`
-    )
-
-    source.addEventListener('webinar:session:update', (event: MessageEvent) => {
-      const data = JSON.parse(event.data)
-      console.log('Session update received:', data)
-      
-      if (data.status === WebinarSessionStatus.IN_PROGRESS) {
-        setIsRedirecting(true)
-        setSession({...session, status: WebinarSessionStatus.IN_PROGRESS} as SeriesSession)
-        source.close()
-        router.push(`/${sessionId}/live?token=${token}`)
-
-      }
-    })
-
-    source.onerror = (error) => {
-      console.error('EventSource error:', error)
-      source.close()
-    }
-
-    return () => {
-      source.close()
-    }
-  }, [sessionId, token, router, setSession])
 
   if (!session || !webinar) {
     return <WaitingRoomShimmer />;
