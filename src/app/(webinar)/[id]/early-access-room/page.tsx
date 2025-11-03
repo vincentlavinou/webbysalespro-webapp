@@ -15,7 +15,7 @@ export default function EarlyAccessRoomPage() {
         if(session?.status === WebinarSessionStatus.IN_PROGRESS) {
             redirect(`/${sessionId}/live?token=${token}`)
         }
-    },[session])
+    },[session, token, sessionId])
     
     return (
         <div className="flex flex-col items-center justify-center w-full">

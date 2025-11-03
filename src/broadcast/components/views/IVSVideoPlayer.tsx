@@ -61,6 +61,8 @@ export default function IVSPlayer({
                 player.setMuted(muted);
                 player.load(src);
                 player.setAutoQualityMode(true)
+                player.setLiveLowLatencyEnabled(true);
+                player.setRebufferToLive(true)
 
                 const onState = () => {
                     setStats((s) => ({
@@ -139,7 +141,7 @@ export default function IVSPlayer({
     return (
         <div className="w-full">
             {/* Player Shell */}
-            <div className="relative w-full overflow-hidden rounded-xl border bg-black shadow-sm max-w-[1280px]">
+            <div className="relative w-full overflow-hidden rounded-xl border bg-black shadow-sm">
                 {/* Maintain aspect ratio; tweak as needed */}
                 <div className="aspect-video">
                     <video
@@ -168,43 +170,6 @@ export default function IVSPlayer({
                         <div>Res: {stats.resolution ?? "…"}</div>
                     </div>
                 )}
-            </div>
-
-            {/* Controls row (you can swap these for shadcn/ui buttons) */}
-            <div className="mt-3 flex items-center gap-2">
-                <button
-                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
-                    onClick={() => playerRef.current?.play()}
-                >
-                    Play
-                </button>
-                <button
-                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
-                    onClick={() => playerRef.current?.pause()}
-                >
-                    Pause
-                </button>
-                <button
-                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
-                    onClick={() => {
-                        const cur = playerRef.current;
-                        if (!cur) return;
-                        cur.setMuted(!cur.isMuted());
-                    }}
-                >
-                    Toggle Mute
-                </button>
-                <button
-                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
-                    onClick={() => {
-                        const cur = playerRef.current;
-                        if (!cur) return;
-                        // Jumps to live edge for low-latency streams
-                        cur.seekTo(0);
-                    }}
-                >
-                    Go Live
-                </button>
             </div>
         </div>
     );
