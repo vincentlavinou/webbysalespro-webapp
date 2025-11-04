@@ -8,6 +8,9 @@ import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
 import { LocalStreamEventType } from "@/broadcast/service/enum";
 import { AttendeePlayerClient } from "@/broadcast/AttendeePlayerClient";
 import { useEffect } from "react";
+import { BroadcastParticipantClient } from "@/broadcast/BroadcastParticipantClient";
+import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
+import { WebinarLoadingView } from "@/broadcast/components/views/WebinarLoadingView";
 
 interface Props {
     searchParams: Promise<{
@@ -15,7 +18,7 @@ interface Props {
     }>
 }
 
-export default function BroadcastPage({searchParams}: Props) {
+export default function BroadcastPage({ searchParams }: Props) {
 
     const { sessionId, broadcastServiceToken, token, session, webinar, setSession, regenerateBroadcastToken } = useWebinar()
 
@@ -26,7 +29,12 @@ export default function BroadcastPage({searchParams}: Props) {
         }
 
         init()
-    },[searchParams])
+    }, [])
+
+    console.log("broadcast: ", broadcastServiceToken)
+    console.log("session: ", session)
+    console.log("webinar: ", webinar)
+    console.log("token: ", token)
 
     if (!broadcastServiceToken || !session || !webinar || !token) {
         return <WaitingRoomShimmer />;
@@ -44,15 +52,21 @@ export default function BroadcastPage({searchParams}: Props) {
         redirect(`/${sessionId}/waiting-room?token=${token}`)
     }
 
-    if (session?.status === WebinarSessionStatus.COMPLETED) {
-        redirect(`/${sessionId}/completed?token=${token}`)
-    }
-
-    return (
-        <AttendeePlayerClient
+    if (broadcastServiceToken.role === 'presenter' && broadcastServiceToken.stream) {
+        return <BroadcastParticipantClient
             sessionId={sessionId}
             accessToken={token}
             broadcastToken={broadcastServiceToken}
+            title={webinar.title}
+            isViewer
+        />
+    }
+
+    if (broadcastServiceToken.role === "attendee" && broadcastServiceToken.stream) {
+        return <AttendeePlayerClient
+            sessionId={sessionId}
+            accessToken={token}
+            broadcastToken={broadcastServiceToken as AttendeeBroadcastServiceToken}
             title={webinar.title}
             onStreamEvent={(event) => {
                 if (event.type === LocalStreamEventType.OFFER_EVENT) {
@@ -60,5 +74,9 @@ export default function BroadcastPage({searchParams}: Props) {
                 }
             }}
         />
-    )
+    }
+
+    return <WebinarLoadingView />
+
+
 }

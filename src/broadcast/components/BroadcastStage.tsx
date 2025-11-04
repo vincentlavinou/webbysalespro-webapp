@@ -14,6 +14,7 @@ import { PresentationView } from "./views/PresentationView";
 import { useVideoInjection } from "../hooks/use-video-injection";
 import { VideoInjectionView } from "./views/VideoInjectionView";
 import { StreamParticipantConfig } from '@/broadcast/service/type'
+import { WebinarMainLayoutLoading } from "./views/WebinarMainLayoutLoading";
 
 interface BroadcastUIProps {
   token: BroadcastServiceToken;
@@ -47,6 +48,8 @@ export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
       }
       else if (mainParticiant) {
         return <MainPresenterView participant={mainParticiant} />
+      } else {
+        return <WebinarMainLayoutLoading aspectClassName="aspect-video" />
       }
     } else {
       if (token.stream.kind == "realtime") {

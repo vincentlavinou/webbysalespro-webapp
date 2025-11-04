@@ -3,10 +3,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { WebinarContext } from "../context/WebinarContext";
 import { SeriesSession, SessionOfferVisibilityUpdate, Webinar, webinarApiUrl } from "../service";
 import { useRouter, useSearchParams } from "next/navigation";
-import { recordEvent } from "@/broadcast/service";
-import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
+import { createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
+import { BroadcastServiceToken } from "@/broadcast/service/type";
 import { WebinarSessionStatus } from "../service/enum";
-import { createAttendeeBroadcastServiceToken } from "@/broadcast/service/action";
 
 // ---- Tuning knobs ----
 const HEARTBEAT_TIMEOUT_MS = 45_000;       // If we see no events for this long, reconnect
@@ -21,7 +20,7 @@ interface Props {
 
 export const WebinarProvider = ({ children, sessionId }: Props) => {
     const [session, setSession] = useState<SeriesSession | undefined>(undefined);
-    const [broadcastServiceToken, setBroadcastServiceToken] = useState<AttendeeBroadcastServiceToken | undefined>(undefined);
+    const [broadcastServiceToken, setBroadcastServiceToken] = useState<BroadcastServiceToken | undefined>(undefined);
     const [token, setToken] = useState<string | undefined>(undefined);
     const [webinar, setWebinar] = useState<Webinar | undefined>(undefined);
 
@@ -182,7 +181,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         const attendeeToken = searchParams.get('token') || undefined;
         (async () => {
             if (!attendeeToken) return
-            const svc = await createAttendeeBroadcastServiceToken(sessionId, token);
+            const svc = await createBroadcastServiceToken(sessionId, token);
             setSession(svc.session);
             setBroadcastServiceToken(svc);
             setWebinar(svc.webinar);
@@ -256,7 +255,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     const regenerateBroadcastToken = useCallback(async (token: string) => {
 
         try {
-            const svc = await createAttendeeBroadcastServiceToken(sessionId, token);
+            const svc = await createBroadcastServiceToken(sessionId, token);
             setSession(svc.session);
             setBroadcastServiceToken(svc);
             setWebinar(svc.webinar);

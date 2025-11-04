@@ -8,6 +8,7 @@ import IVSPlayer from "./views/IVSVideoPlayer";
 import clsx from "clsx";
 import { ChatPanel } from "@/chat/component/ChatPanel";
 import { ChatComposer } from "@/chat/component/ChatComposer";
+import { WebinarLoadingView } from "./views/WebinarLoadingView";
 
 interface BroadcastUIProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -58,7 +59,7 @@ export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => 
     const hasStream = !!broadcast.stream;
 
     if (!hasStream) {
-        return <div>Loading...</div>
+        return <WebinarLoadingView />
     }
 
     return (
