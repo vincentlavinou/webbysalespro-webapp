@@ -35,7 +35,7 @@ export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) =
   if(!session) return null
 
   return (
-    <div className="bottom-0 inset-x-0 bg-gradient-to-r from-[#25D366] to-emerald-600 text-white text-sm md:text-base z-50 shadow-lg px-4 py-3">
+    <div className="fixed top-0 inset-x-0 bg-gradient-to-r from-[#25D366] to-emerald-600 text-white text-sm md:text-base z-50 shadow-lg px-4 py-3">
       <div className="flex justify-between items-center max-w-5xl mx-auto">
         <div>
           <p className="font-semibold px-1">

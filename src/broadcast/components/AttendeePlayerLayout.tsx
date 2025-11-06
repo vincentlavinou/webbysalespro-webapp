@@ -149,7 +149,9 @@ export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => 
 
             {/* Desktop header (optional) */}
             <aside className="hidden lg:block lg:absolute lg:top-2 lg:left-2">
-                {/* Could place a small breadcrumb/title if you want */}
+                <div className="z-20 md:hidden border-b px-3 py-2 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                    <h1 className="text-xl font-semibold tracking-tight line-clamp-2">{title}</h1>
+                </div>
             </aside>
         </div>
     );

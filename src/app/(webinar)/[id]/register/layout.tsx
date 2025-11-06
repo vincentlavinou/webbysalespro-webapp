@@ -17,8 +17,10 @@ export default async function RegistrationLayout(props: RegistrationLayoutProps)
 
 
 
-    return  <main className="max-w-xl mx-auto min-h-screen">
-        {sessions && sessions?.at(0) && <UpcomingSessionBanner session={sessions?.at(0)}/>}
+    return <>
+    {sessions && sessions?.at(0) && <UpcomingSessionBanner session={sessions?.at(0)}/>}
+    <main className="max-w-xl mx-auto min-h-screen mt-20">
         {props.children}
     </main>
+    </> 
 }
