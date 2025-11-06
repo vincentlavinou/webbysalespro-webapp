@@ -39,9 +39,6 @@ export default function EventsLandingPage() {
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button asChild size="lg">
-                  <Link href="/events/my">View my registered events</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline" className="dark:border-slate-700">
                   <Link href="/events/browse">Explore upcoming webinars</Link>
                 </Button>
               </div>

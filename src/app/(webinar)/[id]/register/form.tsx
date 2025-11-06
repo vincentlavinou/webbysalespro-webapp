@@ -131,7 +131,7 @@ export const DefaultRegistrationForm = ({webinar, registerAttendee}: DefaultRegi
           <Input id="phone" {...register('phone')} />
         </div>
         <input type='hidden' name="webinar_id" value={webinar.id} />
-        <Button type="submit" className='bg-indigo-600'>
+        <Button type="submit" className='bg-emerald-600'>
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
             {pending ? 'Registering...' : 'Register'}
         </Button>
