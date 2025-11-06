@@ -10,6 +10,7 @@ export type WebinarContextType = {
     session?: SeriesSession
     webinar?: Webinar
     token?: string
+    isRedirecting: boolean
     setSession: (session: SeriesSession) => void
     recordEvent: (name: string, payload?: Record<string, unknown>) => Promise<void>
     regenerateBroadcastToken: (token: string) => Promise<void>
@@ -20,6 +21,7 @@ export const WebinarContext = createContext<WebinarContextType>({
     sessionId: '',
     broadcastServiceToken: undefined,
     token: undefined,
+    isRedirecting: false,
     setSession: () => {},
     recordEvent: async () => {},
     regenerateBroadcastToken: async () => {}

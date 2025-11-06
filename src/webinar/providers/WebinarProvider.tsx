@@ -23,7 +23,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     const [broadcastServiceToken, setBroadcastServiceToken] = useState<BroadcastServiceToken | undefined>(undefined);
     const [token, setToken] = useState<string | undefined>(undefined);
     const [webinar, setWebinar] = useState<Webinar | undefined>(undefined);
-
+    const [ isRedirecting, setIsRedirecting ] = useState(false)
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -128,9 +128,11 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
 
                 switch (data.status) {
                     case WebinarSessionStatus.IN_PROGRESS:
+                        setIsRedirecting(true)
                         router.replace(`/${sessionId}/live?token=${token}`);
                         break;
                     case WebinarSessionStatus.COMPLETED:
+                        setIsRedirecting(true)
                         router.replace(`/${sessionId}/completed?token=${token}`);
                         // Let it close; no need to auto-reconnect if the session is truly done
                         intentionallyClosedRef.current = true;
@@ -181,7 +183,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         const attendeeToken = searchParams.get('token') || undefined;
         (async () => {
             if (!attendeeToken) return
-            const svc = await createBroadcastServiceToken(sessionId, token);
+            const svc = await createBroadcastServiceToken(sessionId, attendeeToken);
             setSession(svc.session);
             setBroadcastServiceToken(svc);
             setWebinar(svc.webinar);
@@ -273,6 +275,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 sessionId,
                 broadcastServiceToken,
                 token,
+                isRedirecting,
                 webinar,
                 recordEvent: recordSessionEvent,
                 regenerateBroadcastToken
