@@ -58,6 +58,46 @@ export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => 
     };
   }, [isMobile]);
 
+  // --- Helper: scroll chat to bottom ---
+  const scrollToBottom = () => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  };
+
+  // Initial scroll to bottom once chat container mounts
+  useEffect(() => {
+    if (!isMobile) return; // only auto-scroll on mobile
+    // small delay so ChatPanel has rendered
+    const id = window.setTimeout(scrollToBottom, 50);
+    return () => window.clearTimeout(id);
+  }, [isMobile]);
+
+  // When keyboard height changes (keyboard opens/closes), keep latest message in view
+  useEffect(() => {
+    if (!isMobile) return;
+    requestAnimationFrame(scrollToBottom);
+  }, [keyboardHeight, isMobile]);
+
+  // Observe DOM changes in the chat container (new messages) and auto-scroll on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    const container = chatScrollRef.current;
+    if (!container) return;
+
+    const observer = new MutationObserver(() => {
+      // whenever children change (new message), go to bottom
+      requestAnimationFrame(scrollToBottom);
+    });
+
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => observer.disconnect();
+  }, [isMobile]);
+
   const hasStream = !!broadcast.stream;
   if (!hasStream) return <WebinarLoadingView />;
 
@@ -117,7 +157,7 @@ export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => 
             )}
           </div>
 
-          {/* Optional title under video (mobile-only previously; here keep for md- if you want) */}
+          {/* Optional title under video */}
           <div className="z-20 md:hidden border-b px-3 py-2 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <h1 className="text-xl font-semibold tracking-tight line-clamp-2">{title}</h1>
           </div>
@@ -138,7 +178,7 @@ export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => 
             region={broadcast.stream.region}
             render={() =>
               isMobile ? (
-                // --- MOBILE LAYOUT (match KeyboardSafariTestPage behavior) ---
+                // --- MOBILE LAYOUT (KeyboardSafariTestPage-style) ---
                 <>
                   {/* Messages area: scrollable, with top padding to clear fixed video */}
                   <main
