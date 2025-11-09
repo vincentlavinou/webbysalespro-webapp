@@ -176,61 +176,61 @@ export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => 
         {broadcast.stream && (
           <WebinarChat
             region={broadcast.stream.region}
-            render={() =>
-              isMobile ? (
-                // --- MOBILE LAYOUT (KeyboardSafariTestPage-style) ---
-                <>
-                  {/* Messages area: scrollable, with top padding to clear fixed video */}
-                  <main
-                    ref={chatScrollRef}
-                    className="px-3 pb-24 space-y-2 overflow-y-auto"
-                    style={{
-                      // top padding ~= video height; tweak to exact IVS aspect if needed
-                      paddingTop: "230px",
-                    }}
-                  >
-                    <ChatPanel hideComposer />
-                  </main>
+            // render={() =>
+            //   isMobile ? (
+            //     // --- MOBILE LAYOUT (KeyboardSafariTestPage-style) ---
+            //     <>
+            //       {/* Messages area: scrollable, with top padding to clear fixed video */}
+            //       <main
+            //         ref={chatScrollRef}
+            //         className="px-3 pb-24 space-y-2 overflow-y-auto"
+            //         style={{
+            //           // top padding ~= video height; tweak to exact IVS aspect if needed
+            //           paddingTop: "230px",
+            //         }}
+            //       >
+            //         <ChatPanel hideComposer />
+            //       </main>
 
-                  {/* Composer: fixed bottom, lifted by keyboardHeight */}
-                  <footer
-                    className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-background/95 backdrop-blur"
-                    style={{
-                      transform: `translateY(${-keyboardHeight}px)`,
-                      transition: "transform 180ms ease-out",
-                      paddingBottom: "env(safe-area-inset-bottom, 0px)",
-                    }}
-                  >
-                    <div className="mx-auto w-full max-w-3xl p-3">
-                      <ChatComposer />
-                    </div>
-                  </footer>
-                </>
-              ) : (
-                // --- DESKTOP LAYOUT (original behavior) ---
-                <div className="flex flex-col min-h-0 h-full">
-                  {/* Messages: scrollable inside chat column */}
-                  <div
-                    ref={chatScrollRef}
-                    className="flex-1 min-h-0 px-2 overflow-y-auto"
-                  >
-                    <ChatPanel hideComposer />
-                    {/* spacer so last message isn't behind composer */}
-                    <div className="h-20" />
-                  </div>
+            //       {/* Composer: fixed bottom, lifted by keyboardHeight */}
+            //       <footer
+            //         className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-background/95 backdrop-blur"
+            //         style={{
+            //           transform: `translateY(${-keyboardHeight}px)`,
+            //           transition: "transform 180ms ease-out",
+            //           paddingBottom: "env(safe-area-inset-bottom, 0px)",
+            //         }}
+            //       >
+            //         <div className="mx-auto w-full max-w-3xl p-3">
+            //           <ChatComposer />
+            //         </div>
+            //       </footer>
+            //     </>
+            //   ) : (
+            //     // --- DESKTOP LAYOUT (original behavior) ---
+            //     <div className="flex flex-col min-h-0 h-full">
+            //       {/* Messages: scrollable inside chat column */}
+            //       <div
+            //         ref={chatScrollRef}
+            //         className="flex-1 min-h-0 px-2 overflow-y-auto"
+            //       >
+            //         <ChatPanel hideComposer />
+            //         {/* spacer so last message isn't behind composer */}
+            //         <div className="h-20" />
+            //       </div>
 
-                  {/* Sticky composer at bottom of chat column */}
-                  <div
-                    className="sticky bottom-0 z-20 bg-background/90 backdrop-blur border-t"
-                    style={{
-                      paddingBottom: "env(safe-area-inset-bottom, 0px)",
-                    }}
-                  >
-                    <ChatComposer />
-                  </div>
-                </div>
-              )
-            }
+            //       {/* Sticky composer at bottom of chat column */}
+            //       <div
+            //         className="sticky bottom-0 z-20 bg-background/90 backdrop-blur border-t"
+            //         style={{
+            //           paddingBottom: "env(safe-area-inset-bottom, 0px)",
+            //         }}
+            //       >
+            //         <ChatComposer />
+            //       </div>
+            //     </div>
+            //   )
+            // }
           />
         )}
       </section>
