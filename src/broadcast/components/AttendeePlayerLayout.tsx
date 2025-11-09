@@ -6,8 +6,8 @@ import { AttendeeBroadcastServiceToken } from "../service/type";
 import { WebinarChat } from "@/chat/component";
 import IVSPlayer from "./views/IVSVideoPlayer";
 import clsx from "clsx";
-import { ChatPanel } from "@/chat/component/ChatPanel";
-import { ChatComposer } from "@/chat/component/ChatComposer";
+// import { ChatPanel } from "@/chat/component/ChatPanel";
+// import { ChatComposer } from "@/chat/component/ChatComposer";
 import { WebinarLoadingView } from "./views/WebinarLoadingView";
 
 interface BroadcastUIProps {
