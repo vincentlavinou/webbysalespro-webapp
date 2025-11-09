@@ -187,7 +187,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
             setSession(svc.session);
             setBroadcastServiceToken(svc);
             setWebinar(svc.webinar);
-            setToken(token);
+            setToken(attendeeToken);
         })();
 
         return () => {

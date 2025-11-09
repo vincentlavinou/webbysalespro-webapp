@@ -25,18 +25,18 @@ export const metadata: Metadata = {
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased p-0 m-0 `}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-            {/* Main Content */}
-            <main className="flex-1 bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
-              {children}
-              <Toaster position="bottom-right" />
-            </main>
+          {/* Main Content */}
+          <main className="flex-1 bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+            {children}
+            <Toaster position="bottom-right" />
+          </main>
         </ThemeProvider>
       </body>
     </html>

@@ -28,7 +28,7 @@ type Props = {
 export default function IVSPlayer({
   src,
   autoPlay = true,
-  muted = true,
+  muted = false,
   showStats = true,
   ariaLabel = "IVS player",
 }: Props) {
