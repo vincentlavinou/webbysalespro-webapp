@@ -69,11 +69,10 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
         )}
       </div>
 
-      <OfferChatBubble />
-
       {/* Composer (controls + input) */}
       {!hideComposer && (
         <div className="border-t p-2 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <OfferChatBubble />
           <ChatControl />
           <ChatInput />
         </div>
