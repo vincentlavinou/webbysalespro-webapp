@@ -54,7 +54,7 @@ export function StripeCheckoutForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className='z-30'>
       <PaymentElement />
       <Button type="submit" disabled={!stripe || loading} className="mt-4">
         {loading ? 'Processing…' : 'Pay Now'}

@@ -183,7 +183,7 @@ export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => 
                   {/* Messages area: scrollable, with top padding to clear fixed video */}
                   <main
                     ref={chatScrollRef}
-                    className="px-3 pb-24 space-y-2 overflow-y-auto"
+                    className="px-3 pb-24 pt-[230px] space-y-2 overflow-y-auto"
                     style={{
                       // top padding ~= video height; tweak to exact IVS aspect if needed
                       paddingTop: "230px",
