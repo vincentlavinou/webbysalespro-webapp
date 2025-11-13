@@ -4,37 +4,55 @@ import { WebinarOffer } from "../service";
 import { useEffect } from "react";
 
 interface SelectedOfferProps {
-    selectedOffer: WebinarOffer,
-    setIsCheckingOut: (value: boolean) => void,
-    setSelectedOffer: (offer: WebinarOffer | undefined) => void
+  selectedOffer: WebinarOffer;
+  setIsCheckingOut: (value: boolean) => void;
+  setSelectedOffer: (offer: WebinarOffer | undefined) => void;
 }
 
 export function SelectedOffer({
-    selectedOffer,
-    setIsCheckingOut,
-    setSelectedOffer
-} : SelectedOfferProps) {
+  selectedOffer,
+  setIsCheckingOut,
+  setSelectedOffer,
+}: SelectedOfferProps) {
+  const { recordEvent } = useWebinar();
 
-    const {recordEvent} = useWebinar()
+  useEffect(() => {
+    const load = async () => {
+      await recordEvent("offer_shown", {
+        offer_id: selectedOffer.id,
+      });
+    };
+    load();
+  }, [recordEvent, selectedOffer.id]);
 
-    useEffect(() => {
-        const load = async () => {
-            await recordEvent("offer_shown")
-        }
-        load()
-    }, [])
+  return (
+    <div className="space-y-2">
+      <h3 className="font-semibold text-foreground">
+        {selectedOffer.headline}
+      </h3>
 
-    return (
-        <>
-            <h3 className="font-semibold">{selectedOffer.headline}</h3>
-            <p className="text-sm text-muted-foreground mt-1">{selectedOffer.description}</p>
-            <p className="text-sm text-primary mt-2">
-                {selectedOffer.currency_display} {selectedOffer.price}
-            </p>
-            <Button className="mt-3 w-full" onClick={() => setIsCheckingOut(true)}>Buy Now</Button>
-            <Button variant="ghost" className="mt-1 w-full text-xs" onClick={() => setSelectedOffer(undefined)}>
-            Close
-            </Button>
-        </>
-    )
+      <p className="text-sm text-muted-foreground">
+        {selectedOffer.description}
+      </p>
+
+      <p className="text-sm text-primary font-semibold">
+        {selectedOffer.currency_display} {selectedOffer.price}
+      </p>
+
+      <Button
+        className="mt-3 w-full"
+        onClick={() => setIsCheckingOut(true)}
+      >
+        Buy Now
+      </Button>
+
+      <Button
+        variant="ghost"
+        className="mt-1 w-full text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+        onClick={() => setSelectedOffer(undefined)}
+      >
+        Close
+      </Button>
+    </div>
+  );
 }

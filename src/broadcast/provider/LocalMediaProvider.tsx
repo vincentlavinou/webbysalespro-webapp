@@ -99,11 +99,9 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
 
   const refreshVideoAndAudioStreamIfDefined = useCallback((video: Media | undefined, audio: Media | undefined, options?: RefreshMediaOption) => {
     if (!video) {
-      console.log("unable to refresh, no video")
       return
     }
     if (!audio) {
-      console.log("unable to refresh, no audio")
       return
     }
 
@@ -162,7 +160,6 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
 
   useEffect(() => {
     return () => {
-      console.log("Cleaning up video & audio tracks")
       stopTracks();
     }
   }, []);
@@ -213,7 +210,6 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     }
 
     const streams = await startVieoInjectionStream(injection)
-    console.log("Video Injection Streams", streams)
     refreshVideoAndAudioStreamIfDefined(streams?.videoMedia, streams?.audioMedia ?? audioStream, {
       cleanupVideo: true,
       cleanupAudio: streams?.audioMedia !== undefined

@@ -33,8 +33,8 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
     const el = scrollRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
-    setAutoStick(distanceFromBottom < 72); // ~4.5rem tolerance
-  }, []);
+    setAutoStick(distanceFromBottom < 75); // ~4.5rem tolerance
+  }, [scrollRef.current]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -45,11 +45,11 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
   }, [filteredMessages, autoStick]);
 
   return (
-    <div className={clsx("flex flex-col min-h-0 rounded-md border shadow bg-background", className)}>
+    <div className={clsx("flex flex-col h-full rounded-md border shadow bg-background", className)}>
       {/* Scrollable message list */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto pr-2 scroll-smooth overscroll-contain"
+        className="flex-1 h-full overflow-y-auto pr-2 scroll-smooth overscroll-contain"
         onScroll={handleScroll}
       >
         {filteredMessages.length === 0 ? (

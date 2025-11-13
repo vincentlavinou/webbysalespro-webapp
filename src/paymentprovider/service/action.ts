@@ -46,7 +46,6 @@ export async function getPaymentProvider(
 
 
 export async function createPaymentProvider(data: CreatePaymentProviderPayload, getRequestHeaders: () => Promise<RequestHeaders | undefined>): Promise<PaymentProvider> {
-  console.log(data)
   const res = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/`, {
     method: 'POST',
     headers: {
@@ -58,7 +57,6 @@ export async function createPaymentProvider(data: CreatePaymentProviderPayload, 
 
   if (!res.ok) {
     const error = await res.json();
-    console.log(error)
     throw new Error(error?.detail || 'Failed to create payment provider');
   }
 

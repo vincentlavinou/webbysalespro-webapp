@@ -18,28 +18,47 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
   );
 
   return (
-    <div
-      className="w-full flex items-center gap-4 p-3 border rounded-md bg-accent cursor-pointer transition hover:shadow-lg"
+    <button
+      type="button"
       onClick={() => onClick(offer)}
       style={{ maxHeight: '150px' }}
+      className="
+        w-full flex items-center gap-4 p-3
+        border border-border rounded-md
+        bg-accent/70 hover:bg-accent
+        cursor-pointer transition
+        shadow-sm hover:shadow-md
+        text-left
+        focus-visible:outline-none
+        focus-visible:ring-2
+        focus-visible:ring-primary
+        focus-visible:ring-offset-2
+        focus-visible:ring-offset-background
+      "
     >
       {thumbnail && (
-        <Image
-          src={thumbnail.file_url}
-          alt={offer.headline}
-          height={80}
-          width={80}
-          className="w-20 h-20 rounded object-cover border"
-        />
+        <div className="shrink-0">
+          <Image
+            src={thumbnail.file_url}
+            alt={offer.headline}
+            height={80}
+            width={80}
+            className="w-20 h-20 rounded object-cover border border-border"
+          />
+        </div>
       )}
-      <div className="flex-1">
-        <h4 className="text-sm font-medium">{offer.headline}</h4>
-        <p className="text-xs text-muted-foreground truncate">{offer.description}</p>
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-medium line-clamp-1">
+          {offer.headline}
+        </h4>
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {offer.description}
+        </p>
         <p className="text-xs mt-1 text-primary font-semibold">
           {offer.currency_display} {offer.price}
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -70,7 +89,7 @@ export function OfferCarousel({
   useEffect(() => {
     if (!hasMultiple || paused) return;
     intervalRef.current = setInterval(() => {
-      if(!pausedRef.current) {
+      if (!pausedRef.current) {
         goTo(index + 1);
       }
     }, 5000);
@@ -102,7 +121,7 @@ export function OfferCarousel({
   }, []);
 
   // Swipe support
-  const {ref: swipeRef, ...handlers} = useSwipeable({
+  const { ref: swipeRef, ...handlers } = useSwipeable({
     onSwipedLeft: handleNext,
     onSwipedRight: handlePrev,
     preventScrollOnSwipe: true,
@@ -110,16 +129,14 @@ export function OfferCarousel({
   });
 
   const mergedRef = useCallback(
-      (node: HTMLDivElement | null) => {
-        containerRef.current = node;
-        swipeRef(node);
-      },
-      [swipeRef]
-    );
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node;
+      swipeRef(node);
+    },
+    [swipeRef]
+  );
 
   if (offers.length === 0) return null;
-
-
 
   const currentOffer = offers[index];
 
@@ -132,14 +149,44 @@ export function OfferCarousel({
       {hasMultiple && (
         <>
           <button
+            type="button"
             onClick={handlePrev}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-muted hover:bg-muted-foreground text-muted-foreground hover:text-white transition"
+            aria-label="Previous offer"
+            className="
+              absolute left-0 top-1/2 -translate-y-1/2 z-10
+              p-1 rounded-full
+              bg-background/80 border border-border
+              text-muted-foreground
+              shadow-sm
+              hover:bg-accent hover:text-accent-foreground
+              transition
+              focus-visible:outline-none
+              focus-visible:ring-2
+              focus-visible:ring-primary
+              focus-visible:ring-offset-2
+              focus-visible:ring-offset-background
+            "
           >
             <ChevronLeft size={18} />
           </button>
           <button
+            type="button"
             onClick={handleNext}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-muted hover:bg-muted-foreground text-muted-foreground hover:text-white transition"
+            aria-label="Next offer"
+            className="
+              absolute right-0 top-1/2 -translate-y-1/2 z-10
+              p-1 rounded-full
+              bg-background/80 border border-border
+              text-muted-foreground
+              shadow-sm
+              hover:bg-accent hover:text-accent-foreground
+              transition
+              focus-visible:outline-none
+              focus-visible:ring-2
+              focus-visible:ring-primary
+              focus-visible:ring-offset-2
+              focus-visible:ring-offset-background
+            "
           >
             <ChevronRight size={18} />
           </button>
@@ -166,10 +213,13 @@ export function OfferCarousel({
           {offers.map((_, i) => (
             <button
               key={i}
+              type="button"
               onClick={() => goTo(i)}
-              className={`h-2 w-2 rounded-full transition ${
-                i === index ? 'bg-primary' : 'bg-muted-foreground/30'
-              }`}
+              aria-label={`Go to offer ${i + 1}`}
+              className={`
+                h-2 w-2 rounded-full transition
+                ${i === index ? 'bg-primary' : 'bg-muted-foreground/30'}
+              `}
             />
           ))}
         </div>

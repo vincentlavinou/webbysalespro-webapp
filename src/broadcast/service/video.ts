@@ -364,7 +364,6 @@ export const createScreenShareComposite = async ({
 }: {
     deviceId?: string;
 }): Promise<Media | undefined> => {
-    console.log("create composite enter");
 
     // Check screen sharing support
     if (!navigator.mediaDevices.getDisplayMedia) {
@@ -377,10 +376,9 @@ export const createScreenShareComposite = async ({
     try {
         screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
     } catch (e) {
-        console.log("Screen share failed", e);
+        console.error("Screen share failed: ", e);
         return undefined;
     }
-    console.log("Got screen stream");
 
     // Get camera stream
     let cameraStream: MediaStream;
@@ -391,7 +389,6 @@ export const createScreenShareComposite = async ({
         screenStream.getTracks().forEach((t) => t.stop());
         return undefined;
     }
-    console.log("Got camera stream");
 
     // Extract video tracks
     const screenTrack = screenStream.getVideoTracks()[0];
@@ -446,7 +443,6 @@ export const createScreenShareComposite = async ({
     const compositeTrack = canvasStream.getVideoTracks()[0];
 
     const cleanup = () => {
-        console.log(`Device: ScreenShare - Cleaning up`)
         cancelAnimationFrame(rafId);
         compositeTrack.stop();
         screenTrack.stop();

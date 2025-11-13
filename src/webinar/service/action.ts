@@ -51,7 +51,6 @@ export async function registerForWebinar(formData: FormData): Promise<void> {
 
     if(response.status >= 400) {
         const errorData = await response.json()
-        console.log(errorData.detail)
         if (errorData.code === 'already_registered_single') {
             throw new AlreadyRegisteredError(errorData.detail)
         } else {
@@ -81,7 +80,6 @@ export async function updateSession(formData: FormData): Promise<void> {
 
     if(response.status >= 400) {
         const errorData = await response.json()
-        console.log(errorData.detail)
         if (errorData.code === 'already_registered_single') {
             throw new AlreadyRegisteredError(errorData.detail)
         } else {

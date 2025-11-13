@@ -53,15 +53,13 @@ export const createLocalStageStream = async (
 ): Promise<Media | undefined> => {
 
   let currentDeviceId: string | undefined = deviceId
-  console.log(`Device Id: ${deviceId}`)
+
   if (currentDeviceId === undefined) {
     const { videoDevices, audioDevices } = await getDevices()
     currentDeviceId = deviceType === DeviceType.CAMERA ? videoDevices[0]?.deviceId : deviceType === DeviceType.MIC ? audioDevices[0]?.deviceId : undefined
   }
 
   if (!currentDeviceId) return
-
-  console.log(`Device Type: ${deviceType} - Id: ${currentDeviceId}`)
 
   const mediaStream = await getMediaForDevices(deviceType, currentDeviceId);
   const track =
@@ -82,7 +80,6 @@ export const createLocalStageStream = async (
   const { LocalStageStream } = await import("amazon-ivs-web-broadcast");
 
   const clean = () => {
-    console.log(`Device: ${deviceType} - Cleaning up`)
     track.stop()
   }
   return {
@@ -133,7 +130,6 @@ export const joinStage = async (
     setParticipants((prev) => {
       const existing = prev.find((p) => p.participant.id === participant.id);
 
-      console.log("existing", existing)
       if (!existing) {
         return [...prev, { participant, streams }];
       }
@@ -142,13 +138,10 @@ export const joinStage = async (
       const newTrackIds = streams.map(s => s.mediaStreamTrack.id).sort();
       const isSame = oldTrackIds.join(',') === newTrackIds.join(',');
 
-      console.log("is same", isSame)
-
       if (isSame) {
         return prev; // No change needed
       }
 
-      console.log("update participant", participant.userId)
       return prev.map(p =>
         p.participant.id === participant.id
           ? { participant, streams }

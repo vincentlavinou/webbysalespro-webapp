@@ -1,114 +1,125 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
 
 type Msg = { id: string; text: string };
 
 export default function KeyboardSafariTestPage() {
-  const [messages, setMessages] = useState<Msg[]>(() =>
-    Array.from({ length: 24 }, (_, i) => ({
-      id: String(i + 1),
-      text: `Sample message ${i + 1}`,
-    }))
+  const [messages, setMessages] = useState<Msg[]>(
+    () => Array.from({ length: 24 }, (_, i) => ({ id: String(i + 1), text: `Sample message ${i + 1}` }))
   );
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const lastOverlapRef = useRef(0);
 
-  // 1) Track keyboard overlap using visualViewport (iOS) and snap back to top when it closes
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const footerRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const [headerH, setHeaderH] = useState(0);
+  const [footerH, setFooterH] = useState(0);
+
+  // Freeze a baseline viewport height that does NOT shrink with keyboard.
+  const [vhBase, setVhBase] = useState<number>(() => 500);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // measure header/footer
+  useEffect(() => {
+    const measure = () => {
+      setHeaderH(headerRef.current?.offsetHeight ?? 0);
+      setFooterH(footerRef.current?.offsetHeight ?? 0);
+    };
+    measure();
+
+    const roH = headerRef.current ? new ResizeObserver(measure) : null;
+    const roF = footerRef.current ? new ResizeObserver(measure) : null;
+    roH?.observe(headerRef.current!);
+    roF?.observe(footerRef.current!);
+
+    window.addEventListener("resize", measure);
+    return () => {
+      roH?.disconnect();
+      roF?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  // visualViewport handling:
+  // - keep vhBase as the LARGEST height seen (ignores keyboard shrink)
+  // - compute keyboardHeight as (vhBase - current visual height)
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
 
-    const handleViewportChange = () => {
-      const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      lastOverlapRef.current = overlap;
-
-      setKeyboardHeight(overlap);
+    const updateHeights = () => {
+      const currentVH = (vv?.height ?? window.innerHeight) - (vv?.offsetTop ?? 0);
+      setVhBase(prev => Math.max(prev, currentVH)); // freeze to largest
+      setKeyboardHeight(Math.max(0, (vhBase || currentVH) - currentVH));
     };
 
-    handleViewportChange();
-    vv.addEventListener("resize", handleViewportChange);
-    vv.addEventListener("scroll", handleViewportChange);
+    updateHeights();
+    vv?.addEventListener("resize", updateHeights);
+    vv?.addEventListener("scroll", updateHeights);
+    window.addEventListener("resize", updateHeights);
 
     return () => {
-      vv.removeEventListener("resize", handleViewportChange);
-      vv.removeEventListener("scroll", handleViewportChange);
+      vv?.removeEventListener("resize", updateHeights);
+      vv?.removeEventListener("scroll", updateHeights);
+      window.removeEventListener("resize", updateHeights);
     };
-  }, []);
+  }, [vhBase]);
 
-  // 2) Scroll to bottom helper for messages
+  // constant height between header and footer (doesn't shrink with keyboard)
+  const betweenHF = Math.max(0, vhBase - headerH - footerH);
+
+  // scroll helpers
   const scrollToBottom = () => {
     const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTop = el.scrollHeight;
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, []);
+  useEffect(() => { scrollToBottom(); }, []);
+  useEffect(() => { requestAnimationFrame(scrollToBottom); }, [messages.length, footerH, keyboardHeight]);
 
   const send = () => {
     const text = input.trim();
     if (!text) return;
     const id = crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
-    setMessages((m) => [...m, { id, text }]);
+    setMessages(m => [...m, { id, text }]);
     setInput("");
-    requestAnimationFrame(scrollToBottom);
   };
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-neutral-100">
-      {/* VIDEO: normal header; we just make sure page is scrolled to top after keyboard closes */}
-      <header className="bg-black w-full fixed">
+    <div className="bg-neutral-900 text-neutral-100 h-[100svh] overflow-hidden">
+      {/* HEADER (normal flow or fixed — both fine; we measure it either way) */}
+      <header ref={headerRef} className="bg-black">
         <div className="w-full aspect-video grid place-items-center text-sm text-white/80">
-          <div className="rounded-lg border border-white/10 px-3 py-1.5 bg-white/5">
-            Video Placeholder (aspect-video)
-          </div>
+          <div className="rounded-lg border border-white/10 px-3 py-1.5 bg-white/5">Video Placeholder</div>
         </div>
       </header>
 
-      {/* MESSAGES: normal scrolling, just reserve space at the bottom for the fixed composer */}
+      {/* MAIN: fixed height that DOES NOT change with keyboard; add bottom padding for lifted footer */}
       <main
         ref={scrollRef}
-        className="px-3 pt-[230px] pb-24 space-y-2 overflow-y-auto"
+        className="px-3 space-y-2 overflow-y-auto overscroll-contain touch-pan-y"
         style={{
-          // crude but fine for testing: viewport height minus approx header height
-          maxHeight: "calc(100vh - 56px)",
+          height: betweenHF,                 // constant height
         }}
       >
-        {messages.map((m) => (
-          <div key={m.id} className="max-w-[80%] rounded-xl bg-neutral-800 px-3 py-2">
-            {m.text}
-          </div>
+        {messages.map(m => (
+          <div key={m.id} className="max-w-[80%] rounded-xl bg-neutral-800 px-3 py-2">{m.text}</div>
         ))}
       </main>
 
-      {/* COMPOSER: fixed to viewport bottom, shifted up by keyboard height so it hugs keyboard */}
+      {/* FOOTER: lift by keyboard height */}
       <footer
+        ref={footerRef}
         className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur"
-        style={{
-          transform: `translateY(${-keyboardHeight}px)`,
-          transition: "transform 180ms ease-out",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
       >
         <div className="mx-auto w-full max-w-3xl p-3">
           <div className="flex gap-2">
             <input
-              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  send();
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); send(); } }}
               className="w-full rounded-lg border border-white/10 bg-neutral-800 px-3 py-3 outline-none focus:border-white/20"
-              style={{ fontSize: 16 }} // avoid iOS zoom-on-focus
+              style={{ fontSize: 16 }}
               placeholder="Type a message…"
               inputMode="text"
               autoComplete="off"
