@@ -12,7 +12,6 @@ import {
 const START_BACKOFF = 800;     // ms
 const MAX_BACKOFF = 8000;      // ms
 const JITTER = 0.25;           // +/-25%
-const HEAD_TIMEOUT = 4500;     // ms
 
 type Props = {
   /** IVS playback URL (master.m3u8) */
@@ -52,18 +51,6 @@ export default function IVSPlayer({
     return Math.round(ms + (Math.random() * 2 - 1) * d);
   };
 
-  const headOk = async (url: string) => {
-    try {
-      const ctl = new AbortController();
-      const t = setTimeout(() => ctl.abort(), HEAD_TIMEOUT);
-      const res = await fetch(url, { method: "HEAD", cache: "no-store", signal: ctl.signal });
-      clearTimeout(t);
-      return res.ok;
-    } catch {
-      return false;
-    }
-  };
-
   const clearRetry = () => {
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
@@ -84,20 +71,15 @@ export default function IVSPlayer({
       if (disposedRef.current || !playerRef.current) return;
 
       // Only reload when the playlist is actually available
-      const ok = await headOk(src);
-      if (ok) {
-        try {
-          playerRef.current.load(src);
-          if (autoPlay && videoRef.current) {
-            await videoRef.current.play().catch(() => {});
-          }
-          // if load succeeded, reset backoff
-          backoffRef.current = START_BACKOFF;
-        } catch {
-          // schedule another try
-          scheduleRetry();
+      try {
+        playerRef.current.load(src);
+        if (autoPlay && videoRef.current) {
+          await videoRef.current.play().catch(() => { });
         }
-      } else {
+        // if load succeeded, reset backoff
+        backoffRef.current = START_BACKOFF;
+      } catch {
+        // schedule another try
         scheduleRetry();
       }
     }, delay);
@@ -150,7 +132,7 @@ export default function IVSPlayer({
             resolution: `${player.getDisplayWidth()}x${player.getDisplayHeight()}`,
             state: player.getState(),
           });
-        } catch {}
+        } catch { }
       };
 
       // On READY: pick best quality (workaround for controls quirk)
@@ -164,7 +146,7 @@ export default function IVSPlayer({
           const best = qs.sort((a, b) => b.bitrate - a.bitrate)[0];
           if (best) player.setQuality(best);
           v.controls = keep;
-        } catch {}
+        } catch { }
       };
 
       const onPlaying = () => {
@@ -178,8 +160,6 @@ export default function IVSPlayer({
       const onEnded = updateStats;
 
       const onError = (e: PlayerError) => {
-        console.error("[IVS] Player Error:", e);
-        // Typical “not ready” case
         if ((e)?.code === 404 && (e)?.source === "MasterPlaylist") {
           scheduleRetry();
         }
@@ -238,7 +218,7 @@ export default function IVSPlayer({
       try {
         playerRef.current?.pause();
         playerRef.current?.delete();
-      } catch {}
+      } catch { }
       playerRef.current = null;
     };
   }, [src, autoPlay, muted]);
@@ -251,7 +231,6 @@ export default function IVSPlayer({
             ref={videoRef}
             // poster={poster}               // ensure /public/poster.jpg exists, otherwise remove
             playsInline
-            
             controls
             muted={muted}
             preload="auto"
