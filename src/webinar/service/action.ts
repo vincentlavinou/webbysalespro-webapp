@@ -1,5 +1,5 @@
 'use server'
-import { QueryWebinar, Webinar } from "./type";
+import { QueryWebinar, SeriesSession, Webinar } from "./type";
 import { emptyPage, PaginationPage } from "@/components/pagination";
 import { webinarApiUrl } from ".";
 import { AlreadyRegisteredError } from "./error";
@@ -86,4 +86,9 @@ export async function updateSession(formData: FormData): Promise<void> {
             throw new Error(errorData.detail || 'Unknown error')
         }
     }
+}
+
+export async function getSession(id: string, token: string): Promise<SeriesSession> {
+    const response = await fetch(`${webinarApiUrl}/v1/sessions/${id}/attendee-hydrate/?token=${token}`)
+    return await response.json()
 }

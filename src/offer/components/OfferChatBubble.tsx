@@ -1,6 +1,6 @@
 import { useBroadcastUser } from "@/broadcast/hooks/use-broadcast-user";
 import { useWebinar } from "@/webinar/hooks"
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { WebinarOffer } from "../service";
 import { OfferCarousel } from "./OfferCarousel";
 import { SelectedOffer } from "./SelectedOffer";
@@ -29,14 +29,14 @@ export function OfferChatBubble() {
         setSelectedOffer(undefined);
     };
 
-    const handleCheckoutSuccess = async (ref?: string) => {
+    const handleCheckoutSuccess = useCallback(async (ref: string) => {
         if (selectedOffer && session) {
             setPurchaseSuccess({ offer: selectedOffer, reference: ref });
             await recordEvent("purchase_succeeded", {
                 "amount_cents": selectedOffer.price * 100 // cents
             })
         }
-    };
+    },[selectedOffer, session]);
 
     if (session?.offer_visible && !selectedOffer && webinar) {
         {/* Offer carousel (hidden when offer open) */ }
@@ -83,9 +83,7 @@ export function OfferChatBubble() {
                                     token={token}
                                     email={email}
                                     sessionId={session?.id}
-                                    onSuccess={(paymentIntentId) => {
-                                        handleCheckoutSuccess(paymentIntentId);
-                                    }}
+                                    onSuccess={handleCheckoutSuccess}
                                 />
                             )}
                             {webinar && token && email && selectedOffer.provider_display === getPaymentProviderLabel(PaymentProviderType.FAN_BASIS) && (

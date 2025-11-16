@@ -91,7 +91,6 @@ export default function AttendeeMobileLayout({ broadcast, title }: AttendeeMobil
                             src={broadcast.stream.config.playback_url}
                             poster="/poster.jpg"
                             autoPlay
-                            muted
                             showStats
                             ariaLabel="Live Webinar Player"
                         />

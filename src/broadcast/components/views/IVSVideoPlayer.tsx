@@ -251,6 +251,7 @@ export default function IVSPlayer({
             ref={videoRef}
             // poster={poster}               // ensure /public/poster.jpg exists, otherwise remove
             playsInline
+            
             controls
             muted={muted}
             preload="auto"
