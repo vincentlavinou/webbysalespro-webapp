@@ -163,7 +163,6 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     const sseEnabled =
         !!token &&
         !!broadcastServiceToken &&
-        !isRedirecting &&
         mountedRef.current &&
         session?.status !== WebinarSessionStatus.COMPLETED;
 
