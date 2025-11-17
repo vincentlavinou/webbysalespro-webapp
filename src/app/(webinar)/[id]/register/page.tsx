@@ -1,4 +1,4 @@
-import { getWebinar, registerForWebinar } from '@/webinar/service'
+import { getWebinar } from '@/webinar/service'
 import { DefaultRegistrationForm } from './form'
 import { NoAvailableSessionsMessage } from '@/webinar/components'
 import Image from 'next/image'
@@ -58,7 +58,7 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
         <p className="text-muted-foreground mb-4">{webinar.description}</p>
 
         {sessions && sessions[0] ? (
-            <DefaultRegistrationForm webinar={webinar} registerAttendee={registerForWebinar}/>
+            <DefaultRegistrationForm webinar={webinar} />
         ) : <NoAvailableSessionsMessage />}
     </div>
   )
