@@ -27,7 +27,11 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
 
 
 
-    if(!webinar.data || !session.data) {
+    if(!webinar.data) {
+        notFound()
+    }
+
+    if(!session.data) {
         notFound()
     }
 
