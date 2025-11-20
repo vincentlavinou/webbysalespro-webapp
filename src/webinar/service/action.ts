@@ -102,7 +102,6 @@ export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).a
 })
 
 
-
 export const getWebinarFromSession = actionClient
     .inputSchema(sessionIdTokenSchema)
     .action( async ({parsedInput}) => {
