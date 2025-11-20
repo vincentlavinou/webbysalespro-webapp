@@ -28,8 +28,6 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
 
     const webinar = await getWebinarFromSession({id: sessionId, token})
 
-
-
     if(!webinar.data) {
         notFound()
     }
