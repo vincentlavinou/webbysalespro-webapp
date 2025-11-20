@@ -91,10 +91,24 @@ export async function updateSession(formData: FormData): Promise<void> {
     }
 }
 
-export async function getSession(id: string, token: string): Promise<SeriesSession> {
-    const response = await fetch(`${webinarApiUrl}/v1/sessions/${id}/attendee-hydrate/?token=${token}`)
-    return await response.json()
-}
+const sessionIdTokenSchema = z.object({
+    id: z.string(),
+    token: z.string()
+})
+
+export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).action(async ({parsedInput}) => {
+    const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/?token=${parsedInput.token}`)
+    return await response.json() as SeriesSession
+})
+
+
+
+export const getWebinarFromSession = actionClient
+    .inputSchema(sessionIdTokenSchema)
+    .action( async ({parsedInput}) => {
+        const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/?token=${parsedInput.token}`)
+        return await response.json() as Webinar
+    })
 
 const registerForWebinarInput = z.object({
     webinar_id: z.string(),                 // if this is a UUID, you can tighten to .uuid()

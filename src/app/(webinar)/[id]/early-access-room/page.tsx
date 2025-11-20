@@ -19,7 +19,7 @@ export default function EarlyAccessRoomPage() {
   const [isRedirecting, setIsRedirecting] = useState(false)
 
   const router = useRouter()
-  const { session, webinar, token } = useWebinar()
+  const { session, webinar, token, broadcastServiceToken } = useWebinar()
 
   // Countdown timer
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function EarlyAccessRoomPage() {
   useEffect(() => {
     if (!session || !token) return
 
-    if (session.status === WebinarSessionStatus.IN_PROGRESS) {
+    if (session.status === WebinarSessionStatus.IN_PROGRESS && broadcastServiceToken?.stream) {
       setIsRedirecting(true)
       router.replace(`/${session.id}/live?token=${token}`)
     }

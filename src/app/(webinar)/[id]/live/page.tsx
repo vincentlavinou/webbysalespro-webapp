@@ -1,57 +1,58 @@
-'use client'
-
-import { useWebinar } from "@/webinar/hooks";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
-import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer';
-import { LocalStreamEventType } from "@/broadcast/service/enum";
 import { AttendeePlayerClient } from "@/broadcast/AttendeePlayerClient";
-import { useEffect } from "react";
 import { BroadcastParticipantClient } from "@/broadcast/BroadcastParticipantClient";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
-import { useRouter } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { createBroadcastServiceToken } from "@/broadcast/service";
+import { getSessionAction, getWebinarFromSession } from "@/webinar/service/action";
 
 interface Props {
+    params: Promise<{
+        id: string
+    }>
     searchParams: Promise<{
         token: string
     }>
 }
 
-export default function BroadcastPage({ searchParams }: Props) {
+export default async function AttendeeLivePage({ params, searchParams }: Props) {
 
-    const router = useRouter();
-    const { sessionId, broadcastServiceToken, token, session, webinar, setSession, regenerateBroadcastToken } = useWebinar()
+    const token = (await searchParams).token
+    const sessionId = (await params).id
+    const [session, webinar] = await Promise.all([
+        getSessionAction({id: sessionId, token}),
+        getWebinarFromSession({id: sessionId, token})
+    ])
 
-    useEffect(() => {
-        const init = async () => {
-            const token = (await searchParams).token
-            await regenerateBroadcastToken(token)
-        }
 
-        init()
-    }, [])
 
-    useEffect(() => {
-        if (!session || !webinar || !token) return;
-
-        const waitingRoomOpensAt = DateTime.fromISO(session.scheduled_start, { zone: session.timezone })
-            .minus({ minutes: webinar.settings.waiting_room_start_time });
-
-        if (session.status === WebinarSessionStatus.SCHEDULED &&
-            waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
-            router.replace(`/${sessionId}/early-access-room?token=${token}`);
-            return;
-        }
-
-        if (session.status === WebinarSessionStatus.SCHEDULED) {
-            router.replace(`/${sessionId}/waiting-room?token=${token}`);
-            return;
-        }
-    }, [session, webinar, token, sessionId, router]);
-
-    if (!broadcastServiceToken || !session || !webinar || !token) {
-        return <WaitingRoomShimmer />;
+    if(!webinar.data || !session.data) {
+        notFound()
     }
+
+    if(session.data.status === WebinarSessionStatus.CANCELED) {
+        notFound()
+    }
+
+    if(session.data.status === WebinarSessionStatus.COMPLETED) {
+        redirect(`/${sessionId}/completed`)
+    }
+
+    const waitingRoomOpensAt = DateTime.fromISO(session.data.scheduled_start, { zone: session.data.timezone })
+            .minus({ minutes: webinar.data.settings.waiting_room_start_time || 15 });
+
+
+    if (session.data.status === WebinarSessionStatus.SCHEDULED &&
+        waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
+        redirect(`/${sessionId}/early-access-room?token=${token}`);
+    }
+
+    if (session.data.status === WebinarSessionStatus.SCHEDULED) {
+        redirect(`/${sessionId}/waiting-room?token=${token}`);
+    }
+
+    const broadcastServiceToken = await createBroadcastServiceToken(sessionId, token);
 
 
     if (broadcastServiceToken.role === 'presenter' && broadcastServiceToken.stream) {
@@ -59,7 +60,7 @@ export default function BroadcastPage({ searchParams }: Props) {
             sessionId={sessionId}
             accessToken={token}
             broadcastToken={broadcastServiceToken}
-            title={webinar.title}
+            title={webinar.data.title}
             isViewer
         />
     }
@@ -69,16 +70,13 @@ export default function BroadcastPage({ searchParams }: Props) {
             sessionId={sessionId}
             accessToken={token}
             broadcastToken={broadcastServiceToken as AttendeeBroadcastServiceToken}
-            title={webinar.title}
-            onStreamEvent={(event) => {
-                if (event.type === LocalStreamEventType.OFFER_EVENT) {
-                    setSession({ ...session, offer_visible: event.payload["visible"] as boolean })
-                }
-            }}
+            title={webinar.data.title}
         />
     }
 
-    return <WaitingRoomShimmer />;
+    if (broadcastServiceToken.role === "host" && broadcastServiceToken.stream) {
+        notFound()
+    }
 
-
+    redirect(`/${sessionId}/waiting-room?token=${token}`);
 }

@@ -13,7 +13,8 @@ import { createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
 import { BroadcastServiceToken } from "@/broadcast/service/type";
 import { WebinarSessionStatus } from "../service/enum";
 import { useEventSource } from "@/sse";
-import { getSession } from "../service/action";
+import { getSessionAction } from "../service/action";
+import { useAction } from "next-safe-action/hooks";
 
 // ---- Tuning knobs (can be shared with hook defaults or overridden) ----
 const HEARTBEAT_TIMEOUT_MS = 45_000;
@@ -33,6 +34,11 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
 
     const searchParams = useSearchParams();
     const router = useRouter();
+    const {execute: getSession} = useAction(getSessionAction, {
+        onSuccess: async ({data, input}) => {
+            handleUpdateSession(data, input.token)
+        }
+    })
 
     const mountedRef = useRef<boolean>(false);
 
@@ -44,8 +50,8 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         (async () => {
             if (!attendeeToken) return;
             try {
-                const session = await getSession(sessionId, attendeeToken)
-                handleUpdateSession(session, attendeeToken)
+                await getSession({id: sessionId, token: attendeeToken})
+                
             } catch(e) {
                 console.error("[WebinarProvider] Failed get session service token", e);
             }
@@ -120,6 +126,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
             try {
                 const data = JSON.parse(event.data) as { status: WebinarSessionStatus };
                 if(token) handleUpdateSession({ ...(session || {}), status: data.status } as SeriesSession, token)
+                if(token && data.status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken(token)
             } catch (e) {
                 console.error("[SSE] Parse error (session:update)", e, event.data);
             }
@@ -180,8 +187,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         },
         onOpen: async () => {
             if (token) {
-                const session = await getSession(sessionId, token)
-                handleUpdateSession(session, token)
+                await getSession({id: sessionId, token})
             }
         },
         onError: (err: Event) => {
