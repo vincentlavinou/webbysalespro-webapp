@@ -20,18 +20,17 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
 
     const token = (await searchParams).token
     const sessionId = (await params).id
-    const [session, webinar] = await Promise.all([
-        getSessionAction({id: sessionId, token}),
-        getWebinarFromSession({id: sessionId, token})
-    ])
+    const session = await  getSessionAction({id: sessionId, token})
+
+    if(!session.data) {
+        notFound()
+    }
+
+    const webinar = await getWebinarFromSession({id: sessionId, token})
 
 
 
     if(!webinar.data) {
-        notFound()
-    }
-
-    if(!session.data) {
         notFound()
     }
 
