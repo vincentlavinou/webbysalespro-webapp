@@ -1,11 +1,8 @@
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
-import { AttendeePlayerClient } from "@/broadcast/AttendeePlayerClient";
-import { BroadcastParticipantClient } from "@/broadcast/BroadcastParticipantClient";
-import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import { notFound, redirect } from "next/navigation";
-import { createBroadcastServiceToken } from "@/broadcast/service";
 import { getSessionAction, getWebinarFromSession } from "@/webinar/service/action";
+import { LiveContainer } from "@/broadcast/components/LiveContainer";
 
 interface Props {
     params: Promise<{
@@ -53,31 +50,11 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
         redirect(`/${sessionId}/waiting-room?token=${token}`);
     }
 
-    const broadcastServiceToken = await createBroadcastServiceToken(sessionId, token);
-
-
-    if (broadcastServiceToken.role === 'presenter' && broadcastServiceToken.stream) {
-        return <BroadcastParticipantClient
-            sessionId={sessionId}
-            accessToken={token}
-            broadcastToken={broadcastServiceToken}
-            title={webinar.data.title}
-            isViewer
-        />
-    }
-
-    if (broadcastServiceToken.role === "attendee" && broadcastServiceToken.stream) {
-        return <AttendeePlayerClient
-            sessionId={sessionId}
-            accessToken={token}
-            broadcastToken={broadcastServiceToken as AttendeeBroadcastServiceToken}
-            title={webinar.data.title}
-        />
-    }
-
-    if (broadcastServiceToken.role === "host" && broadcastServiceToken.stream) {
-        notFound()
-    }
-
-    redirect(`/${sessionId}/waiting-room?token=${token}`);
+    return (
+    <LiveContainer
+      sessionId={sessionId}
+      accessToken={token}
+      webinarTitle={webinar.data.title}
+    />
+  );
 }
