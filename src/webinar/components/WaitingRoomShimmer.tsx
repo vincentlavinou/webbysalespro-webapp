@@ -2,7 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Users, Calendar } from 'lucide-react';
 
-export default function WaitingRoomShimmer() {
+type WaitingRoomShimmerProps = {
+  /** What we're waiting for, e.g. "Connecting to live webinar..." */
+  title?: string;
+};
+
+export default function WaitingRoomShimmer({
+  title = 'Preparing your experience...',
+}: WaitingRoomShimmerProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 animate-pulse">
       <div className="w-full max-w-2xl md:min-w-3xl lg:max-w-4xl">
@@ -10,12 +17,21 @@ export default function WaitingRoomShimmer() {
           <CardHeader className="text-center pb-4">
             <div className="flex items-center justify-center space-x-2 mb-2">
               <Clock className="h-5 w-5 text-blue-300" />
-              <Badge variant="secondary" className="text-sm bg-gray-200 text-gray-400 border-gray-200">
-                <div className="h-4 w-20 bg-gray-200 rounded" />
+              <Badge
+                variant="secondary"
+                className="text-xs md:text-sm bg-gray-200 text-gray-500 border-gray-200"
+              >
+                Waiting…
               </Badge>
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-300 h-8 w-2/3 mx-auto rounded bg-gray-200" />
-            <div className="text-gray-300 mt-2 h-4 w-1/2 mx-auto rounded bg-gray-200" />
+
+            {/* Title from props */}
+            <CardTitle className="text-xl md:text-2xl font-semibold text-gray-700">
+              {title}
+            </CardTitle>
+
+            {/* Subtitle shimmer */}
+            <div className="mt-2 h-4 w-1/2 mx-auto rounded bg-gray-200" />
           </CardHeader>
 
           <CardContent className="space-y-6">
@@ -44,7 +60,10 @@ export default function WaitingRoomShimmer() {
               </div>
 
               <div className="flex items-center space-x-3">
-                <Badge variant="outline" className="text-xs bg-gray-200 border-gray-200 text-gray-300 h-5 w-16" />
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-gray-200 border-gray-200 text-gray-300 h-5 w-16"
+                />
                 <div className="text-sm text-gray-200 h-4 w-24 rounded bg-gray-200" />
               </div>
             </div>
@@ -66,4 +85,4 @@ export default function WaitingRoomShimmer() {
       </div>
     </div>
   );
-} 
+}

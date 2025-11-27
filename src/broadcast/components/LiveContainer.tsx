@@ -33,7 +33,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
 
   if (!broadcastToken) {
     // optional loading UI
-    return <div>Connecting to live session...</div>;
+    return <WaitingRoomShimmer title="Connecting to live session"/>
   }
 
   if (broadcastToken.role === "presenter" && broadcastToken.stream) {
@@ -60,5 +60,5 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
   }
 
   // fallback if role is host or no stream
-  return <WaitingRoomShimmer />
+  return <WaitingRoomShimmer title="Stream is starting"/>
 }

@@ -6,6 +6,7 @@ import {
   PlayerError,
   PlayerEventType,
   PlayerState,
+  TextMetadataCue,
 } from "amazon-ivs-player";
 
 // --- retry tuning ---
@@ -165,9 +166,10 @@ export default function IVSPlayer({
         }
       };
 
-      const onMeta = () => {
+      const onMeta = (payload: TextMetadataCue) => {
         // Timed metadata cues (offers, etc.)
         // console.log("[IVS] Timed Metadata:", m);
+        console.log(payload)
       };
 
       player.addEventListener(PlayerState.READY, onReady);

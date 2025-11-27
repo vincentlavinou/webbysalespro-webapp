@@ -19,3 +19,9 @@ export type WebinarOffer = {
   created_at: string;
   updated_at: string;
 };
+
+export type StripeCheckout = {
+  email: string;
+  public_key: string;
+  client_secret: string
+}
