@@ -16,3 +16,8 @@ export enum LocalStorage {
 export enum LocalStreamEventType {
     OFFER_EVENT = "offer-event"
 }
+
+export enum PlaybackMetadataEventType {
+    OFFER = "webinar:offer:visibility",
+    SESSION = "webinar:session:update"
+}

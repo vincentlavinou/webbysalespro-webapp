@@ -1,5 +1,5 @@
 import { LocalStageStream } from "amazon-ivs-web-broadcast";
-import { BroadcastServiceType, LocalStreamEventType } from "./enum"
+import { BroadcastServiceType, LocalStreamEventType, PlaybackMetadataEventType } from "./enum"
 import { Webinar } from "@/service/webinar";
 import { SeriesSession } from "@/service/webinar/type";
 type StageStrategy = import("amazon-ivs-web-broadcast").StageStrategy;
@@ -94,6 +94,22 @@ export type LocalStreamEvent = {
     timestamp: string,
     type: LocalStreamEventType
     payload: Record<string, unknown>
+}
+
+export type WebinarSessionUpdatePayload = {
+    session_id: string
+    status: string
+}
+
+export type WebinarOfferVisibilityPayload = {
+    session_id: string
+    visible: boolean
+    shown_at: string
+}
+
+export type PlaybackMetadataEvent = {
+    type: PlaybackMetadataEventType,
+    payload: WebinarSessionUpdatePayload | WebinarOfferVisibilityPayload
 }
 
 export type VideoStatus = 'uploaded' | 'processing' | 'ready' | 'failed';

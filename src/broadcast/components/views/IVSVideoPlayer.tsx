@@ -8,6 +8,8 @@ import {
   PlayerState,
   TextMetadataCue,
 } from "amazon-ivs-player";
+import { PlaybackMetadataEvent } from "@/broadcast/service/type";
+import { PlaybackMetadataEventType } from "@/broadcast/service/enum";
 
 // --- retry tuning ---
 const START_BACKOFF = 800;     // ms
@@ -167,9 +169,19 @@ export default function IVSPlayer({
       };
 
       const onMeta = (payload: TextMetadataCue) => {
-        // Timed metadata cues (offers, etc.)
-        // console.log("[IVS] Timed Metadata:", m);
-        console.log(payload)
+        try {
+          const event = JSON.parse(payload.text) as PlaybackMetadataEvent
+          switch(event.type) {
+            case PlaybackMetadataEventType.OFFER:
+              break;
+            case PlaybackMetadataEventType.SESSION:
+              break
+          }
+          console.log(event)
+
+        } catch(e) {
+          console.log(e)
+        }
       };
 
       player.addEventListener(PlayerState.READY, onReady);
