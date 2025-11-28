@@ -12,9 +12,9 @@ import { PlaybackMetadataEvent } from "@/broadcast/service/type";
 import { PlaybackMetadataEventType } from "@/broadcast/service/enum";
 
 // --- retry tuning ---
-const START_BACKOFF = 800;     // ms
-const MAX_BACKOFF = 8000;      // ms
-const JITTER = 0.25;           // +/-25%
+const START_BACKOFF = 800; // ms
+const MAX_BACKOFF = 8000;  // ms
+const JITTER = 0.25;       // +/-25%
 
 type Props = {
   /** IVS playback URL (master.m3u8) */
@@ -27,8 +27,16 @@ type Props = {
   ariaLabel?: string;
 };
 
+type StatsState = {
+  latency?: number;
+  bitrate?: number;
+  resolution?: string;
+  state?: string;
+};
+
 export default function IVSPlayer({
   src,
+  poster,
   autoPlay = true,
   muted = false,
   showStats = true,
@@ -41,14 +49,11 @@ export default function IVSPlayer({
   const backoffRef = useRef<number>(START_BACKOFF);
   const disposedRef = useRef<boolean>(false);
 
-  const [stats, setStats] = useState<{
-    latency?: number;
-    bitrate?: number;
-    resolution?: string;
-    state?: string;
-  }>({});
+  const [stats, setStats] = useState<StatsState>({});
+  const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
 
-  // helpers
+  // --- helpers --------------------------------------------------------------
+
   const jitter = (ms: number) => {
     const d = ms * JITTER;
     return Math.round(ms + (Math.random() * 2 - 1) * d);
@@ -66,40 +71,53 @@ export default function IVSPlayer({
     if (retryTimerRef.current) return;
 
     const delay = jitter(backoffRef.current);
-    // escalate backoff for next time
     backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF);
 
     retryTimerRef.current = setTimeout(async () => {
       retryTimerRef.current = null;
       if (disposedRef.current || !playerRef.current) return;
 
-      // Only reload when the playlist is actually available
       try {
         playerRef.current.load(src);
         if (autoPlay && videoRef.current) {
-          await videoRef.current.play().catch(() => { });
+          await videoRef.current.play().catch(() => {});
         }
-        // if load succeeded, reset backoff
         backoffRef.current = START_BACKOFF;
       } catch {
-        // schedule another try
         scheduleRetry();
       }
     }, delay);
   };
+
+  const updateStats = (player: Player) => {
+    try {
+      const state = player.getState();
+      setPlayerState(state);
+      setStats({
+        latency: player.getLiveLatency(),
+        bitrate: Math.round(player.getQuality()?.bitrate / 1000) || undefined,
+        resolution: `${player.getDisplayWidth()}x${player.getDisplayHeight()}`,
+        state,
+      });
+    } catch {
+      // ignore stats failures
+    }
+  };
+
+  // --- main effect ----------------------------------------------------------
 
   useEffect(() => {
     disposedRef.current = false;
 
     async function setup() {
       if (!videoRef.current) return;
-      // dynamic import to avoid SSR issues
+
       const ivs = await import("amazon-ivs-player");
       if (disposedRef.current) return;
 
-      // NOTE: call the function, don't just check existence
+      // If IVS player not supported, you could fall back to hls.js, etc.
       if (!ivs.isPlayerSupported) {
-        console.warn("IVS Player not supported; you could fall back to hls.js here.");
+        console.warn("IVS Player not supported; consider a fallback.");
         return;
       }
 
@@ -107,8 +125,8 @@ export default function IVSPlayer({
         wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
         wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
       });
-      playerRef.current = player;
 
+      playerRef.current = player;
       player.attachHTMLVideoElement(videoRef.current);
 
       // Player config
@@ -118,72 +136,66 @@ export default function IVSPlayer({
       player.setLiveLowLatencyEnabled(true);
       player.setRebufferToLive(true);
 
-      // Load initial src (may 404 briefly while IVS warms up)
+      // Initial load
       try {
         player.load(src);
       } catch {
-        // if load throws synchronously, start retry loop
         scheduleRetry();
       }
 
-      // Stats
-      const updateStats = () => {
-        try {
-          setStats({
-            latency: player.getLiveLatency(),
-            bitrate: Math.round(player.getQuality()?.bitrate / 1000) || undefined,
-            resolution: `${player.getDisplayWidth()}x${player.getDisplayHeight()}`,
-            state: player.getState(),
-          });
-        } catch { }
-      };
+      // --- event handlers ---------------------------------------------------
 
-      // On READY: pick best quality (workaround for controls quirk)
       const onReady = () => {
-        updateStats();
+        updateStats(player);
+
         try {
           const v = videoRef.current!;
           const keep = v.controls;
           v.controls = false;
-          const qs = player.getQualities();
-          const best = qs.sort((a, b) => b.bitrate - a.bitrate)[0];
+
+          const qualities = player.getQualities();
+          const best = qualities.sort((a, b) => b.bitrate - a.bitrate)[0];
           if (best) player.setQuality(best);
+
           v.controls = keep;
-        } catch { }
+        } catch {
+          // ignore
+        }
       };
 
       const onPlaying = () => {
-        updateStats();
-        // healthy → reset backoff
         backoffRef.current = START_BACKOFF;
+        updateStats(player);
       };
 
-      const onBuffering = updateStats;
-      const onIdle = updateStats;
-      const onEnded = updateStats;
+      const onBuffering = () => updateStats(player);
+      const onIdle = () => updateStats(player);
+      const onEnded = () => updateStats(player);
 
       const onError = (e: PlayerError) => {
-        if ((e)?.code === 404 && (e)?.source === "MasterPlaylist") {
+        if (e?.code === 404 && e?.source === "MasterPlaylist") {
           scheduleRetry();
         }
       };
 
       const onMeta = (payload: TextMetadataCue) => {
         try {
-          const event = JSON.parse(payload.text) as PlaybackMetadataEvent
-          switch(event.type) {
+          const event = JSON.parse(payload.text) as PlaybackMetadataEvent;
+          switch (event.type) {
             case PlaybackMetadataEventType.OFFER:
+              // handle offer metadata
               break;
             case PlaybackMetadataEventType.SESSION:
-              break
+              // handle session metadata
+              break;
           }
-          console.log(event)
-
-        } catch(e) {
-          console.log(e)
+          console.log(event);
+        } catch (err) {
+          console.log(err);
         }
       };
 
+      // Hook up listeners
       player.addEventListener(PlayerState.READY, onReady);
       player.addEventListener(PlayerState.PLAYING, onPlaying);
       player.addEventListener(PlayerState.BUFFERING, onBuffering);
@@ -192,12 +204,12 @@ export default function IVSPlayer({
       player.addEventListener(PlayerEventType.ERROR, onError);
       player.addEventListener(PlayerEventType.TEXT_METADATA_CUE, onMeta);
 
-      // Try to start playback if allowed
+      // Attempt autoplay
       if (autoPlay && videoRef.current) {
         try {
           await videoRef.current.play();
         } catch {
-          // autoplay blocked — user can tap play
+          // autoplay blocked; user will click play
         }
       }
 
@@ -207,6 +219,7 @@ export default function IVSPlayer({
         backoffRef.current = START_BACKOFF;
         scheduleRetry();
       };
+
       const onVisible = () => {
         if (document.visibilityState === "visible") {
           clearRetry();
@@ -214,28 +227,63 @@ export default function IVSPlayer({
           scheduleRetry();
         }
       };
+
       window.addEventListener("online", onOnline);
       document.addEventListener("visibilitychange", onVisible);
 
-      // cleanup
+      // Cleanup for this setup() call
       return () => {
         window.removeEventListener("online", onOnline);
         document.removeEventListener("visibilitychange", onVisible);
+
+        player.removeEventListener(PlayerState.READY, onReady);
+        player.removeEventListener(PlayerState.PLAYING, onPlaying);
+        player.removeEventListener(PlayerState.BUFFERING, onBuffering);
+        player.removeEventListener(PlayerState.IDLE, onIdle);
+        player.removeEventListener(PlayerState.ENDED, onEnded);
+        player.removeEventListener(PlayerEventType.ERROR, onError);
+        player.removeEventListener(PlayerEventType.TEXT_METADATA_CUE, onMeta);
+
+        try {
+          player.pause();
+          player.delete();
+        } catch {
+          // ignore
+        }
       };
     }
 
-    setup();
+    const cleanupPromise = setup();
 
     return () => {
       disposedRef.current = true;
       clearRetry();
-      try {
-        playerRef.current?.pause();
-        playerRef.current?.delete();
-      } catch { }
       playerRef.current = null;
+
+      // Ensure any setup-level cleanup (event listeners etc.) runs
+      if (cleanupPromise instanceof Promise) {
+        cleanupPromise.catch(() => {});
+      }
     };
   }, [src, autoPlay, muted]);
+
+  // --- derived UI state -----------------------------------------------------
+
+  const effectiveState =
+    playerState !== "INIT" ? playerState : (stats.state as PlayerState | undefined);
+
+  const isPlaying = effectiveState === PlayerState.PLAYING;
+  const isEnded = effectiveState === PlayerState.ENDED;
+
+  const isLoading =
+    !effectiveState ||
+    effectiveState === PlayerState.IDLE ||
+    effectiveState === PlayerState.READY ||
+    effectiveState === PlayerState.BUFFERING
+
+  const shouldBlur = !isPlaying; // blur for everything except actively playing
+
+  // --- render ---------------------------------------------------------------
 
   return (
     <div className="w-full">
@@ -243,21 +291,47 @@ export default function IVSPlayer({
         <div className="aspect-video">
           <video
             ref={videoRef}
-            // poster={poster}               // ensure /public/poster.jpg exists, otherwise remove
+            poster={poster}
             playsInline
             controls
             muted={muted}
             preload="auto"
             aria-label={ariaLabel}
-            className="h-full w-full object-contain"
+            className={`h-full w-full object-contain transition duration-200 ${
+              shouldBlur ? "blur-sm" : ""
+            }`}
           />
         </div>
 
+        {/* Overlay for loading / ended states */}
+        {shouldBlur && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
+            {isLoading && (
+              <>
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+                <p className="text-xs font-medium uppercase tracking-wide text-white/80">
+                  Connecting to live webinar…
+                </p>
+              </>
+            )}
+
+            {isEnded && !isLoading && (
+              <div className="rounded-md bg-black/70 px-3 py-2 text-sm font-medium text-white">
+                This live webinar has ended.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Debug / live stats */}
         {showStats && (
           <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
-            <div>State: {stats.state ?? "…"}</div>
+            <div>State: {effectiveState ?? "…"}</div>
             <div>
-              Latency: {typeof stats.latency === "number" ? `${stats.latency.toFixed(1)}s` : "…"}
+              Latency:{" "}
+              {typeof stats.latency === "number"
+                ? `${stats.latency.toFixed(1)}s`
+                : "…"}
             </div>
             <div>Bitrate: {stats.bitrate ? `${stats.bitrate} kbps` : "…"}</div>
             <div>Res: {stats.resolution ?? "…"}</div>
