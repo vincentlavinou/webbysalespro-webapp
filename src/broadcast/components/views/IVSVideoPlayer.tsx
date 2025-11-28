@@ -8,8 +8,6 @@ import {
   PlayerState,
   TextMetadataCue,
 } from "amazon-ivs-player";
-import { PlaybackMetadataEvent } from "@/broadcast/service/type";
-import { PlaybackMetadataEventType } from "@/broadcast/service/enum";
 
 // --- retry tuning ---
 const START_BACKOFF = 800; // ms
@@ -25,6 +23,7 @@ type Props = {
   muted?: boolean;
   showStats?: boolean;
   ariaLabel?: string;
+  onMetadataText: (text: string) => Promise<void>
 };
 
 type StatsState = {
@@ -41,6 +40,7 @@ export default function IVSPlayer({
   muted = false,
   showStats = true,
   ariaLabel = "IVS player",
+  onMetadataText = async () => {}
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<Player | null>(null);
@@ -178,21 +178,8 @@ export default function IVSPlayer({
         }
       };
 
-      const onMeta = (payload: TextMetadataCue) => {
-        try {
-          const event = JSON.parse(payload.text) as PlaybackMetadataEvent;
-          switch (event.type) {
-            case PlaybackMetadataEventType.OFFER:
-              // handle offer metadata
-              break;
-            case PlaybackMetadataEventType.SESSION:
-              // handle session metadata
-              break;
-          }
-          console.log(event);
-        } catch (err) {
-          console.log(err);
-        }
+      const onMeta = async (payload: TextMetadataCue) => {
+        await onMetadataText(payload.text)
       };
 
       // Hook up listeners

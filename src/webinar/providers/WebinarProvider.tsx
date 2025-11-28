@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { WebinarContext } from "../context/WebinarContext";
 import {
     SeriesSession,
-    SessionOfferVisibilityUpdate,
     Webinar,
     webinarApiUrl,
 } from "../service";
@@ -134,22 +133,6 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         [token, session, handleUpdateSession]
     );
 
-    const handleOfferVisibility = useCallback((event: MessageEvent) => {
-        try {
-            const data = JSON.parse(event.data) as SessionOfferVisibilityUpdate;
-            setSession(
-                (prev) =>
-                ({
-                    ...(prev || {}),
-                    offer_visible: data.visible,
-                    offer_shown_at: data.shown_at,
-                } as SeriesSession)
-            );
-        } catch (e) {
-            console.error("[SSE] Parse error (offer:visibility)", e, event.data);
-        }
-    }, []);
-
     // ---- Build SSE URL (generic for hook) ----
     const buildSseUrl = useCallback(
         (lastEventId: string | null) => {
@@ -178,8 +161,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         enabled: sseEnabled,
         buildUrl: buildSseUrl,
         eventHandlers: {
-            "webinar:session:update": handleEventUpdateSession,
-            "webinar:offer:visibility": handleOfferVisibility,
+            "webinar:session:update": handleEventUpdateSession
         },
         // We only use default "message" as a heartbeat; no payload needs parsing here.
         onMessage: () => {

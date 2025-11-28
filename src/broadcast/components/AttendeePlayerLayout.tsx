@@ -9,9 +9,10 @@ import { AttendeeDesktopLayout } from "./AttendeeDesktopLayout";
 interface BroadcastUIProps {
   broadcast: AttendeeBroadcastServiceToken;
   title?: string;
+  onMetadataText: (text: string) => Promise<void>
 }
 
-export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => {
+export const AttendeePlayerLayout = ({ broadcast, title, onMetadataText }: BroadcastUIProps) => {
 
   const [isMobile, setIsMobile] = useState(false);
 
@@ -31,7 +32,15 @@ export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => 
 
   return (
     <>
-      {isMobile ? <AttendeeMobileLayout broadcast={broadcast} title={title} /> : <AttendeeDesktopLayout broadcast={broadcast} title={title}/>}
+      {isMobile ? <AttendeeMobileLayout 
+        broadcast={broadcast} 
+        title={title} 
+        onMetadataText={onMetadataText} 
+      /> : <AttendeeDesktopLayout 
+        broadcast={broadcast} 
+        title={title} 
+        onMetadataText={onMetadataText}
+        />}
     </>
   );
 };

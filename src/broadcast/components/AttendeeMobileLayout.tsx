@@ -9,9 +9,10 @@ import { WebinarChat } from "@/chat/component";
 interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
     title?: string;
+    onMetadataText: (text: string) => Promise<void>
 }
 
-export default function AttendeeMobileLayout({ broadcast, title }: AttendeeMobileLayoutProps) {
+export default function AttendeeMobileLayout({ broadcast, title, onMetadataText }: AttendeeMobileLayoutProps) {
 
     const headerRef = useRef<HTMLDivElement | null>(null);
     const footerRef = useRef<HTMLDivElement | null>(null);
@@ -93,6 +94,7 @@ export default function AttendeeMobileLayout({ broadcast, title }: AttendeeMobil
                             autoPlay
                             showStats
                             ariaLabel="Live Webinar Player"
+                            onMetadataText={onMetadataText}
                         />
                     ) : (
                         <div className="w-full h-full bg-black/80 grid place-items-center text-white">
