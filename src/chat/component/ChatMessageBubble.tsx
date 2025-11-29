@@ -12,6 +12,7 @@ interface ChatMessageProps {
   content: string;
   reactions?: Reaction[];
   isSelf?: boolean;
+  avatarBgColor?: string
 }
 
 export function ChatMessageBubble({
@@ -20,6 +21,7 @@ export function ChatMessageBubble({
   content,
   reactions = [],
   isSelf = false,
+  avatarBgColor
 }: ChatMessageProps) {
   return (
     <div className="flex items-center px-4 py-1 text-sx">
@@ -28,13 +30,26 @@ export function ChatMessageBubble({
         <AvatarImage src={avatarUrl} />
         <AvatarFallback
           className={cn(
-            "bg-muted text-muted-foreground",
-            isSelf && "bg-primary text-primary-foreground"
+            // base styles
+            "flex items-center justify-center text-xs font-medium rounded-full",
+            // non-self fallback (if no color)
+            !isSelf && !avatarBgColor && "bg-muted text-muted-foreground",
+            // self fallback (if no color)
+            isSelf && !avatarBgColor && "bg-primary text-primary-foreground",
           )}
+          style={
+            avatarBgColor
+              ? {
+                backgroundColor: avatarBgColor,
+                color: isSelf ? "var(--primary-foreground)" : "var(--accent-foreground)", // optional tweak
+              }
+              : undefined
+          }
         >
-          {name[0]}
+          {name?.[0]?.toUpperCase()}
         </AvatarFallback>
       </Avatar>
+
 
       {/* Message Content */}
       <div className="flex-1">

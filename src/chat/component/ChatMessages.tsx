@@ -38,15 +38,18 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
 
   return (
     <div className="px-1 py-2 space-y-1">
-      {filteredMessages.map((msg: ChatMessage) => (
-        <div key={msg.id} className="text-sm text-foreground">
-          <ChatMessageBubble
-            name={msg.sender.attributes?.name || 'unknown'}
-            content={msg.content}
-            isSelf={msg.sender.userId === userId}
-          />
-        </div>
-      ))}
+      {filteredMessages.map((msg: ChatMessage) => {
+        return (
+          <div key={msg.id} className="text-sm text-foreground">
+            <ChatMessageBubble
+              name={msg.sender.attributes?.name || 'unknown'}
+              content={msg.content}
+              isSelf={msg.sender.userId === userId}
+              avatarBgColor={msg.sender.attributes?.avatar_bg_color}
+            />
+          </div>
+        )
+      })}
     </div>
   );
 }

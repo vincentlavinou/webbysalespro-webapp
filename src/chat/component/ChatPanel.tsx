@@ -8,7 +8,7 @@ import { ChatInput } from './ChatInput';
 import { ChatControl } from './ChatControl';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
-import { OfferChatBubble } from '@/offer/components';
+
 import clsx from 'clsx';
 
 interface ChatPanelProps {
@@ -62,6 +62,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
                   name={msg.sender.attributes?.name || 'unknown'}
                   content={msg.content}
                   isSelf={msg.sender.userId === userId}
+                  avatarBgColor={msg.sender.attributes?.avatar_bg_color}
                 />
               </div>
             ))}
@@ -72,7 +73,6 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
       {/* Composer (controls + input) */}
       {!hideComposer && (
         <div className="border-t p-2 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <OfferChatBubble />
           <ChatControl />
           <ChatInput />
         </div>
