@@ -5,12 +5,13 @@ import IVSPlayer from "./views/IVSVideoPlayer";
 
 interface AttendeeDesktopLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
+    accessToken?: string
     title?: string;
     onMetadataText: (text: string) => Promise<void>
 }
 
 
-export const AttendeeDesktopLayout = ({ broadcast, title, onMetadataText }: AttendeeDesktopLayoutProps) => {
+export const AttendeeDesktopLayout = ({ accessToken, broadcast, title, onMetadataText }: AttendeeDesktopLayoutProps) => {
     return (
         <div className="flex flex-col w-full h-[90vh] overflow-hidden md:px-4">
             <div className="flex flex-col flex-1 min-h-0 lg:flex-row overflow-hidden gap-2">
@@ -35,7 +36,7 @@ export const AttendeeDesktopLayout = ({ broadcast, title, onMetadataText }: Atte
                 </div>
                                     {/* Chat container (grows under controls) */}
                     {broadcast.stream && <div className="flex flex-col w-full lg:w-[320px] min-w-[280px] lg:max-w-[400px] flex-1 overflow-y-auto px-2">
-                        <WebinarChat region={broadcast.stream?.region} />
+                        <WebinarChat token={accessToken} region={broadcast.stream?.region} />
                     </div>}
             </div>
         </div>

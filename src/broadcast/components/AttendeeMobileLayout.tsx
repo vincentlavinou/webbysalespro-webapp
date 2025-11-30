@@ -3,16 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import { AttendeeBroadcastServiceToken } from "../service/type";
 import IVSPlayer from "./views/IVSVideoPlayer";
 import { ChatComposer } from "@/chat/component/ChatComposer";
-import { ChatMessages } from "@/chat/component/ChatMessages";
 import { WebinarChat } from "@/chat/component";
+import { ChatMessages } from "@/chat/component/ChatMessages";
 
 interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
+    accessToken?: string,
     title?: string;
     onMetadataText: (text: string) => Promise<void>
 }
 
-export default function AttendeeMobileLayout({ broadcast, title, onMetadataText }: AttendeeMobileLayoutProps) {
+export default function AttendeeMobileLayout({ accessToken, broadcast, title, onMetadataText }: AttendeeMobileLayoutProps) {
 
     const headerRef = useRef<HTMLDivElement | null>(null);
     const footerRef = useRef<HTMLDivElement | null>(null);
@@ -106,6 +107,7 @@ export default function AttendeeMobileLayout({ broadcast, title, onMetadataText 
 
             {broadcast.stream && (
                 <WebinarChat
+                    token={accessToken}
                     region={broadcast.stream.region}
                     render={() => {
                         return (<>
@@ -134,7 +136,7 @@ export default function AttendeeMobileLayout({ broadcast, title, onMetadataText 
                                 ref={footerRef}
                                 className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur"
                             >
-                                <ChatComposer />
+                                <ChatComposer accessToken={accessToken}/>
                             </footer>
                         </>)
                     }}

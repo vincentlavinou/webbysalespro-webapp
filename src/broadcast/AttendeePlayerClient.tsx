@@ -26,8 +26,9 @@ export function AttendeePlayerClient(props: AttendeePlayerClientProps) {
             <BroadcastUserProvider 
                 userId={props.broadcastToken.user_id} 
                 email={props.broadcastToken.email}>
-                    <AttendeePlayerLayout 
+                    <AttendeePlayerLayout
                         broadcast={props.broadcastToken} 
+                        accessToken={props.accessToken}
                         title={props.title} 
                         onMetadataText={props.onMetadataText} 
                         />

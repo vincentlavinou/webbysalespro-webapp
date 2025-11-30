@@ -12,7 +12,7 @@ export type WebinarContextType = {
     token?: string
     isRedirecting: boolean
     setSession: (session: SeriesSession) => void
-    recordEvent: (name: string, payload?: Record<string, unknown>) => Promise<void>
+    recordEvent: (name: string, token: string, payload?: Record<string, unknown>) => Promise<void>
     regenerateBroadcastToken: (token: string) => Promise<void>
 }
 

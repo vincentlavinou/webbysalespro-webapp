@@ -74,15 +74,14 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
 
     // ---- Public event recorder ----
     const recordSessionEvent = useCallback(
-        async (name: string, payload: Record<string, unknown> | undefined) => {
-            if (!token) return;
+        async (name: string,  token: string, payload: Record<string, unknown> | undefined) => {
             try {
                 await recordEvent(name, sessionId, token, payload);
             } catch (e) {
                 console.error("[WebinarProvider] recordEvent failed", e);
             }
         },
-        [sessionId, token]
+        [sessionId]
     );
 
     const regenerateBroadcastToken = useCallback(

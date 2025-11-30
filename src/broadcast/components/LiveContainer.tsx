@@ -27,7 +27,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
       const token = await createBroadcastServiceToken(sessionId, accessToken);
       if (!cancelled) {
         setBroadcastToken(token);
-        recordEvent("joined")
+        recordEvent("joined", accessToken)
       }
     }
 
@@ -35,7 +35,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
 
     return () => {
       cancelled = true;
-      recordEvent("left")
+      recordEvent("left", accessToken)
     };
   }, [sessionId, accessToken]);
 

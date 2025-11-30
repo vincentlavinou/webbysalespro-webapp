@@ -6,11 +6,13 @@ import toast from 'react-hot-toast'
 
 interface StripeCheckoutFormProps {
   email: string
+  token: string
   onSuccess: (paymentIntentId: string) => void
 }
 
 export function StripeCheckoutForm({ 
   email,
+  token,
   onSuccess 
 }: StripeCheckoutFormProps) {
   
@@ -24,7 +26,7 @@ export function StripeCheckoutForm({
     if (!stripe || !elements) return
 
     setLoading(true)
-    await recordEvent("checkout_started")
+    await recordEvent("checkout_started", token)
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -41,7 +43,7 @@ export function StripeCheckoutForm({
     if (error) {
       toast.error(`${error.message ?? 'Payment failed.'}`)
       if(error.code === "card_declined" && error.decline_code) {
-        await recordEvent(error.decline_code)
+        await recordEvent(error.decline_code, token)
       }
       
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {

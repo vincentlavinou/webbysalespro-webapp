@@ -10,15 +10,16 @@ import { useBroadcastUser } from "@/broadcast/hooks/use-broadcast-user";
 import { useWebinar } from "@/webinar/hooks";
 
 export type ChatProviderProps = {
-    children: React.ReactNode
+    children: React.ReactNode,
+    token?: string
 }
 
-export function ChatProvider({children}: ChatProviderProps) {
+export function ChatProvider({ children, token }: ChatProviderProps) {
 
-    const {userId} = useBroadcastUser()
-     const {recordEvent} = useWebinar()
-    const {region, tokenProvider} = useChatConfiguration()
-    const {recipient} = useChatControl()
+    const { userId } = useBroadcastUser()
+    const { recordEvent } = useWebinar()
+    const { region, tokenProvider } = useChatConfiguration()
+    const { recipient } = useChatControl()
     const roomRef = useRef<ChatRoom | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [filteredMessages, setFilteredMessages] = useState<ChatMessage[]>([])
@@ -47,14 +48,14 @@ export function ChatProvider({children}: ChatProviderProps) {
 
         return filteredMessages
     }
-    
+
     const connect = useCallback(async () => {
         if (room.state === "connected") return () => {
             room.disconnect();
         };;
 
         listenerUnsubs.current.forEach((unsubsribe) => unsubsribe())
-    
+
         listenerUnsubs.current.push(
             room.addListener('connecting', () => {
                 setConnected(false);
@@ -80,35 +81,37 @@ export function ChatProvider({children}: ChatProviderProps) {
         )
 
         await room.connect();
-    
+
         return () => {
             room.disconnect();
         };
     }, []);
-    
+
     const sendMessage = useCallback(async (content: string, recipient: ChatRecipient = defaultRecipient(DefaultChatRecipient.EVERYONE)) => {
         const room = roomRef.current;
         if (!room || !connected) return;
-    
+
         const request = new SendMessageRequest(content);
-    
+
         request.attributes = {
             recipient: recipient.value
         } as ChatMetadata
-    
+
         try {
             await room.sendMessage(request);
-            await recordEvent("chat_message")
+            if (token) {
+                await recordEvent("chat_message", token)
+            }
         } catch (err) {
             console.error('[IVS Chat] Failed to send message', err);
         }
     }, [connected]);
-    
+
     const disconnect = useCallback(() => {
         roomRef.current?.disconnect();
         setConnected(false);
     }, []);
-    
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -119,8 +122,8 @@ export function ChatProvider({children}: ChatProviderProps) {
     useEffect(() => {
         const filteredMessages = processMessage(messages, recipient, userId)
         setFilteredMessages(filteredMessages)
-    },[messages, setFilteredMessages, recipient, userId])
-    
+    }, [messages, setFilteredMessages, recipient, userId])
+
 
     return <ChatContext.Provider value={{
         connect,

@@ -10,11 +10,14 @@ import { getPaymentProviderLabel, PaymentProviderType } from "@/paymentprovider/
 import { FanBasisCheckout } from "../checkout/fanbasis";
 import OfferPurchaseSuccess from "./OfferPurchaseSuccess";
 
+interface OfferChatBubbleProps {
+    token: string
+}
 
-export function OfferChatBubble() {
+export function OfferChatBubble({ token } : OfferChatBubbleProps) {
 
     const { email } = useBroadcastUser();
-    const { session, webinar, token, recordEvent } = useWebinar();
+    const { session, webinar, recordEvent } = useWebinar();
 
     const [selectedOffer, setSelectedOffer] = useState<WebinarOffer | undefined>(undefined);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -32,7 +35,7 @@ export function OfferChatBubble() {
     const handleCheckoutSuccess = useCallback(async (ref: string) => {
         if (selectedOffer && session) {
             setPurchaseSuccess({ offer: selectedOffer, reference: ref });
-            await recordEvent("purchase_succeeded", {
+            await recordEvent("purchase_succeeded", token, {
                 "amount_cents": selectedOffer.price * 100 // cents
             })
         }
@@ -70,6 +73,7 @@ export function OfferChatBubble() {
                 <div className="mt-2 p-4 border rounded bg-secondary max-h-[400px] overflow-y-auto">
                     {!isCheckingOut ? (
                         <SelectedOffer
+                            token={token}
                             selectedOffer={selectedOffer}
                             setIsCheckingOut={setIsCheckingOut}
                             setSelectedOffer={setSelectedOffer}

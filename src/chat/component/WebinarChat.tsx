@@ -12,11 +12,12 @@ import { ChatPanel } from "./ChatPanel";
 
 export interface WebinarChatProps {
   region: string;
+  token?: string;
   /** Optional render slot to fully control the chat layout inside providers */
   render?: () => ReactNode;
 }
 
-export function WebinarChat({ region, render }: WebinarChatProps) {
+export function WebinarChat({ token, region, render }: WebinarChatProps) {
   const { sessionId, getRequestHeaders, accessToken } = useBroadcastConfiguration();
 
   return (
@@ -37,7 +38,7 @@ export function WebinarChat({ region, render }: WebinarChatProps) {
           defaultRecipient(DefaultChatRecipient.HOST),
         ]}
       >
-        <ChatProvider>
+        <ChatProvider token={token}>
           {render ? render() : <ChatPanel />}
         </ChatProvider>
       </ChatControlProvider>

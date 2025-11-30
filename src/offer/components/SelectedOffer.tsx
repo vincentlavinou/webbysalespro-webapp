@@ -4,12 +4,14 @@ import { WebinarOffer } from "../service";
 import { useEffect } from "react";
 
 interface SelectedOfferProps {
+  token: string
   selectedOffer: WebinarOffer;
   setIsCheckingOut: (value: boolean) => void;
   setSelectedOffer: (offer: WebinarOffer | undefined) => void;
 }
 
 export function SelectedOffer({
+  token,
   selectedOffer,
   setIsCheckingOut,
   setSelectedOffer,
@@ -18,7 +20,7 @@ export function SelectedOffer({
 
   useEffect(() => {
     const load = async () => {
-      await recordEvent("offer_shown", {
+      await recordEvent("offer_shown", token, {
         offer_id: selectedOffer.id,
       });
     };

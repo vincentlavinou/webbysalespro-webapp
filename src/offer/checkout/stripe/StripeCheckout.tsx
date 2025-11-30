@@ -49,7 +49,7 @@ export function StripeCheckout({
 
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <StripeCheckoutForm email={email} onSuccess={onSuccess}/>
+      <StripeCheckoutForm token={token} email={email} onSuccess={onSuccess}/>
     </Elements>
   )
 }
