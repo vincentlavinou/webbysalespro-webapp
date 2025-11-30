@@ -36,11 +36,11 @@ type StatsState = {
 export default function IVSPlayer({
   src,
   poster,
+  onMetadataText,
   autoPlay = true,
   muted = false,
   showStats = true,
-  ariaLabel = "IVS player",
-  onMetadataText = async () => {}
+  ariaLabel = "IVS player"
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<Player | null>(null);
@@ -178,8 +178,9 @@ export default function IVSPlayer({
         }
       };
 
-      const onMeta = async (payload: TextMetadataCue) => {
-        await onMetadataText(payload.text)
+      const onMeta = (payload: TextMetadataCue) => {
+        onMetadataText(payload.text)
+        console.log(payload)
       };
 
       // Hook up listeners

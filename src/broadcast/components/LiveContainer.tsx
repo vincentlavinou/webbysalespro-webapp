@@ -45,7 +45,6 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
       switch (event.type) {
         case PlaybackMetadataEventType.OFFER:
           const payload = event.payload as SessionOfferVisibilityUpdate
-          console.log(payload)
           setSession({
             ...(session || {}),
             offer_visible: payload.visible,
