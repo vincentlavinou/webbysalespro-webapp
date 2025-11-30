@@ -18,20 +18,24 @@ type Props = {
 
 export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
   const [broadcastToken, setBroadcastToken] = useState<BroadcastServiceToken | null>(null);
-  const { setSession, session } = useWebinar()
+  const { setSession, session, recordEvent } = useWebinar()
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       const token = await createBroadcastServiceToken(sessionId, accessToken);
-      if (!cancelled) setBroadcastToken(token);
+      if (!cancelled) {
+        setBroadcastToken(token);
+        recordEvent("joined")
+      }
     }
 
     load();
 
     return () => {
       cancelled = true;
+      recordEvent("left")
     };
   }, [sessionId, accessToken]);
 
