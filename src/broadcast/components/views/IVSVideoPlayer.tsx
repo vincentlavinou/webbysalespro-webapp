@@ -44,7 +44,7 @@ export default function IVSPlayer({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<Player | null>(null);
-
+  const onMetadataTextRef = useRef(onMetadataText);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffRef = useRef<number>(START_BACKOFF);
   const disposedRef = useRef<boolean>(false);
@@ -125,6 +125,10 @@ export default function IVSPlayer({
   // --- main effect ----------------------------------------------------------
 
   useEffect(() => {
+    onMetadataTextRef.current = onMetadataText;
+  }, [onMetadataText]);
+
+  useEffect(() => {
     disposedRef.current = false;
     setAutoplayFailed(false); // reset when src/autoPlay/muted changes
 
@@ -198,8 +202,11 @@ export default function IVSPlayer({
       };
 
       const onMeta = (payload: TextMetadataCue) => {
-        onMetadataText(payload.text);
-        console.log(payload);
+        try {
+          onMetadataTextRef.current?.(payload.text);
+        } catch (e) {
+          console.warn("onMetadataText handler error", e);
+        }
       };
 
       // Hook up listeners
@@ -273,7 +280,7 @@ export default function IVSPlayer({
         cleanupPromise.catch(() => { });
       }
     };
-  }, [src, autoPlay, muted, onMetadataText]);
+  }, [src, autoPlay, muted]);
 
   // --- derived UI state -----------------------------------------------------
 
