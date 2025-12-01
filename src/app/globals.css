@@ -146,3 +146,31 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Light mode (default) */
+@theme {
+  --color-primary: #25D366;
+
+  --color-primary-hover: #1fb85a;
+
+  --background-image-primary-gradient: linear-gradient(
+    to right,
+    #25D366,
+    #059669 /* emerald-600 */
+  );
+}
+
+/* Dark mode overrides */
+.dark {
+  @theme {
+    /* Keep the brand identity but darker tones work better for contrast */
+    --color-primary: #21bd5c;
+    --color-primary-hover: #1aa74f;
+
+    --background-image-primary-gradient: linear-gradient(
+      to right,
+      #21bd5c,
+      #047857 /* emerald-700 */
+    );
+  }
+}

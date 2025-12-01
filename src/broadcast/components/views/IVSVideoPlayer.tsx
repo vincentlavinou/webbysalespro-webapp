@@ -23,7 +23,7 @@ type Props = {
   muted?: boolean;
   showStats?: boolean;
   ariaLabel?: string;
-  onMetadataText: (text: string) => Promise<void>
+  onMetadataText: (text: string) => Promise<void>;
 };
 
 type StatsState = {
@@ -40,7 +40,7 @@ export default function IVSPlayer({
   autoPlay = true,
   muted = false,
   showStats = true,
-  ariaLabel = "IVS player"
+  ariaLabel = "IVS player",
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<Player | null>(null);
@@ -51,6 +51,7 @@ export default function IVSPlayer({
 
   const [stats, setStats] = useState<StatsState>({});
   const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
+  const [autoplayFailed, setAutoplayFailed] = useState(false);
 
   // --- helpers --------------------------------------------------------------
 
@@ -80,7 +81,9 @@ export default function IVSPlayer({
       try {
         playerRef.current.load(src);
         if (autoPlay && videoRef.current) {
-          await videoRef.current.play().catch(() => {});
+          await videoRef.current.play().catch(() => {
+            setAutoplayFailed(true);
+          });
         }
         backoffRef.current = START_BACKOFF;
       } catch {
@@ -104,10 +107,26 @@ export default function IVSPlayer({
     }
   };
 
+  // manual play for autoplay-blocked devices (iOS low power, etc.)
+  const handleManualPlay = async () => {
+    if (!videoRef.current) return;
+
+    try {
+      clearRetry();
+      backoffRef.current = START_BACKOFF;
+      await videoRef.current.play();
+      setAutoplayFailed(false);
+    } catch (err) {
+      console.warn("Manual play failed", err);
+      setAutoplayFailed(true);
+    }
+  };
+
   // --- main effect ----------------------------------------------------------
 
   useEffect(() => {
     disposedRef.current = false;
+    setAutoplayFailed(false); // reset when src/autoPlay/muted changes
 
     async function setup() {
       if (!videoRef.current) return;
@@ -115,7 +134,6 @@ export default function IVSPlayer({
       const ivs = await import("amazon-ivs-player");
       if (disposedRef.current) return;
 
-      // If IVS player not supported, you could fall back to hls.js, etc.
       if (!ivs.isPlayerSupported) {
         console.warn("IVS Player not supported; consider a fallback.");
         return;
@@ -165,6 +183,7 @@ export default function IVSPlayer({
 
       const onPlaying = () => {
         backoffRef.current = START_BACKOFF;
+        setAutoplayFailed(false); // once playing, clear autoplay failure
         updateStats(player);
       };
 
@@ -179,8 +198,8 @@ export default function IVSPlayer({
       };
 
       const onMeta = (payload: TextMetadataCue) => {
-        onMetadataText(payload.text)
-        console.log(payload)
+        onMetadataText(payload.text);
+        console.log(payload);
       };
 
       // Hook up listeners
@@ -196,8 +215,10 @@ export default function IVSPlayer({
       if (autoPlay && videoRef.current) {
         try {
           await videoRef.current.play();
+          setAutoplayFailed(false);
         } catch {
-          // autoplay blocked; user will click play
+          // autoplay blocked; show manual play button
+          setAutoplayFailed(true);
         }
       }
 
@@ -248,12 +269,11 @@ export default function IVSPlayer({
       clearRetry();
       playerRef.current = null;
 
-      // Ensure any setup-level cleanup (event listeners etc.) runs
       if (cleanupPromise instanceof Promise) {
-        cleanupPromise.catch(() => {});
+        cleanupPromise.catch(() => { });
       }
     };
-  }, [src, autoPlay, muted]);
+  }, [src, autoPlay, muted, onMetadataText]);
 
   // --- derived UI state -----------------------------------------------------
 
@@ -264,10 +284,11 @@ export default function IVSPlayer({
   const isEnded = effectiveState === PlayerState.ENDED;
 
   const isLoading =
-    !effectiveState ||
-    effectiveState === PlayerState.IDLE ||
-    effectiveState === PlayerState.READY ||
-    effectiveState === PlayerState.BUFFERING
+    !autoplayFailed &&
+    (!effectiveState ||
+      effectiveState === PlayerState.IDLE ||
+      effectiveState === PlayerState.READY ||
+      effectiveState === PlayerState.BUFFERING);
 
   const shouldBlur = !isPlaying; // blur for everything except actively playing
 
@@ -285,15 +306,19 @@ export default function IVSPlayer({
             muted={muted}
             preload="auto"
             aria-label={ariaLabel}
-            className={`h-full w-full object-contain transition duration-200 ${
-              shouldBlur ? "blur-sm" : ""
-            }`}
+            className={`h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
           />
         </div>
 
         {/* Overlay for loading / ended states */}
         {shouldBlur && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
+          <div
+            className={`
+              absolute inset-0 flex flex-col items-center justify-center gap-3
+              bg-black/40 backdrop-blur-sm
+              ${isLoading || isEnded ? "pointer-events-none" : "pointer-events-none"}
+            `}
+          >
             {isLoading && (
               <>
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
@@ -308,6 +333,29 @@ export default function IVSPlayer({
                 This live webinar has ended.
               </div>
             )}
+          </div>
+        )}
+
+        {/* Autoplay blocked overlay (e.g. iOS low power mode) */}
+        {autoplayFailed && !isPlaying && !isEnded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={handleManualPlay}
+              className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-300">
+                {/* simple play icon */}
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="h-4 w-4 translate-x-[1px]"
+                >
+                  <polygon points="6,4 20,12 6,20" fill="currentColor" />
+                </svg>
+              </span>
+              <span>Tap to start the live webinar</span>
+            </button>
           </div>
         )}
 
