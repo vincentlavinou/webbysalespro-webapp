@@ -9,14 +9,17 @@ import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
 import { PlaybackMetadataEventType } from "../service/enum";
 import { useWebinar } from "@/webinar/hooks";
 import { SeriesSession, SessionOfferVisibilityUpdate } from "@/webinar/service";
+import { OfferSessionClientProvider } from "@/offer-client/providers/OfferSessionClientProvider";
+import { OfferSessionDto } from "@/offer-client/service/type";
 
 type Props = {
   sessionId: string;
   accessToken: string;
   webinarTitle: string;
+  offers: OfferSessionDto[]
 };
 
-export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
+export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: Props) {
   const [broadcastToken, setBroadcastToken] = useState<BroadcastServiceToken | null>(null);
   const { setSession, session, recordEvent } = useWebinar()
 
@@ -60,7 +63,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
     } catch (err) {
       console.log(err);
     }
-  },[session, setSession])
+  }, [session, setSession])
 
   if (!broadcastToken) {
     // optional loading UI
@@ -81,13 +84,22 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle }: Props) {
 
   if (broadcastToken.role === "attendee" && broadcastToken.stream) {
     return (
-      <AttendeePlayerClient
+      <OfferSessionClientProvider
         sessionId={sessionId}
-        accessToken={accessToken}
-        broadcastToken={broadcastToken as AttendeeBroadcastServiceToken}
-        title={webinarTitle}
-        onMetadataText={onPlaybackMetadataText}
-      />
+        token={accessToken}
+        offers={offers}
+        email={broadcastToken.email || ''}
+        recordEvent={recordEvent}
+      >
+        <AttendeePlayerClient
+          sessionId={sessionId}
+          accessToken={accessToken}
+          broadcastToken={broadcastToken as AttendeeBroadcastServiceToken}
+          title={webinarTitle}
+          onMetadataText={onPlaybackMetadataText}
+        />
+      </OfferSessionClientProvider>
+
     );
   }
 

@@ -8,6 +8,7 @@ import {
   PlayerState,
   TextMetadataCue,
 } from "amazon-ivs-player";
+import { emitPlaybackMetadata } from "@/emitter/playback/";
 
 // --- retry tuning ---
 const START_BACKOFF = 800; // ms
@@ -204,6 +205,7 @@ export default function IVSPlayer({
       const onMeta = (payload: TextMetadataCue) => {
         try {
           onMetadataTextRef.current?.(payload.text);
+          emitPlaybackMetadata(payload.text)
         } catch (e) {
           console.warn("onMetadataText handler error", e);
         }
