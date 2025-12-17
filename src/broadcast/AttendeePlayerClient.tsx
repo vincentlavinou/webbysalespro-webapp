@@ -11,7 +11,6 @@ interface AttendeePlayerClientProps {
     getRequestHeaders?: () => Promise<RequestHeaders | undefined>
     accessToken?: string
     broadcastToken: AttendeeBroadcastServiceToken
-    onMetadataText: (text: string) => Promise<void>
     title?: string,
 }
 
@@ -30,7 +29,6 @@ export function AttendeePlayerClient(props: AttendeePlayerClientProps) {
                         broadcast={props.broadcastToken} 
                         accessToken={props.accessToken}
                         title={props.title} 
-                        onMetadataText={props.onMetadataText} 
                         />
             </BroadcastUserProvider>
         </BroadcastConfigurationProvider >

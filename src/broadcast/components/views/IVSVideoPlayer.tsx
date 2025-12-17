@@ -24,7 +24,6 @@ type Props = {
   muted?: boolean;
   showStats?: boolean;
   ariaLabel?: string;
-  onMetadataText: (text: string) => Promise<void>;
 };
 
 type StatsState = {
@@ -37,7 +36,6 @@ type StatsState = {
 export default function IVSPlayer({
   src,
   poster,
-  onMetadataText,
   autoPlay = true,
   muted = false,
   showStats = true,
@@ -45,7 +43,6 @@ export default function IVSPlayer({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<Player | null>(null);
-  const onMetadataTextRef = useRef(onMetadataText);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffRef = useRef<number>(START_BACKOFF);
   const disposedRef = useRef<boolean>(false);
@@ -126,10 +123,6 @@ export default function IVSPlayer({
   // --- main effect ----------------------------------------------------------
 
   useEffect(() => {
-    onMetadataTextRef.current = onMetadataText;
-  }, [onMetadataText]);
-
-  useEffect(() => {
     disposedRef.current = false;
     setAutoplayFailed(false); // reset when src/autoPlay/muted changes
 
@@ -204,7 +197,6 @@ export default function IVSPlayer({
 
       const onMeta = (payload: TextMetadataCue) => {
         try {
-          onMetadataTextRef.current?.(payload.text);
           emitPlaybackMetadata(payload.text)
         } catch (e) {
           console.warn("onMetadataText handler error", e);

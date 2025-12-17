@@ -42,29 +42,6 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: 
     };
   }, [sessionId, accessToken]);
 
-  const onPlaybackMetadataText = useCallback(async (text: string) => {
-    try {
-      const event = JSON.parse(text) as PlaybackMetadataEvent;
-      switch (event.type) {
-        case PlaybackMetadataEventType.OFFER:
-          const payload = event.payload as SessionOfferVisibilityUpdate
-          setSession({
-            ...(session || {}),
-            offer_visible: payload.visible,
-            offer_shown_at: payload.shown_at,
-          } as SeriesSession)
-
-          break;
-        case PlaybackMetadataEventType.SESSION:
-          // handle session metadata
-          break;
-      }
-      console.log(event);
-    } catch (err) {
-      console.log(err);
-    }
-  }, [session, setSession])
-
   if (!broadcastToken) {
     // optional loading UI
     return <WaitingRoomShimmer title="Connecting to live session" />
@@ -87,7 +64,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: 
       <OfferSessionClientProvider
         sessionId={sessionId}
         token={accessToken}
-        offers={offers}
+        initialOffers={offers}
         email={broadcastToken.email || ''}
         recordEvent={recordEvent}
       >
@@ -96,7 +73,6 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: 
           accessToken={accessToken}
           broadcastToken={broadcastToken as AttendeeBroadcastServiceToken}
           title={webinarTitle}
-          onMetadataText={onPlaybackMetadataText}
         />
       </OfferSessionClientProvider>
 

@@ -2,7 +2,6 @@ import { useBroadcastUser } from "@/broadcast/hooks/use-broadcast-user";
 import { useWebinar } from "@/webinar/hooks"
 import { useCallback, useState } from "react";
 import { WebinarOffer } from "../service";
-import { OfferCarousel } from "./OfferCarousel";
 import { SelectedOffer } from "./SelectedOffer";
 import { Button } from "@/components/ui/button";
 import { StripeCheckout } from "../checkout/stripe";
@@ -45,7 +44,7 @@ export function OfferChatBubble({ token } : OfferChatBubbleProps) {
         {/* Offer carousel (hidden when offer open) */ }
         return (
             <div className="mt-2">
-                <OfferCarousel offers={webinar.offers} onOfferClick={(offer) => setSelectedOffer(offer)} />
+                {/* <OfferCarousel offers={webinar.offers} onOfferClick={(offer) => setSelectedOffer(offer)} /> */}
             </div>
         )
     }

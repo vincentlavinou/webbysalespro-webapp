@@ -1,19 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { WebinarOffer } from '@/offer/service';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
+import { OfferSessionDto } from '../service/type';
 
 interface VisibleOfferProps {
-  offer: WebinarOffer;
-  onClick: (offer: WebinarOffer) => void;
+  offer: OfferSessionDto;
+  onClick: (offer: OfferSessionDto) => void;
 }
 
 function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
-  const thumbnail = offer.media.find(
+  const thumbnail = offer.offer.media.find(
     (m) => m.file_type === 'image' && m.field_type === 'thumbnail'
   );
 
@@ -40,7 +40,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
         <div className="shrink-0">
           <Image
             src={thumbnail.file_url}
-            alt={offer.headline}
+            alt={offer.offer.name}
             height={80}
             width={80}
             className="w-20 h-20 rounded object-cover border border-border"
@@ -49,13 +49,13 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
       )}
       <div className="flex-1 min-w-0">
         <h4 className="text-sm font-medium line-clamp-1">
-          {offer.headline}
+          {offer.offer.name}
         </h4>
         <p className="text-xs text-muted-foreground line-clamp-2">
-          {offer.description}
+          {offer.offer.description}
         </p>
         <p className="text-xs mt-1 text-primary font-semibold">
-          {offer.currency_display} {offer.price}
+          {offer.offer.price?.currency} {offer.offer.price?.effective_price}
         </p>
       </div>
     </button>
@@ -63,8 +63,8 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
 }
 
 interface VisibleOffersCarouselProps {
-  offers: WebinarOffer[];
-  onOfferClick: (offer: WebinarOffer) => void;
+  offers: OfferSessionDto[];
+  onOfferClick: (offer: OfferSessionDto) => void;
 }
 
 export function OfferCarousel({

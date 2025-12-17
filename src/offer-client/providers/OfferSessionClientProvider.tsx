@@ -8,7 +8,7 @@ interface OfferSessionClientProviderProps {
     children: React.ReactNode
     sessionId: string,
     token: string,
-    offers: OfferSessionDto[],
+    initialOffers: OfferSessionDto[],
     email: string,
     recordEvent: (name: string, token: string, payload?: Record<string, unknown>) => Promise<void>
 }
@@ -17,11 +17,12 @@ export function OfferSessionClientProvider({
     children,
     sessionId,
     token,
-    offers,
+    initialOffers,
     email,
     recordEvent
 }: OfferSessionClientProviderProps) {
 
+    const [offers, setOffers] = useState(initialOffers)
     const [selectedOffer, setSelectedOffer] = useState<OfferSessionDto | undefined>(undefined);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [view, setView] = useState<OfferView>("offers-hidden")
@@ -36,14 +37,25 @@ export function OfferSessionClientProvider({
         sessionId: sessionId,
         schema: offerVisibilityMetadataSchema,
         onEvent: (event) => {
-            console.log(event)
+            setOffers((prev) => {
+                return prev.map((os) => os.id === event.payload.id ? {...os, status: event.payload.status} : os)
+            })
         }
-    })
+    },[])
+
+    const isOffersVisibile = useCallback(() => {
+        const hasVisibleOffer = offers.find((os) => os.status !== 'closed')
+
+        if(hasVisibleOffer) return true
+        
+        return false
+    },[offers])
 
     const resetView = () => {
         setIsCheckingOut(false);
         setSelectedOffer(undefined);
-        setView("offers-visible")
+        const view = isOffersVisibile() ? "offers-visible" : "offers-hidden"
+        setView(view)
     };
 
     const handleCheckoutSuccess = useCallback(async (ref: string) => {

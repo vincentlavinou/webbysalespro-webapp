@@ -10,10 +10,9 @@ interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
     accessToken?: string,
     title?: string;
-    onMetadataText: (text: string) => Promise<void>
 }
 
-export default function AttendeeMobileLayout({ accessToken, broadcast, title, onMetadataText }: AttendeeMobileLayoutProps) {
+export default function AttendeeMobileLayout({ accessToken, broadcast, title }: AttendeeMobileLayoutProps) {
 
     const headerRef = useRef<HTMLDivElement | null>(null);
     const footerRef = useRef<HTMLDivElement | null>(null);
@@ -95,7 +94,6 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title, on
                             autoPlay
                             showStats
                             ariaLabel="Live Webinar Player"
-                            onMetadataText={onMetadataText}
                         />
                     ) : (
                         <div className="w-full h-full bg-black/80 grid place-items-center text-white">

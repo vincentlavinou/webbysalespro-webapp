@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { DependencyList, useEffect, useRef } from "react";
 import { z } from "zod";
 import { onPlaybackMetadata } from "../playbackEventEmitter";
 
@@ -20,18 +20,19 @@ export function usePlaybackMetadataEvent<
   TType extends string,
   TPayload extends { session_id?: string }
 >({
-  eventType,
-  schema,
-  sessionId,
-  onEvent,
-  getSignature,
-}: {
-  eventType: TType;
-  schema: z.ZodType<BaseEvent<TType, TPayload>>;
-  sessionId?: string;
-  onEvent: (evt: BaseEvent<TType, TPayload>) => void;
-  getSignature?: (evt: BaseEvent<TType, TPayload>) => string;
-}) {
+    eventType,
+    schema,
+    sessionId,
+    onEvent,
+    getSignature
+  } : {
+    eventType: TType;
+    schema: z.ZodType<BaseEvent<TType, TPayload>>;
+    sessionId?: string;
+    onEvent: (evt: BaseEvent<TType, TPayload>) => void;
+    getSignature?: (evt: BaseEvent<TType, TPayload>) => string;
+  }, dependecies: DependencyList
+) {
   const lastSigRef = useRef<string>("");
 
   useEffect(() => {
@@ -40,18 +41,18 @@ export function usePlaybackMetadataEvent<
       const obj: unknown =
         typeof raw === "string"
           ? (() => {
-              try {
-                return JSON.parse(raw);
-              } catch {
-                return null;
-              }
-            })()
+            try {
+              return JSON.parse(raw);
+            } catch {
+              return null;
+            }
+          })()
           : raw;
 
       if (!obj || typeof obj !== "object") return;
 
       // fast pre-filter (avoid zod cost for other event types)
-      const type = (obj as {type: TType, payload: TPayload}).type;
+      const type = (obj as { type: TType, payload: TPayload }).type;
       if (type !== eventType) return;
 
       const parsed = schema.safeParse(obj);
@@ -71,5 +72,5 @@ export function usePlaybackMetadataEvent<
 
       onEvent(evt);
     });
-  }, [eventType, schema, sessionId, onEvent, getSignature]);
+  }, [eventType, schema, sessionId, onEvent, getSignature, ...dependecies]);
 }

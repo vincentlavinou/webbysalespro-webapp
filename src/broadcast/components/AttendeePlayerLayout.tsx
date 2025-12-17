@@ -10,10 +10,9 @@ interface BroadcastUIProps {
   broadcast: AttendeeBroadcastServiceToken;
   accessToken?: string;
   title?: string;
-  onMetadataText: (text: string) => Promise<void>
 }
 
-export const AttendeePlayerLayout = ({ accessToken, broadcast, title, onMetadataText }: BroadcastUIProps) => {
+export const AttendeePlayerLayout = ({ accessToken, broadcast, title }: BroadcastUIProps) => {
 
   const [isMobile, setIsMobile] = useState(false);
 
@@ -37,12 +36,10 @@ export const AttendeePlayerLayout = ({ accessToken, broadcast, title, onMetadata
         broadcast={broadcast} 
         accessToken={accessToken}
         title={title} 
-        onMetadataText={onMetadataText} 
       /> : <AttendeeDesktopLayout 
         broadcast={broadcast} 
         accessToken={accessToken}
         title={title} 
-        onMetadataText={onMetadataText}
         />}
     </>
   );
