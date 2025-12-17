@@ -134,7 +134,7 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                                 ref={footerRef}
                                 className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur"
                             >
-                                <ChatComposer accessToken={accessToken}/>
+                                <ChatComposer/>
                             </footer>
                         </>)
                     }}

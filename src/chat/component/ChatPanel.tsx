@@ -10,6 +10,7 @@ import { ChatMessageBubble } from './ChatMessageBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 
 import clsx from 'clsx';
+import { ChatComposer } from './ChatComposer';
 
 interface ChatPanelProps {
   /** Hide composer (Control + Input) so parent can place it in a sticky footer */
@@ -72,10 +73,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
 
       {/* Composer (controls + input) */}
       {!hideComposer && (
-        <div className="border-t p-2 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <ChatControl />
-          <ChatInput />
-        </div>
+        <ChatComposer />
       )}
     </div>
   );
