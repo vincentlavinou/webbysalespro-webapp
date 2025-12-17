@@ -4,8 +4,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useChat } from '@chat/hooks';
 import { ChatMessage } from 'amazon-ivs-chat-messaging';
-import { ChatInput } from './ChatInput';
-import { ChatControl } from './ChatControl';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 
