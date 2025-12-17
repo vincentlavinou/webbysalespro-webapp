@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { OfferSessionClientContext } from "../contexts/OfferSessionClientContext"
 import { OfferSessionDto, OfferView } from "../service/type";
 import { usePlaybackMetadataEvent } from "@/emitter/playback";
@@ -38,24 +38,46 @@ export function OfferSessionClientProvider({
         schema: offerVisibilityMetadataSchema,
         onEvent: (event) => {
             setOffers((prev) => {
-                return prev.map((os) => os.id === event.payload.id ? {...os, status: event.payload.status} : os)
+                return prev.map((os) => os.id === event.payload.id ? { ...os, status: event.payload.status } : os)
             })
         }
-    },[])
+    }, [])
 
     const isOffersVisibile = useCallback(() => {
         const hasVisibleOffer = offers.find((os) => os.status !== 'closed')
 
-        if(hasVisibleOffer) return true
-        
+        if (hasVisibleOffer) return true
+
         return false
-    },[offers])
+    }, [offers])
+
+    useEffect(() => {
+
+        const calculateView = () => {
+
+            const hasVisibleOffer = offers.find((os) => os.status !== 'closed')
+            const hasSelectedOffer = selectedOffer !== undefined
+            const hasPurchasedOffer = purchasedOffer !== undefined
+
+            if (hasPurchasedOffer) return "offer-purchased" as OfferView
+            if (isCheckingOut) return "offer-checkingout" as OfferView
+            if (hasSelectedOffer) return "offer-selected" as OfferView
+            if (hasVisibleOffer) return "offers-visible" as OfferView
+
+            return "offers-hidden" as OfferView
+
+        }
+
+        const updatedView = calculateView()
+        setView(updatedView)
+
+    }, [offers, selectedOffer, purchasedOffer, isCheckingOut, setView])
+
 
     const resetView = () => {
         setIsCheckingOut(false);
         setSelectedOffer(undefined);
-        const view = isOffersVisibile() ? "offers-visible" : "offers-hidden"
-        setView(view)
+        setPurchasedOffer(undefined)
     };
 
     const handleCheckoutSuccess = useCallback(async (ref: string) => {
