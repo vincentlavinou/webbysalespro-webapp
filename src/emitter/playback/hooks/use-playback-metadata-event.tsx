@@ -59,8 +59,8 @@ export function usePlaybackMetadataEvent<
       if (type !== eventType) return;
 
       const parsed = schema.safeParse(obj);
-      console.log(`Parsed Error: ${parsed.error}`)
-      console.log(`Parsed Data: ${parsed.data}`)
+      console.log(`Parsed Error: ${JSON.stringify(parsed.error)}`)
+      console.log(`Parsed Data: ${JSON.stringify(parsed.data)}`)
       if (!parsed.success) return;
 
       const evt = parsed.data;
