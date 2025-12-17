@@ -38,6 +38,7 @@ export function usePlaybackMetadataEvent<
   useEffect(() => {
     return onPlaybackMetadata((raw) => {
       // raw might already be an object if you emit parsed JSON — handle both
+      console.log(`Raw Event: ${raw}`)
       const obj: unknown =
         typeof raw === "string"
           ? (() => {
