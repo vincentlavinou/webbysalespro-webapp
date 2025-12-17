@@ -1,14 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AttendeePlayerClient } from "@/broadcast/AttendeePlayerClient";
 import { BroadcastParticipantClient } from "@/broadcast/BroadcastParticipantClient";
-import { AttendeeBroadcastServiceToken, BroadcastServiceToken, PlaybackMetadataEvent } from "@/broadcast/service/type";
+import { AttendeeBroadcastServiceToken, BroadcastServiceToken } from "@/broadcast/service/type";
 import { createBroadcastServiceToken } from "../service";
 import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
-import { PlaybackMetadataEventType } from "../service/enum";
 import { useWebinar } from "@/webinar/hooks";
-import { SeriesSession, SessionOfferVisibilityUpdate } from "@/webinar/service";
 import { OfferSessionClientProvider } from "@/offer-client/providers/OfferSessionClientProvider";
 import { OfferSessionDto } from "@/offer-client/service/type";
 
@@ -21,7 +19,7 @@ type Props = {
 
 export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: Props) {
   const [broadcastToken, setBroadcastToken] = useState<BroadcastServiceToken | null>(null);
-  const { setSession, session, recordEvent } = useWebinar()
+  const { recordEvent } = useWebinar()
 
   useEffect(() => {
     let cancelled = false;
