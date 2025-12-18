@@ -3,37 +3,34 @@ import { CheckCircle2, Mail, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
-import type { WebinarOffer } from "../service";
+import { useOfferSessionClient } from "../hooks/use-offer-session-client";
 
 type Props = {
-  offer: WebinarOffer;
-  email: string;
-  paymentReference?: string;    // e.g. Stripe paymentIntent id
-  onClose?: () => void;         // close the bubble / collapse success view
-  onViewReceipt?: () => void;   // optional: open a receipt link if you have one
   className?: string;
 };
 
 export default function OfferPurchaseSuccess({
-  offer,
-  email,
-  paymentReference,
-  onClose,
-  onViewReceipt,
   className,
 }: Props) {
 
+  const {
+    purchasedOffer,
+    email,
+    setPurchasedOffer
+  } = useOfferSessionClient()
+
   const priceLabel = useMemo(() => {
+    const offer = purchasedOffer?.offer?.offer
     try {
-      const num = Number(offer.price);
+      const num = Number(offer?.price);
       return new Intl.NumberFormat(undefined, {
         style: "currency",
-        currency: offer.currency,
+        currency: offer?.price?.currency,
       }).format(num);
     } catch {
-      return `${offer.currency} ${offer.price}`;
+      return `${offer?.price?.currency} ${offer?.price}`;
     }
-  }, [offer.price, offer.currency]);
+  }, [purchasedOffer]);
 
   return (
     <div
@@ -55,7 +52,7 @@ export default function OfferPurchaseSuccess({
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             You’ve unlocked{" "}
-            <span className="font-medium">{offer.headline}</span>.
+            <span className="font-medium">{purchasedOffer?.offer?.offer?.name}</span>.
           </p>
         </div>
 
@@ -63,7 +60,9 @@ export default function OfferPurchaseSuccess({
           variant="ghost"
           size="icon"
           className="h-7 w-7 -mr-1 -mt-1 text-muted-foreground hover:text-foreground hover:bg-accent"
-          onClick={onClose}
+          onClick={() => {
+            setPurchasedOffer(undefined)
+          }}
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -75,14 +74,14 @@ export default function OfferPurchaseSuccess({
         <div className="flex items-center gap-2 text-xs">
           <ShoppingBag className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium text-foreground">
-            {offer.headline}
+            {purchasedOffer?.offer.offer?.name}
           </span>
           <span className="text-muted-foreground">•</span>
           <span className="text-foreground">{priceLabel}</span>
         </div>
-        {paymentReference && (
+        {purchasedOffer?.ref && (
           <div className="mt-1 text-[11px] text-muted-foreground">
-            Ref: <span className="font-mono">{paymentReference}</span>
+            Ref: <span className="font-mono">{purchasedOffer.ref}</span>
           </div>
         )}
       </div>
@@ -103,18 +102,11 @@ export default function OfferPurchaseSuccess({
       </div>
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        {onViewReceipt && (
-          <Button
-            variant="secondary"
-            className="w-full sm:w-auto"
-            onClick={onViewReceipt}
-          >
-            View receipt
-          </Button>
-        )}
         <Button
           className="w-full sm:w-auto"
-          onClick={onClose}
+          onClick={() => {
+            setPurchasedOffer(undefined)
+          }}
         >
           Continue
         </Button>

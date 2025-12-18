@@ -48,7 +48,7 @@ export function OfferSessionClientProvider({
 
         const calculateView = () => {
 
-            const hasVisibleOffer = offers.find((os) => os.status !== 'closed')
+            const hasVisibleOffer = offers.find((os) => !["closed", "scheduled"].includes(os.status))
             const hasSelectedOffer = selectedOffer !== undefined
             const hasPurchasedOffer = purchasedOffer !== undefined
 
@@ -100,6 +100,7 @@ export function OfferSessionClientProvider({
             setSelectedOffer,
             handleCheckoutSuccess,
             recordEvent,
+            setIsCheckingOut
         }}>
             {children}
         </OfferSessionClientContext.Provider>

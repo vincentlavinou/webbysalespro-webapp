@@ -3,12 +3,11 @@ import { OfferSessionDto, StripeCheckout } from "./type";
 import { paymentProviderApiUrl } from "@/paymentprovider/service";
 import { offersForSessionSchema, startCheckoutSchema } from "./schema";
 
-
 export const startCheckout = actionClient
     .inputSchema(startCheckoutSchema)
-    .action(async ({ parsedInput: { webinarId, offerId, token, sessionId } }) => {
+    .action(async ({ parsedInput: { offerId, token, sessionId } }) => {
         const res = await fetch(
-            `${paymentProviderApiUrl}/v1/webinars/${webinarId}/offers/${offerId}/checkout/?token=${token}&session=${sessionId}`,
+            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/?token=${token}`,
             {
                 method: 'post',
                 headers: {

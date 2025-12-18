@@ -1,3 +1,0 @@
-export {
-    OfferChatBubble
-} from './OfferChatBubble'

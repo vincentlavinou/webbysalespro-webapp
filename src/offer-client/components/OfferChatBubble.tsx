@@ -1,12 +1,10 @@
 // import { WebinarOffer } from "../service";
 import { OfferCarousel } from "./OfferCarousel";
-// import { SelectedOffer } from "./SelectedOffer";
-// import { StripeCheckout } from "../checkout/stripe";
-// import { getPaymentProviderLabel, PaymentProviderType } from "@/paymentprovider/service/enum";
-// import { FanBasisCheckout } from "../checkout/fanbasis";
-// import OfferPurchaseSuccess from "./OfferPurchaseSuccess";
+import { SelectedOffer } from "./SelectedOffer";
+import { StripeCheckout } from "../checkout/stripe";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
 import { OfferView } from "../service/type";
+import OfferPurchaseSuccess from "./OfferPurchaseSuccess";
 
 export function OfferChatBubble() {
 
@@ -27,11 +25,11 @@ export function OfferChatBubble() {
                     onOfferClick={setSelectedOffer}
                     />
             case "offer-selected":
-                // return <SelectedOffer />
+                return <SelectedOffer />
             case "offer-checkingout":
-                // return <StripeCheckout />
+                return <StripeCheckout />
             case "offer-purchased":
-                // return <OfferPurchaseSuccess />
+                return <OfferPurchaseSuccess />
             default:
                 return
         }

@@ -1,44 +1,32 @@
 import { Button } from "@/components/ui/button";
-import { useWebinar } from "@/webinar/hooks";
-import { WebinarOffer } from "../service";
 import { useEffect } from "react";
+import { useOfferSessionClient } from "../hooks/use-offer-session-client";
 
-interface SelectedOfferProps {
-  token: string
-  selectedOffer: WebinarOffer;
-  setIsCheckingOut: (value: boolean) => void;
-  setSelectedOffer: (offer: WebinarOffer | undefined) => void;
-}
 
-export function SelectedOffer({
-  token,
-  selectedOffer,
-  setIsCheckingOut,
-  setSelectedOffer,
-}: SelectedOfferProps) {
-  const { recordEvent } = useWebinar();
+export function SelectedOffer() {
+  const { token, selectedOffer, recordEvent, setIsCheckingOut, setSelectedOffer} = useOfferSessionClient();
 
   useEffect(() => {
     const load = async () => {
       await recordEvent("offer_shown", token, {
-        offer_id: selectedOffer.id,
+        offer_id: selectedOffer?.id,
       });
     };
     load();
-  }, [recordEvent, selectedOffer.id]);
+  }, [recordEvent, selectedOffer?.id]);
 
   return (
     <div className="space-y-2">
       <h3 className="font-semibold text-foreground">
-        {selectedOffer.headline}
+        {selectedOffer?.offer?.name}
       </h3>
 
       <p className="text-sm text-muted-foreground">
-        {selectedOffer.description}
+        {selectedOffer?.offer?.description}
       </p>
 
       <p className="text-sm text-primary font-semibold">
-        {selectedOffer.currency_display} {selectedOffer.price}
+        {selectedOffer?.offer.price?.currency} {selectedOffer?.offer.price?.effective_price}
       </p>
 
       <Button

@@ -12,10 +12,11 @@ interface OfferSessionClientContextType {
     selectedOffer?: OfferSessionDto;
     purchasedOffer?: {offer: OfferSessionDto, ref: string};
     isPurchasingOffer: boolean;
-    setSelectedOffer: (offer: OfferSessionDto) => void
-    setPurchasedOffer: (input: { offer: OfferSessionDto, ref: string }) => void
+    setSelectedOffer: (offer: OfferSessionDto | undefined) => void
+    setPurchasedOffer: (input: { offer: OfferSessionDto, ref: string } | undefined) => void
     recordEvent: (name: string, token: string, payload?: Record<string, unknown>) => Promise<void>
     handleCheckoutSuccess: (ref: string) => void
+    setIsCheckingOut: (value: boolean) => void
 }
 
 export const OfferSessionClientContext = createContext<OfferSessionClientContextType>({
@@ -28,5 +29,6 @@ export const OfferSessionClientContext = createContext<OfferSessionClientContext
     setSelectedOffer: () => { },
     setPurchasedOffer: () => { },
     recordEvent: async () => { },
-    handleCheckoutSuccess: () => {}
+    handleCheckoutSuccess: () => {},
+    setIsCheckingOut: () => {}
 })
