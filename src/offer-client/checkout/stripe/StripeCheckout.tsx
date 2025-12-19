@@ -32,7 +32,7 @@ export function StripeCheckout() {
 
     fetchCheckoutInfo({
       sessionId: sessionId,
-      offerId: selectedOffer?.id,
+      offerId: selectedOffer?.offer?.id,
       token: token
     })
   }, [selectedOffer, token, sessionId])

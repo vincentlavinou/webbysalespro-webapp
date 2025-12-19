@@ -37,7 +37,6 @@ export function OfferSessionClientProvider({
         sessionId: sessionId,
         schema: offerVisibilityMetadataSchema,
         onEvent: (event) => {
-            console.log(event)
             setOffers((prev) => {
                 return prev.map((os) => os.id === event.payload.id ? { ...os, status: event.payload.status } : os)
             })
@@ -62,7 +61,6 @@ export function OfferSessionClientProvider({
         }
 
         const updatedView = calculateView()
-        console.log(`Updated View: ${updatedView}`)
         setView(updatedView)
 
     }, [offers, selectedOffer, purchasedOffer, isCheckingOut, setView])

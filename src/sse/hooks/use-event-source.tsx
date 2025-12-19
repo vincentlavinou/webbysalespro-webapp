@@ -211,7 +211,6 @@ export function useEventSource(options: UseEventSourceOptions) {
       // enabled just turned true
       hasStartedRef.current = true;
       backoffRef.current = initialBackoffMs;
-      console.log("[SSE] Opening connection (enabled transition)");
       open();
     } else if (!enabled && hasStartedRef.current) {
       // enabled just turned false

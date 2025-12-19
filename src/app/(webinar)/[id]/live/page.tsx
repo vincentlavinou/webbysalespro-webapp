@@ -19,7 +19,6 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
     const token = (await searchParams).token
     const sessionId = (await params).id
     const session = await  getSessionAction({id: sessionId, token})
-    console.log(session.data)
     if(!session.data) {
         notFound()
     }

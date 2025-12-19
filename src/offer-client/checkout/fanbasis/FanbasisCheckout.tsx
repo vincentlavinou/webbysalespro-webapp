@@ -29,7 +29,6 @@ export function FanBasisCheckout({ offerId, webinarId, token }: { offerId: strin
     const handleMessage = (event: MessageEvent) => {
       // Ideally you'd check origin: if (event.origin !== 'https://fanbasis.com') return
       if (event.data?.type === 'checkout_success') {
-        console.log('FanBasis checkout completed')
         // Navigate away, update state, etc.
       }
     }

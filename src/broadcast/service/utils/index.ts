@@ -182,7 +182,6 @@ export const joinStage = async (
 
   // Join the stage
   try {
-    console.log("joinning stream...")
     await stage.join();
     stageRef.current = stage;
   } catch (err) {

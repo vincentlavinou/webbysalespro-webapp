@@ -38,7 +38,6 @@ export function usePlaybackMetadataEvent<
   useEffect(() => {
     return onPlaybackMetadata((raw) => {
       // raw might already be an object if you emit parsed JSON — handle both
-      console.log(`Raw Event: ${raw}`)
       const obj: unknown =
         typeof raw === "string"
           ? (() => {
@@ -50,22 +49,17 @@ export function usePlaybackMetadataEvent<
           })()
           : raw;
 
-      console.log(`Object: ${obj}`)
       if (!obj || typeof obj !== "object") return;
 
       // fast pre-filter (avoid zod cost for other event types)
       const type = (obj as { type: TType, payload: TPayload }).type;
-      console.log(`Type: ${type} - ${eventType}`)
       if (type !== eventType) return;
 
       const parsed = schema.safeParse(obj);
-      console.log(`Parsed Error: ${JSON.stringify(parsed.error)}`)
-      console.log(`Parsed Data: ${JSON.stringify(parsed.data)}`)
       if (!parsed.success) return;
 
       const evt = parsed.data;
 
-      console.log(`Session Id: ${evt.payload.session_id} - ${sessionId}`)
       // optional session filter
       if (sessionId && evt.payload?.session_id && evt.payload.session_id !== sessionId) return;
 
