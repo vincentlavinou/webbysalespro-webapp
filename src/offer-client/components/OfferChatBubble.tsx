@@ -1,4 +1,4 @@
-// import { WebinarOffer } from "../service";
+'use client'
 import { OfferCarousel } from "./OfferCarousel";
 import { SelectedOffer } from "./SelectedOffer";
 import { StripeCheckout } from "../checkout/stripe";
@@ -36,8 +36,8 @@ export function OfferChatBubble() {
     }
 
     return (
-        <>
+        <div className="pb-2">
             {getOfferView(view)}
-        </>
+        </div>
     )
 }

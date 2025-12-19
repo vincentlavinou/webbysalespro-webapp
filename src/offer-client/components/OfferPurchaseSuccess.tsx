@@ -1,4 +1,4 @@
-// app/(wherever)/webinar/offer/components/OfferPurchaseSuccess.tsx
+'use client'
 import { CheckCircle2, Mail, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,13 +16,13 @@ export default function OfferPurchaseSuccess({
   const {
     purchasedOffer,
     email,
-    setPurchasedOffer
+    closeSheetAfterPurchase
   } = useOfferSessionClient()
 
   const priceLabel = useMemo(() => {
     const offer = purchasedOffer?.offer?.offer
     try {
-      const num = Number(offer?.price);
+      const num = Number(offer?.price?.effective_price);
       return new Intl.NumberFormat(undefined, {
         style: "currency",
         currency: offer?.price?.currency,
@@ -60,9 +60,7 @@ export default function OfferPurchaseSuccess({
           variant="ghost"
           size="icon"
           className="h-7 w-7 -mr-1 -mt-1 text-muted-foreground hover:text-foreground hover:bg-accent"
-          onClick={() => {
-            setPurchasedOffer(undefined)
-          }}
+          onClick={closeSheetAfterPurchase}
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -104,9 +102,7 @@ export default function OfferPurchaseSuccess({
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <Button
           className="w-full sm:w-auto"
-          onClick={() => {
-            setPurchasedOffer(undefined)
-          }}
+          onClick={closeSheetAfterPurchase}
         >
           Continue
         </Button>

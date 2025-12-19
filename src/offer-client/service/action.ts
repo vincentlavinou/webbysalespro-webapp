@@ -1,3 +1,4 @@
+'use server'
 import { actionClient } from "@/lib/safe-action";
 import { OfferSessionDto, StripeCheckout } from "./type";
 import { paymentProviderApiUrl } from "@/paymentprovider/service";

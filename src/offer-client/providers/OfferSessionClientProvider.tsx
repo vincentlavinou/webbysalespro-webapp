@@ -1,3 +1,4 @@
+'use client'
 import { useCallback, useEffect, useState } from "react";
 import { OfferSessionClientContext } from "../contexts/OfferSessionClientContext"
 import { OfferSessionDto, OfferView } from "../service/type";
@@ -72,6 +73,11 @@ export function OfferSessionClientProvider({
         setPurchasedOffer(undefined)
     };
 
+    const closeSheetAfterPurchase = useCallback(() => {
+        resetView()
+        setView("offers-hidden")
+    },[setView])
+
     const handleCheckoutSuccess = useCallback(async (ref: string) => {
         if (selectedOffer && selectedOffer.offer.price) {
             setPurchasedOffer({ offer: selectedOffer, ref: ref });
@@ -79,7 +85,6 @@ export function OfferSessionClientProvider({
                 "amount_cents": selectedOffer.offer.price.value * 100 // cents
             })
             setView("offer-purchased")
-            resetView()
         }
     }, [selectedOffer]);
 
@@ -98,7 +103,8 @@ export function OfferSessionClientProvider({
             setSelectedOffer,
             handleCheckoutSuccess,
             recordEvent,
-            setIsCheckingOut
+            setIsCheckingOut,
+            closeSheetAfterPurchase
         }}>
             {children}
         </OfferSessionClientContext.Provider>
