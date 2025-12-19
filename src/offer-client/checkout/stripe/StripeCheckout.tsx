@@ -83,8 +83,12 @@ export function StripeCheckout() {
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <StripeCheckoutForm token={token} email={email} onSuccess={handleCheckoutSuccess} />
-    </Elements>
+    <div className="h-[70vh] min-h-0">
+      <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <StripeCheckoutForm token={token} email={email} onSuccess={handleCheckoutSuccess} />
+      </Elements>
+    </div>
   );
+
+
 }

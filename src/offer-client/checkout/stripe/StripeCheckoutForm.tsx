@@ -1,8 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
 import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { X } from 'lucide-react';
@@ -17,10 +15,7 @@ interface StripeCheckoutFormProps {
 
 function Spinner() {
   return (
-    <span
-      className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-      aria-hidden="true"
-    />
+    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
   );
 }
 
@@ -40,9 +35,7 @@ export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFo
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        payment_method_data: {
-          billing_details: { email },
-        },
+        payment_method_data: { billing_details: { email } },
       },
       redirect: 'if_required',
     });
@@ -62,25 +55,25 @@ export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFo
   };
 
   return (
-    <form onSubmit={handleSubmit} className="h-full min-h-0">
-      <Card
-        className="
-          relative h-full min-h-0
-          overflow-hidden
-          bg-card/90 supports-[backdrop-filter]:bg-card/75 backdrop-blur
-          ring-1 ring-border/70 shadow-sm
-        "
+    // IMPORTANT: this form needs a bounded height to enable scroll
+    <form onSubmit={handleSubmit} className="h-[70vh] w-full">
+      <div
+        className={[
+          'relative rounded-xl',
+          'bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/75',
+          'ring-1 ring-border/70 shadow-sm',
+          'h-full min-h-0 flex flex-col',
+        ].join(' ')}
       >
-        {/* Header (fixed) */}
-        <div className="relative border-b border-border/60 px-3 py-3">
+        {/* Header */}
+        <div className="px-3 pt-3 pb-2">
           <button
             type="button"
             aria-label="Close checkout"
             disabled={loading}
             onClick={() => setIsCheckingOut(false)}
             className="
-              absolute right-2 top-2
-              inline-flex h-8 w-8 items-center justify-center rounded-md
+              absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md
               text-muted-foreground hover:text-foreground hover:bg-accent
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -96,34 +89,30 @@ export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFo
         </div>
 
         {/* Body (scrolls) */}
-        <div className="flex h-full min-h-0 flex-col">
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="p-3">
-              <div className="rounded-lg border border-border bg-background/40 p-3">
-                <PaymentElement />
-              </div>
-            </div>
-          </ScrollArea>
-
-          {/* Footer (fixed) */}
-          <div className="border-t border-border/60 p-3 space-y-2">
-            <Button type="submit" disabled={!stripe || loading} className="w-full">
-              {loading ? (
-                <span className="inline-flex items-center gap-2">
-                  <Spinner />
-                  Processing…
-                </span>
-              ) : (
-                'Pay Now'
-              )}
-            </Button>
-
-            <p className="text-[11px] text-muted-foreground">
-              Your payment details are encrypted and never stored on our servers.
-            </p>
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
+          <div className="rounded-lg border border-border bg-background/40 p-3">
+            <PaymentElement />
           </div>
         </div>
-      </Card>
+
+        {/* Footer */}
+        <div className="px-3 pb-3 pt-0">
+          <Button type="submit" disabled={!stripe || loading} className="w-full">
+            {loading ? (
+              <span className="inline-flex items-center gap-2">
+                <Spinner />
+                Processing…
+              </span>
+            ) : (
+              'Pay Now'
+            )}
+          </Button>
+
+          <p className="text-[11px] text-muted-foreground">
+            Your payment details are encrypted and never stored on our servers.
+          </p>
+        </div>
+      </div>
     </form>
   );
 }
