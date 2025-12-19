@@ -1,10 +1,12 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
-import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
-import { useState } from 'react';
+import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { X } from 'lucide-react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 interface StripeCheckoutFormProps {
@@ -39,9 +41,7 @@ export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFo
       elements,
       confirmParams: {
         payment_method_data: {
-          billing_details: {
-            email,
-          },
+          billing_details: { email },
         },
       },
       redirect: 'if_required',
@@ -50,7 +50,7 @@ export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFo
     if (error) {
       toast.error(`${error.message ?? 'Payment failed.'}`);
       if (error.code === 'card_declined') {
-        await recordEvent(error.decline_code || "generic_decline", token);
+        await recordEvent(error.decline_code || 'generic_decline', token);
       }
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
       onSuccess(paymentIntent.id);
@@ -62,66 +62,68 @@ export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFo
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      {/* Container card */}
-      <div
-        className={[
-          'relative rounded-xl p-3',
-          'bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/75',
-          'ring-1 ring-border/70 shadow-sm',
-        ].join(' ')}
+    <form onSubmit={handleSubmit} className="h-full min-h-0">
+      <Card
+        className="
+          relative h-full min-h-0
+          overflow-hidden
+          bg-card/90 supports-[backdrop-filter]:bg-card/75 backdrop-blur
+          ring-1 ring-border/70 shadow-sm
+        "
       >
-        {/* Close button */}
-        <button
-          type="button"
-          aria-label="Close checkout"
-          disabled={loading}
-          onClick={() => setIsCheckingOut(false)}
-          className={[
-            'absolute right-2 top-2',
-            'rounded-md p-1',
-            'text-muted-foreground hover:text-foreground',
-            'hover:bg-accent',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-            loading ? 'opacity-50 cursor-not-allowed' : '',
-          ].join(' ')}
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Payment</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Secure checkout powered by Stripe.
-            </p>
-          </div>
-
-          {/* Stripe element wrapper */}
-          <div className="rounded-lg border border-border bg-background/40 p-3">
-            <PaymentElement />
-          </div>
-
-          <Button
-            type="submit"
-            disabled={!stripe || loading}
-            className="w-full"
+        {/* Header (fixed) */}
+        <div className="relative border-b border-border/60 px-3 py-3">
+          <button
+            type="button"
+            aria-label="Close checkout"
+            disabled={loading}
+            onClick={() => setIsCheckingOut(false)}
+            className="
+              absolute right-2 top-2
+              inline-flex h-8 w-8 items-center justify-center rounded-md
+              text-muted-foreground hover:text-foreground hover:bg-accent
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
+              disabled:opacity-50 disabled:cursor-not-allowed
+            "
           >
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner />
-                Processing…
-              </span>
-            ) : (
-              'Pay Now'
-            )}
-          </Button>
+            <X className="h-4 w-4" />
+          </button>
 
-          <p className="text-[11px] text-muted-foreground">
-            Your payment details are encrypted and never stored on our servers.
+          <h3 className="text-sm font-semibold text-foreground">Payment</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Secure checkout powered by Stripe.
           </p>
         </div>
-      </div>
+
+        {/* Body (scrolls) */}
+        <div className="flex h-full min-h-0 flex-col">
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-3">
+              <div className="rounded-lg border border-border bg-background/40 p-3">
+                <PaymentElement />
+              </div>
+            </div>
+          </ScrollArea>
+
+          {/* Footer (fixed) */}
+          <div className="border-t border-border/60 p-3 space-y-2">
+            <Button type="submit" disabled={!stripe || loading} className="w-full">
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner />
+                  Processing…
+                </span>
+              ) : (
+                'Pay Now'
+              )}
+            </Button>
+
+            <p className="text-[11px] text-muted-foreground">
+              Your payment details are encrypted and never stored on our servers.
+            </p>
+          </div>
+        </div>
+      </Card>
     </form>
   );
 }
