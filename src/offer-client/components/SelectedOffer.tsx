@@ -155,13 +155,35 @@ export function SelectedOffer() {
           </div>
         </div>
 
+        {/* Scarcity bar */}
+        {selectedOffer.scarcity_mode !== "none" && selectedOffer.display_percent_sold != null && (
+          <div className="w-full">
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                style={{ width: `${Math.min(selectedOffer.display_percent_sold, 100)}%` }}
+              />
+            </div>
+            {selectedOffer.display_total_slots != null ? (
+              <p className="mt-1 text-[11px] text-muted-foreground text-center">
+                {Math.round(selectedOffer.display_total_slots * selectedOffer.display_percent_sold / 100)} of {selectedOffer.display_total_slots} spots claimed
+              </p>
+            ) : (
+              <p className="mt-1 text-[11px] text-muted-foreground text-center">
+                {Math.round(selectedOffer.display_percent_sold)}% claimed
+              </p>
+            )}
+          </div>
+        )}
+
         {/* CTA */}
         <Button
           className="w-full"
           type="button"
+          disabled={selectedOffer.status === "sold_out"}
           onClick={() => setIsCheckingOut(true)}
         >
-          {ctaLabel}
+          {selectedOffer.status === "sold_out" ? "Sold Out" : ctaLabel}
         </Button>
 
         <Button

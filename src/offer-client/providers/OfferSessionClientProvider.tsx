@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { OfferSessionClientContext } from "../contexts/OfferSessionClientContext"
 import { OfferSessionDto, OfferView } from "../service/type";
 import { usePlaybackMetadataEvent } from "@/emitter/playback";
-import { offerVisibilityMetadataSchema } from "../service/schema";
+import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "../service/schema";
 
 interface OfferSessionClientProviderProps {
     children: React.ReactNode
@@ -42,6 +42,27 @@ export function OfferSessionClientProvider({
                 return prev.map((os) => os.id === event.payload.id ? { ...os, status: event.payload.status } : os)
             })
         }
+    }, [])
+
+    usePlaybackMetadataEvent({
+        eventType: "session:offer:scarcity:update",
+        sessionId: sessionId,
+        schema: offerScarcityUpdateMetadataSchema,
+        onEvent: (event) => {
+            setOffers((prev) => {
+                return prev.map((os) =>
+                    os.id === event.payload.offer_session_id
+                        ? {
+                            ...os,
+                            scarcity_mode: event.payload.mode,
+                            display_percent_sold: event.payload.display_percent_sold,
+                            display_total_slots: event.payload.display_total_slots,
+                        }
+                        : os
+                )
+            })
+        },
+        getSignature: (evt) => `${evt.payload.offer_session_id}-${evt.payload.display_percent_sold}-${evt.payload.mode}`,
     }, [])
 
     useEffect(() => {

@@ -1,4 +1,4 @@
-import { offerVisibilityMetadataSchema } from "./schema";
+import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "./schema";
 
 export type StripeCheckout = {
   email: string;
@@ -83,9 +83,11 @@ export interface OfferSessionDto {
   status: OfferSessionStatus;
   real_percent_sold: number | null;
   display_percent_sold: number | null;
+  display_total_slots: number | null;
   scarcity_mode: "none" | "real" | "manual" | "hybrid";
 }
 
 export type OfferView = "offers-hidden" | "offers-visible" | "offer-selected" | "offer-checkingout" | "offer-purchased"
 
 export type OfferVisibilityMetadata = z.infer<typeof offerVisibilityMetadataSchema>;
+export type OfferScarcityUpdateMetadata = z.infer<typeof offerScarcityUpdateMetadataSchema>;

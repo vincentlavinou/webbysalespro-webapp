@@ -21,3 +21,14 @@ export const offerVisibilityMetadataSchema = z.object({
     closed_at: z.string().datetime().nullable(),
   }),
 });
+
+export const offerScarcityUpdateMetadataSchema = z.object({
+  type: z.literal("session:offer:scarcity:update"),
+  payload: z.object({
+    session_id: z.string(),
+    offer_session_id: z.string(),
+    mode: z.enum(["real", "manual", "hybrid", "none"]),
+    display_percent_sold: z.number().nullable(),
+    display_total_slots: z.number().nullable(),
+  }),
+});

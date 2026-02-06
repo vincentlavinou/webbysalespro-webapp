@@ -7,6 +7,36 @@ import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { OfferSessionDto } from '../service/type';
 
+function ScarcityBar({
+  percentSold,
+  totalSlots,
+}: {
+  percentSold: number;
+  totalSlots: number | null;
+}) {
+  const claimed = totalSlots != null ? Math.round(totalSlots * percentSold / 100) : null;
+
+  return (
+    <div className="w-full mt-1">
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+          style={{ width: `${Math.min(percentSold, 100)}%` }}
+        />
+      </div>
+      {claimed != null && totalSlots != null ? (
+        <p className="mt-0.5 text-[10px] text-muted-foreground text-right">
+          {claimed} of {totalSlots} claimed
+        </p>
+      ) : (
+        <p className="mt-0.5 text-[10px] text-muted-foreground text-right">
+          {Math.round(percentSold)}% claimed
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface VisibleOfferProps {
   offer: OfferSessionDto;
   onClick: (offer: OfferSessionDto) => void;
@@ -136,7 +166,13 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
               </div>
             )}
 
-            {/* Scarcity + bonuses go here later */}
+            {/* Scarcity bar */}
+            {offer.scarcity_mode !== "none" && offer.display_percent_sold != null && (
+              <ScarcityBar
+                percentSold={offer.display_percent_sold}
+                totalSlots={offer.display_total_slots ?? null}
+              />
+            )}
           </div>
         </div>
       </div>
