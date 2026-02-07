@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import type { Webinar } from "@/webinar/service";
-import { registerForWebinarAction } from "@/webinar/service/action";
+import { webinarApiUrl, type Webinar } from "@/webinar/service";
+import { actionClient } from "@/lib/safe-action";
+import { registerForWebinarInput } from "@/webinar/service/schema";
+import { handleStatus } from "@/lib/http";
 
 interface DefaultRegistrationFormProps {
   webinar: Webinar;
@@ -30,6 +32,39 @@ const attendeeSchema = z.object({
 });
 
 type AttendeeFormData = z.infer<typeof attendeeSchema>;
+
+const registerForWebinarAction = actionClient
+    .inputSchema(registerForWebinarInput)
+    .action(
+        async (input) => {
+            const { webinar_id, session_id, first_name, last_name, email, phone } = input.parsedInput;
+
+            const requestBody = {
+                session_ids: [session_id],
+                first_name,
+                last_name,
+                email,
+                phone: phone ?? null,
+            };
+
+            let response = await fetch(
+                `${webinarApiUrl}/v1/webinars/${webinar_id}/attendees/`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(requestBody),
+                    cache: "no-store",
+                }
+            );
+
+            response = await handleStatus(response)
+
+            return { success: response.ok };
+        }
+    );
+
 
 export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProps) => {
   const router = useRouter();

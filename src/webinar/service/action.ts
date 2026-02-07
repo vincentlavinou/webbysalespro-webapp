@@ -4,8 +4,9 @@ import { QueryWebinar, SeriesSession, Webinar } from "./type";
 import { emptyPage, PaginationPage } from "@/components/pagination";
 import { webinarApiUrl } from ".";
 import { AlreadyRegisteredError } from "./error";
-import { z } from "zod";
 import { handleStatus } from "@/lib/http";
+import { z } from "zod";
+import { registerForWebinarInput } from "./schema";
 
 export async function getWebinars(query?: QueryWebinar) {
     // Fetch all webinars without search query
@@ -108,15 +109,6 @@ export const getWebinarFromSession = actionClient
         const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/?token=${parsedInput.token}`)
         return await response.json() as Webinar
     })
-
-const registerForWebinarInput = z.object({
-    webinar_id: z.string(),                 // if this is a UUID, you can tighten to .uuid()
-    session_id: z.string().uuid(),
-    first_name: z.string().min(1, "First name is required"),
-    last_name: z.string().min(1, "Last name is required"),
-    email: z.string().email("Enter a valid email"),
-    phone: z.string().optional().nullable(),
-});
 
 export type RegisterForWebinarInput = z.infer<typeof registerForWebinarInput>;
 
