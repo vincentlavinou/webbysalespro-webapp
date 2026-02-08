@@ -16,7 +16,7 @@ import {
 } from "@broadcast/service/utils";
 import { useLocalMedia } from "../hooks/use-strategy";
 import { useBroadcastService } from "../hooks/use-broadcast-service";
-import { recordEvent, sessionController } from "../service";
+import { sessionController } from "../service";
 import { useBroadcastConfiguration } from "../hooks";
 import { useRouter } from "next/navigation";
 import { StageContext, WebiSalesProParticipant } from "../context/StageContext";
@@ -42,7 +42,7 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
   const { strategy } = useMediaStrategy()
   const { create: createLocalMedia } = useLocalMedia()
   const { mainPresenterId } = useBroadcastService()
-  const {sessionId, seriesId, getRequestHeaders, accessToken} = useBroadcastConfiguration()
+  const {sessionId, seriesId, getRequestHeaders} = useBroadcastConfiguration()
 
   const localParticipantRef = useRef<StageParticipantInfo | undefined>(undefined);
   const router = useRouter()
@@ -83,11 +83,9 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
       );
       if(getRequestHeaders) {
         await sessionController("start", seriesId, sessionId, {}, getRequestHeaders)
-      } else if(accessToken) {
-        recordEvent("joined", sessionId, accessToken)
       }
     },
-    [strategy, stageRef, createLocalMedia, seriesId, sessionId, getRequestHeaders, accessToken]
+    [strategy, stageRef, createLocalMedia, seriesId, sessionId, getRequestHeaders]
   );
 
   const leave = useCallback(async () => {
@@ -104,8 +102,6 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
     if(getRequestHeaders) {
         await sessionController("stop", seriesId, sessionId, {}, getRequestHeaders)
         router.replace("/webinars")
-      } else if(accessToken) {
-        recordEvent("left", sessionId, accessToken)
       }
   }, [stageRef, getRequestHeaders]);
 

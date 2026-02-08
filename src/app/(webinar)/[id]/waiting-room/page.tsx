@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Clock, Users, Calendar } from 'lucide-react'
 import { useWebinar } from '@/webinar/hooks'
+import { useSessionPresence } from '@/broadcast/hooks'
 import { WebinarPresenter } from '@/webinar/service'
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
@@ -20,6 +21,11 @@ export default function EarlyAccessRoomPage() {
 
   const router = useRouter()
   const { session, webinar, token, broadcastServiceToken } = useWebinar()
+  const { markRoom } = useSessionPresence(token || '')
+
+  useEffect(() => {
+    if (token) markRoom("waiting_room")
+  }, [token, markRoom])
 
   // Countdown timer
   useEffect(() => {

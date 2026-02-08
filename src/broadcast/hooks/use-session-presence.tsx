@@ -1,31 +1,58 @@
-import { useEffect, useRef } from "react";
+'use client'
+import { useEffect, useRef, useCallback } from "react";
 import { useWebinar } from "@/webinar/hooks";
+
+type Room = "early_access_room" | "waiting_room" | "joined";
 
 export function useSessionPresence(accessToken: string) {
   const { recordEvent, recordEventBeacon } = useWebinar();
-  const hasJoinedRef = useRef(false);
+  const currentRoomRef = useRef<Room | null>(null);
   const hasLeftRef = useRef(false);
 
-  const markJoined = async () => {
-    if (hasJoinedRef.current) return;
-    hasJoinedRef.current = true;
-    await recordEvent("joined", accessToken);
-  };
+  const fireLeft = useCallback(() => {
+    if (hasLeftRef.current || !currentRoomRef.current) return;
+    hasLeftRef.current = true;
+    recordEventBeacon("left", accessToken);
+  }, [accessToken, recordEventBeacon]);
+
+  const markRoom = useCallback(
+    (room: Room) => {
+      if (currentRoomRef.current === room) return;
+      currentRoomRef.current = room;
+      hasLeftRef.current = false;
+      recordEvent(room, accessToken);
+    },
+    [accessToken, recordEvent]
+  );
 
   useEffect(() => {
-    const sendLeft = async () => {
-      if (hasLeftRef.current || !hasJoinedRef.current) return;
-      hasLeftRef.current = true;
-      await recordEventBeacon("left", accessToken);
+    // Only track visibility/beforeunload when in the live room
+    if (currentRoomRef.current !== "joined") return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        fireLeft();
+      } else if (document.visibilityState === "visible") {
+        if (hasLeftRef.current) {
+          hasLeftRef.current = false;
+          recordEvent("reentered_live_room", accessToken);
+        }
+      }
     };
 
-    window.addEventListener("beforeunload", sendLeft);
+    const handleBeforeUnload = () => {
+      fireLeft();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      window.removeEventListener("beforeunload", sendLeft);
-      sendLeft();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      fireLeft();
     };
-  }, [accessToken, recordEvent]);
+  }, [accessToken, fireLeft, recordEvent, currentRoomRef.current]);
 
-  return { markJoined };
+  return { markRoom };
 }
