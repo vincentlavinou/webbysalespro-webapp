@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
 import { Webinar } from '@webinar/service'
+import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Separator } from '@/components/ui/separator'
 import { DateTime } from 'luxon'
@@ -47,14 +48,27 @@ export function WebinarCard({ webinar, type = 'upcoming' }: WebinarCardProps) {
               <p className="text-sm text-muted-foreground mb-2 line-clamp-2 min-h-[3.5rem] leading-snug">
                   {webinar.description !== "" ? webinar.description : '\u00A0'}
               </p>
-              {sessions?.map((session, index) => (
-                <p key={`${session.id}-${index}`} className="text-xs hover:shadow-2xs pb-1">
-                <Badge variant="outline">
-                  {session.status}
-                </Badge>{' '}
-                {DateTime.fromISO(session.scheduled_start).toFormat("cccc, LLLL d'th', yyyy")}
-              </p>
-              ))}
+              {sessions?.map((session, index) => {
+                const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
+                return (
+                  <p key={`${session.id}-${index}`} className="text-xs hover:shadow-2xs pb-1">
+                    {isLive ? (
+                      <Badge className="bg-red-100 text-red-700 border-red-300 hover:bg-red-100">
+                        <span className="relative flex h-2 w-2 mr-1">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+                        </span>
+                        LIVE
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">
+                        {session.status}
+                      </Badge>
+                    )}{' '}
+                    {DateTime.fromISO(session.scheduled_start).toFormat("cccc, LLLL d'th', yyyy")}
+                  </p>
+                );
+              })}
               {type === 'past' && (
                 <p className="text-xs mt-1 text-green-600">
                   {/* Replace with actual count when you have it */}

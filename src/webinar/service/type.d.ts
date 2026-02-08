@@ -128,6 +128,18 @@ export type CloneWebinarRequest = {
     clone_attendees: boolean
 }
 
+export type RegisterAttendeeResponse = {
+    id: string
+    first_name: string
+    last_name: string
+    email: string
+    phone?: string
+    access_token: string
+    session_ids: string[]
+    attendee_sessions: unknown[]
+    webinar: string
+}
+
 export type SessionOfferVisibilityUpdate = {
   session_id: string; // e.g. "Offer visibility updated"
   visible: boolean;

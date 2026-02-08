@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { DateTime } from "luxon";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAction } from "next-safe-action/hooks";
@@ -13,8 +13,10 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { webinarApiUrl, type Webinar } from "@/webinar/service";
+import { webinarApiUrl, type Webinar, type RegisterAttendeeResponse } from "@/webinar/service";
+import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { actionClient } from "@/lib/safe-action";
 import { registerForWebinarInput } from "@/webinar/service/schema";
 import { handleStatus } from "@/lib/http";
@@ -61,7 +63,8 @@ const registerForWebinarAction = actionClient
 
             response = await handleStatus(response)
 
-            return { success: response.ok };
+            const data: RegisterAttendeeResponse = await response.json();
+            return { success: response.ok, data };
         }
     );
 
@@ -77,15 +80,23 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<AttendeeFormData>({
     resolver: zodResolver(attendeeSchema),
+    defaultValues: {
+      session_id: sessions.length > 0 ? sessions[0].id : undefined,
+    },
   });
 
   const { execute, isPending } = useAction(registerForWebinarAction, {
-    onSuccess: ({input}) => {
-      // navigate to success page with selected session
-      router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
+    onSuccess: ({data, input}) => {
+      const selectedSession = sessions.find((s) => s.id === input.session_id);
+      if (selectedSession?.status === WebinarSessionStatus.IN_PROGRESS && data?.data?.access_token) {
+        router.push(`/${selectedSession.id}/live?token=${data.data.access_token}`);
+      } else {
+        router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
+      }
     },
     onError: ({error, input}) => {
       // `error` here is whatever your action throws / returns as serverError
@@ -144,19 +155,40 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   return (
     <div>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className='flex flex-col gap-1'>
-            <Label htmlFor="session_id">Select a Session</Label>
-            <select
-                id="session_id"
-                {...register("session_id")}
-                className="border rounded px-3 py-2 text-sm"
-            >
-                {sessions?.map((session) => (
-                <option key={session.id} value={session.id}>
-                    {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
-                </option>
-                ))}
-            </select>
+        <div className='flex flex-col gap-2'>
+            <Label>Select a Session</Label>
+            <Controller
+              name="session_id"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a session" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sessions?.map((session) => {
+                      const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
+                      return (
+                        <SelectItem key={session.id} value={session.id}>
+                          <span className="flex items-center gap-2">
+                            {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
+                            {isLive && (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+                                </span>
+                                LIVE
+                              </span>
+                            )}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.session_id && <p className="text-red-500 text-sm">{errors.session_id.message}</p>}
         </div>
 
