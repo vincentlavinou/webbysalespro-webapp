@@ -7,6 +7,7 @@ import { AttendeeBroadcastServiceToken, BroadcastServiceToken } from "@/broadcas
 import { createBroadcastServiceToken } from "../service";
 import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
 import { useWebinar } from "@/webinar/hooks";
+import { useSessionPresence } from "@/broadcast/hooks";
 import { OfferSessionClientProvider } from "@/offer-client/providers/OfferSessionClientProvider";
 import { OfferSessionDto } from "@/offer-client/service/type";
 
@@ -20,6 +21,7 @@ type Props = {
 export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: Props) {
   const [broadcastToken, setBroadcastToken] = useState<BroadcastServiceToken | null>(null);
   const { recordEvent } = useWebinar()
+  const { markJoined } = useSessionPresence(accessToken);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +30,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: 
       const token = await createBroadcastServiceToken(sessionId, accessToken);
       if (!cancelled) {
         setBroadcastToken(token);
-        recordEvent("joined", accessToken)
+        await markJoined();
       }
     }
 
@@ -36,7 +38,6 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: 
 
     return () => {
       cancelled = true;
-      recordEvent("left", accessToken)
     };
   }, [sessionId, accessToken]);
 

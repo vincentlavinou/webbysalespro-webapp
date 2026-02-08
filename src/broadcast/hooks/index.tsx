@@ -5,3 +5,7 @@ export {
 export {
   useBroadcastConfiguration
 } from './use-broadcast-configuration'
+
+export {
+  useSessionPresence
+} from './use-session-presence'
