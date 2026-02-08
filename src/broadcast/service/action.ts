@@ -3,8 +3,8 @@ import { RequestHeaders } from "next/dist/client/components/router-reducer/fetch
 import { broadcastApiUrl } from ".";
 import { AttendeeBroadcastServiceToken, BroadcastServiceToken } from "./type";
 
-export const createBroadcastServiceToken = async (webinarId: string, accessToken?: string, headers?: RequestHeaders) : Promise<BroadcastServiceToken> => {
-    const response = await fetch(`${broadcastApiUrl}/v1/broadcast/token/`,{
+export const createBroadcastServiceToken = async (webinarId: string, accessToken?: string, headers?: RequestHeaders): Promise<BroadcastServiceToken> => {
+    const response = await fetch(`${broadcastApiUrl}/v1/broadcast/token/`, {
         headers: {
             'Content-Type': 'application/json',
             ...headers
@@ -19,8 +19,8 @@ export const createBroadcastServiceToken = async (webinarId: string, accessToken
     return await response.json() as BroadcastServiceToken
 }
 
-export const createAttendeeBroadcastServiceToken = async (webinarId: string, accessToken?: string, headers?: RequestHeaders) : Promise<AttendeeBroadcastServiceToken> => {
-    const response = await fetch(`${broadcastApiUrl}/v1/attendee/broadcast/token/`,{
+export const createAttendeeBroadcastServiceToken = async (webinarId: string, accessToken?: string, headers?: RequestHeaders): Promise<AttendeeBroadcastServiceToken> => {
+    const response = await fetch(`${broadcastApiUrl}/v1/attendee/broadcast/token/`, {
         headers: {
             'Content-Type': 'application/json',
             ...headers
@@ -35,8 +35,8 @@ export const createAttendeeBroadcastServiceToken = async (webinarId: string, acc
     return await response.json() as AttendeeBroadcastServiceToken
 }
 
-export const setMainPresenter = async (webinarId: string, sessionId?: string, presenterId?: string, headers?: RequestHeaders) : Promise<BroadcastServiceToken> => {
-    const response = await fetch(`${broadcastApiUrl}/v1/webinars/${webinarId}/sessions/${sessionId}/set-main-presenter/`,{
+export const setMainPresenter = async (webinarId: string, sessionId?: string, presenterId?: string, headers?: RequestHeaders): Promise<BroadcastServiceToken> => {
+    const response = await fetch(`${broadcastApiUrl}/v1/webinars/${webinarId}/sessions/${sessionId}/set-main-presenter/`, {
         headers: {
             'Content-Type': 'application/json',
             ...headers
@@ -51,22 +51,22 @@ export const setMainPresenter = async (webinarId: string, sessionId?: string, pr
 }
 
 export const sessionController = async (action: string, seriesId: string, sessionId: string, body: Record<string, unknown>, requestHeaders: () => Promise<RequestHeaders | undefined>) => {
-    await fetch(`${broadcastApiUrl}/v1/series/${seriesId}/sessions/${sessionId}/${action}/`,{
+    await fetch(`${broadcastApiUrl}/v1/series/${seriesId}/sessions/${sessionId}/${action}/`, {
         headers: {
-          "Content-Type": "application/json",
-          ... (await requestHeaders())
+            "Content-Type": "application/json",
+            ... (await requestHeaders())
         },
         method: 'PATCH',
         body: JSON.stringify(body)
-      })
+    })
 }
 
 export const recordEvent = async (name: string, sessionId: string, token: string, payload: Record<string, unknown> | undefined = undefined) => {
     const params = new URLSearchParams()
     params.set("token", token)
-    await fetch(`${broadcastApiUrl}/v1/sessions/${sessionId}/events/?${params.toString()}`,{
+    await fetch(`${broadcastApiUrl}/v1/sessions/${sessionId}/events/?${params.toString()}`, {
         headers: {
-          "Content-Type": "application/json"
+            "Content-Type": "application/json"
         },
         method: 'POST',
         body: JSON.stringify({
@@ -74,5 +74,5 @@ export const recordEvent = async (name: string, sessionId: string, token: string
             event_timestamp: new Date().toISOString(),
             payload: payload
         })
-      })
+    })
 }

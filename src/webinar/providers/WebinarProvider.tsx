@@ -8,7 +8,7 @@ import {
     webinarApiUrl,
 } from "../service";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
+import { broadcastApiUrl, createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
 import { BroadcastServiceToken } from "@/broadcast/service/type";
 import { WebinarSessionStatus } from "../service/enum";
 import { useEventSource } from "@/sse";
@@ -33,8 +33,8 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
 
     const searchParams = useSearchParams();
     const router = useRouter();
-    const {execute: getSession} = useAction(getSessionAction, {
-        onSuccess: async ({data, input}) => {
+    const { execute: getSession } = useAction(getSessionAction, {
+        onSuccess: async ({ data, input }) => {
             handleUpdateSession(data, input.token)
         }
     })
@@ -49,9 +49,9 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         (async () => {
             if (!attendeeToken) return;
             try {
-                await getSession({id: sessionId, token: attendeeToken})
-                
-            } catch(e) {
+                await getSession({ id: sessionId, token: attendeeToken })
+
+            } catch (e) {
                 console.error("[WebinarProvider] Failed get session service token", e);
             }
 
@@ -74,7 +74,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
 
     // ---- Public event recorder ----
     const recordSessionEvent = useCallback(
-        async (name: string,  token: string, payload: Record<string, unknown> | undefined) => {
+        async (name: string, token: string, payload: Record<string, unknown> | undefined) => {
             try {
                 await recordEvent(name, sessionId, token, payload);
             } catch (e) {
@@ -83,6 +83,17 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         },
         [sessionId]
     );
+
+    const recordEventBeacon = useCallback(async (name: string, token: string, payload: Record<string, unknown> | undefined = undefined) => {
+        const params = new URLSearchParams()
+        params.set("token", token)
+        const blob = new Blob([JSON.stringify({
+            event_type: name,
+            event_timestamp: new Date().toISOString(),
+            payload: payload
+        })], { type: 'application/json' });
+        navigator.sendBeacon(`${broadcastApiUrl}/v1/sessions/${sessionId}/events/?${params.toString()}`, blob);
+    },[sessionId])
 
     const regenerateBroadcastToken = useCallback(
         async (newToken: string) => {
@@ -123,8 +134,8 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data) as { status: WebinarSessionStatus };
-                if(token) handleUpdateSession({ ...(session || {}), status: data.status } as SeriesSession, token)
-                if(token && data.status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken(token)
+                if (token) handleUpdateSession({ ...(session || {}), status: data.status } as SeriesSession, token)
+                if (token && data.status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken(token)
             } catch (e) {
                 console.error("[SSE] Parse error (session:update)", e, event.data);
             }
@@ -168,7 +179,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         },
         onOpen: async () => {
             if (token) {
-                await getSession({id: sessionId, token})
+                await getSession({ id: sessionId, token })
             }
         },
         onError: (err: Event) => {
@@ -188,6 +199,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 isRedirecting,
                 webinar,
                 recordEvent: recordSessionEvent,
+                recordEventBeacon,
                 regenerateBroadcastToken,
             }}
         >

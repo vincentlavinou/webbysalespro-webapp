@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useWebinar } from "@/webinar/hooks";
 
 export function useSessionPresence(accessToken: string) {
-  const { recordEvent } = useWebinar();
+  const { recordEvent, recordEventBeacon } = useWebinar();
   const hasJoinedRef = useRef(false);
   const hasLeftRef = useRef(false);
 
@@ -16,7 +16,7 @@ export function useSessionPresence(accessToken: string) {
     const sendLeft = async () => {
       if (hasLeftRef.current || !hasJoinedRef.current) return;
       hasLeftRef.current = true;
-      await recordEvent("left", accessToken);
+      await recordEventBeacon("left", accessToken);
     };
 
     window.addEventListener("beforeunload", sendLeft);
