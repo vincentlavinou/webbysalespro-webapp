@@ -87,12 +87,16 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     const recordEventBeacon = useCallback(async (name: string, token: string, payload: Record<string, unknown> | undefined = undefined) => {
         const params = new URLSearchParams()
         params.set("token", token)
-        const blob = new Blob([JSON.stringify({
-            event_type: name,
-            event_timestamp: new Date().toISOString(),
-            payload: payload
-        })], { type: 'application/json' });
-        navigator.sendBeacon(`${broadcastApiUrl}/v1/sessions/${sessionId}/events/?${params.toString()}`, blob);
+        fetch(`${broadcastApiUrl}/v1/sessions/${sessionId}/events/?${params.toString()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event_type: name,
+                event_timestamp: new Date().toISOString(),
+                payload: payload
+            }),
+            keepalive: true,
+        });
     },[sessionId])
 
     const regenerateBroadcastToken = useCallback(
