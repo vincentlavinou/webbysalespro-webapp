@@ -5,6 +5,7 @@ import IVSPlayer from "./views/IVSVideoPlayer";
 import { ChatComposer } from "@/chat/component/ChatComposer";
 import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
+import { VideoInjectionPlayer } from "@/video-injection";
 
 interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -86,7 +87,7 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
     return (
         <div className="bg-neutral-900 text-neutral-100 h-[100svh] overflow-hidden">
             <header ref={headerRef} className="bg-black">
-                <div className="w-full aspect-video grid place-items-center text-sm text-white/80">
+                <div className="w-full aspect-video grid place-items-center text-sm text-white/80 relative">
                     {broadcast.stream ? (
                         <IVSPlayer
                             src={broadcast.stream.config.playback_url}
@@ -100,6 +101,7 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                             Waiting for {title} to start...
                         </div>
                     )}
+                    <VideoInjectionPlayer />
                 </div>
             </header>
 

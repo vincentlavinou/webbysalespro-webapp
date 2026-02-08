@@ -20,5 +20,6 @@ export enum LocalStreamEventType {
 export enum PlaybackMetadataEventType {
     OFFER = "webinar:offer:visibility",
     OFFER_SCARCITY = "session:offer:scarcity:update",
-    SESSION = "webinar:session:update"
+    SESSION = "webinar:session:update",
+    VIDEO_INJECTION = "webinar:video-injection:update"
 }

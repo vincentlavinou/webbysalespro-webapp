@@ -2,6 +2,7 @@
 import { AttendeeBroadcastServiceToken } from "../service/type";
 import { WebinarChat } from "@/chat/component";
 import IVSPlayer from "./views/IVSVideoPlayer";
+import { VideoInjectionPlayer } from "@/video-injection";
 
 interface AttendeeDesktopLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -16,7 +17,7 @@ export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: Attende
             <div className="flex flex-col flex-1 min-h-0 lg:flex-row overflow-hidden gap-2">
 
                 <div className="flex flex-col w-full lg:flex-1 max-h-[calc(100vh-100px)] min-h-0">
-                    <div className="sticky top-0 z-10 bg-black">
+                    <div className="sticky top-0 z-10 bg-black relative">
                         {broadcast.stream ? (
                             <IVSPlayer
                                 src={broadcast.stream.config.playback_url}
@@ -30,6 +31,7 @@ export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: Attende
                             Waiting for {title} to start...
                         </div>
                         )}
+                        <VideoInjectionPlayer />
                     </div>
                 </div>
                                     {/* Chat container (grows under controls) */}

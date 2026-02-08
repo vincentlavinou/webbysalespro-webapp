@@ -10,6 +10,7 @@ import { useWebinar } from "@/webinar/hooks";
 import { useSessionPresence } from "@/broadcast/hooks";
 import { OfferSessionClientProvider } from "@/offer-client/providers/OfferSessionClientProvider";
 import { OfferSessionDto } from "@/offer-client/service/type";
+import { VideoInjectionPlayerProvider } from "@/video-injection";
 
 type Props = {
   sessionId: string;
@@ -60,21 +61,22 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: 
 
   if (broadcastToken.role === "attendee" && broadcastToken.stream) {
     return (
-      <OfferSessionClientProvider
-        sessionId={sessionId}
-        token={accessToken}
-        initialOffers={offers}
-        email={broadcastToken.email || ''}
-        recordEvent={recordEvent}
-      >
-        <AttendeePlayerClient
+      <VideoInjectionPlayerProvider sessionId={sessionId} token={accessToken}>
+        <OfferSessionClientProvider
           sessionId={sessionId}
-          accessToken={accessToken}
-          broadcastToken={broadcastToken as AttendeeBroadcastServiceToken}
-          title={webinarTitle}
-        />
-      </OfferSessionClientProvider>
-
+          token={accessToken}
+          initialOffers={offers}
+          email={broadcastToken.email || ''}
+          recordEvent={recordEvent}
+        >
+          <AttendeePlayerClient
+            sessionId={sessionId}
+            accessToken={accessToken}
+            broadcastToken={broadcastToken as AttendeeBroadcastServiceToken}
+            title={webinarTitle}
+          />
+        </OfferSessionClientProvider>
+      </VideoInjectionPlayerProvider>
     );
   }
 
