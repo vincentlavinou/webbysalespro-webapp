@@ -34,14 +34,6 @@ export function VideoInjectionPlayerProvider({
 
       if (state.active) {
         const elapsed = state.elapsed_seconds ?? 0;
-        const durationSec = (state.duration_ms ?? 0) / 1000;
-
-        // If elapsed >= duration, the video has already finished
-        if (durationSec > 0 && elapsed >= durationSec) {
-          setIsActive(false);
-          return;
-        }
-
         setIsActive(true);
         setPlaybackUrl(state.playback_url ?? null);
         setTitle(state.title ?? null);
@@ -88,6 +80,9 @@ export function VideoInjectionPlayerProvider({
       schema: videoInjectionUpdateMetadataSchema,
       sessionId,
       onEvent: handleMetadataEvent,
+      onError: (error) => {
+        console.debug(error)
+      },
       getSignature: (evt) =>
         `${evt.payload.action}-${evt.payload.video_injection_id ?? ""}`,
     },

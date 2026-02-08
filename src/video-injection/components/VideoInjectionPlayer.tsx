@@ -7,6 +7,7 @@ import { useVideoInjectionPlayer } from "../hooks/use-video-injection-player";
 export function VideoInjectionPlayer() {
   const { isActive, playbackUrl, elapsedSeconds } =
     useVideoInjectionPlayer();
+  console.log(`Is Active: ${isActive}, Playback Url: ${playbackUrl}`)
   const videoRef = useAttachVideo(
     isActive && playbackUrl ? playbackUrl : undefined
   );

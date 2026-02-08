@@ -24,13 +24,15 @@ export function usePlaybackMetadataEvent<
     schema,
     sessionId,
     onEvent,
-    getSignature
+    getSignature,
+    onError
   } : {
     eventType: TType;
     schema: z.ZodType<BaseEvent<TType, TPayload>>;
     sessionId?: string;
     onEvent: (evt: BaseEvent<TType, TPayload>) => void;
     getSignature?: (evt: BaseEvent<TType, TPayload>) => string;
+    onError?: (error: string) => void
   }, dependecies: DependencyList
 ) {
   const lastSigRef = useRef<string>("");
@@ -49,19 +51,31 @@ export function usePlaybackMetadataEvent<
           })()
           : raw;
 
-      if (!obj || typeof obj !== "object") return;
+      if (!obj || typeof obj !== "object") {
+        onError?.(`obj: ${obj} is not equal to an object or is undefined`)
+        return
+      };
 
       // fast pre-filter (avoid zod cost for other event types)
       const type = (obj as { type: TType, payload: TPayload }).type;
-      if (type !== eventType) return;
+      if (type !== eventType) {
+        onError?.(`Type: ${type} is not equal to ${eventType}`)
+        return
+      };
 
       const parsed = schema.safeParse(obj);
-      if (!parsed.success) return;
+      if (!parsed.success) {
+        onError?.(`Parsed Error: ${parsed.error}`)
+        return
+      };
 
       const evt = parsed.data;
 
       // optional session filter
-      if (sessionId && evt.payload?.session_id && evt.payload.session_id !== sessionId) return;
+      if (sessionId && evt.payload?.session_id && evt.payload.session_id !== sessionId) {
+        onError?.(`Session id: ${sessionId} is not equal to ${evt.payload.session_id}`)
+        return
+      };
 
       // optional dedupe
       if (getSignature) {
