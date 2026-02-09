@@ -13,34 +13,34 @@ export function VideoInjectionPlayer() {
   );
   const hasSeeked = useRef(false);
 
-  // Seek to elapsed position once the video is ready
+  // Reset seek flag when the source changes
   useEffect(() => {
     hasSeeked.current = false;
   }, [playbackUrl]);
 
+  // Once video is ready: seek to elapsed position and play
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !isActive || hasSeeked.current) return;
+    if (!video || !isActive) return;
 
-    const seekTo = elapsedSeconds ?? 0;
-    if (seekTo <= 0) {
-      hasSeeked.current = true;
-      return;
-    }
-
-    const handleCanPlay = () => {
-      if (!hasSeeked.current && video.readyState >= 2) {
+    const seekAndPlay = () => {
+      const seekTo = elapsedSeconds ?? 0;
+      if (!hasSeeked.current && seekTo > 0) {
         video.currentTime = seekTo;
-        hasSeeked.current = true;
       }
+      hasSeeked.current = true;
+      video.play().catch(() => {
+        // Browser blocked unmuted autoplay — retry muted as fallback
+        video.muted = true;
+        video.play().catch(() => {});
+      });
     };
 
     if (video.readyState >= 2) {
-      video.currentTime = seekTo;
-      hasSeeked.current = true;
+      seekAndPlay();
     } else {
-      video.addEventListener("canplay", handleCanPlay, { once: true });
-      return () => video.removeEventListener("canplay", handleCanPlay);
+      video.addEventListener("canplay", seekAndPlay, { once: true });
+      return () => video.removeEventListener("canplay", seekAndPlay);
     }
   }, [videoRef, isActive, elapsedSeconds]);
 

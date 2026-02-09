@@ -8,7 +8,7 @@ import {
   PlayerState,
   TextMetadataCue,
 } from "amazon-ivs-player";
-import { emitPlaybackMetadata } from "@/emitter/playback/";
+import { emitPlaybackMetadata, emitPlaybackEnded } from "@/emitter/playback/";
 
 // --- retry tuning ---
 const START_BACKOFF = 800; // ms
@@ -187,7 +187,10 @@ export default function IVSPlayer({
 
       const onBuffering = () => updateStats(player);
       const onIdle = () => updateStats(player);
-      const onEnded = () => updateStats(player);
+      const onEnded = () => {
+        updateStats(player);
+        emitPlaybackEnded();
+      };
 
       const onError = (e: PlayerError) => {
         if (e?.code === 404 && e?.source === "MasterPlaylist") {

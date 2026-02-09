@@ -10,6 +10,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { broadcastApiUrl, createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
 import { BroadcastServiceToken } from "@/broadcast/service/type";
+import { onPlaybackEnded } from "@/emitter/playback";
 import { WebinarSessionStatus } from "../service/enum";
 import { useEventSource } from "@/sse";
 import { getSessionAction } from "../service/action";
@@ -123,15 +124,19 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 setIsRedirecting(true);
                 router.replace(`/${sessionId}/live?token=${token}`);
                 break;
-            case WebinarSessionStatus.COMPLETED:
-                setIsRedirecting(true);
-                router.replace(`/${sessionId}/completed?token=${token}`);
-                // After completion we don't care about SSE anymore;
-                // SSE hook will be disabled via `enabled` flag below.
-                break;
         }
 
     }, [setSession, router, setIsRedirecting, sessionId])
+
+    // ---- Navigate to completed when IVS player stream ends ----
+    useEffect(() => {
+        return onPlaybackEnded(() => {
+            if (token) {
+                setIsRedirecting(true);
+                router.replace(`/${sessionId}/completed?token=${token}`);
+            }
+        });
+    }, [token, sessionId, router]);
 
     // ---- SSE event handlers (webinar-specific) ----
     const handleEventUpdateSession = useCallback(
