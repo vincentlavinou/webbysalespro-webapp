@@ -20,6 +20,7 @@ import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { actionClient } from "@/lib/safe-action";
 import { registerForWebinarInput } from "@/webinar/service/schema";
 import { handleStatus } from "@/lib/http";
+import { getSessionAction } from "@/webinar/service/action";
 
 interface DefaultRegistrationFormProps {
   webinar: Webinar;
@@ -90,9 +91,16 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   });
 
   const { execute, isPending } = useAction(registerForWebinarAction, {
-    onSuccess: ({data, input}) => {
+    onSuccess: async ({data, input}) => {
       const selectedSession = sessions.find((s) => s.id === input.session_id);
-      if (selectedSession?.status === WebinarSessionStatus.IN_PROGRESS && data?.data?.access_token) {
+      if(!selectedSession)  {
+        router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
+        return
+      }
+
+      // get latest session once registration is completed
+      const session = await getSessionAction({id: selectedSession?.id, token: data.data.access_token})
+      if (session.data?.status === WebinarSessionStatus.IN_PROGRESS && data?.data?.access_token) {
         router.push(`/${selectedSession.id}/live?token=${data.data.access_token}`);
       } else {
         router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
