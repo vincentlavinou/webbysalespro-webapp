@@ -61,7 +61,7 @@ export function SelectedOffer() {
         "rounded-xl",
         "bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/75",
         "ring-1 ring-border/70 shadow-sm",
-        "p-3",
+        "p-1",
       ].join(" ")}
     >
       <div className="space-y-3">

@@ -300,7 +300,7 @@ export function OfferCarousel({ offers, onOfferClick }: OfferCarouselProps) {
       )}
 
       {/* No more px-10. Just add small inset padding so buttons don't overlap */}
-      <div className="px-4 sm:px-4">
+      <div className="px-1 sm:px-1">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentOffer.id}
