@@ -74,7 +74,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   const router = useRouter();
 
   const sessions = useMemo(
-    () => webinar.series?.flatMap((series) => series.sessions) ?? [],
+    () => webinar.series?.sessions || [],
     [webinar.series]
   );
 

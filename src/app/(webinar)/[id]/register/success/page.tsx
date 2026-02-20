@@ -13,7 +13,7 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
   const sessionId = (await props.searchParams).session_id;
 
   const webinar = await getWebinar(webinarId);
-  const sessions = webinar.series?.flatMap((series) => series.sessions) ?? [];
+  const sessions = webinar.series?.sessions ?? [];
   const session = sessions.find((s) => s.id === sessionId);
 
   if (!session) return null;

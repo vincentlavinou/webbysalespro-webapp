@@ -39,7 +39,7 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
     
     const webinarId = (await props.params).id
     const webinar = await getWebinar(webinarId)
-    const sessions = webinar.series?.flatMap((series) => series.sessions)
+    const sessions = webinar.series?.sessions || []
 
     const thumbnail = webinar.media.find(
         (media) =>

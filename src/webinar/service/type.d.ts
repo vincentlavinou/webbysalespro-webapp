@@ -69,7 +69,7 @@ export type SeriesSession = {
     status: WebinarSessionStatus
     scheduled_start: string
     timezone: string
-    attendees?: WebinarAttendee[]
+    attendee_count: number
     offer_visible: boolean
     offer_shown_at?: string
 }
@@ -108,7 +108,7 @@ export type Webinar = {
     media: WebinarMedia[]
     settings: WebinarSetting
     presenters: WebinarPresenter[]
-    series?: WebinarSeries[]
+    series?: WebinarSeries
     offers: WebinarOffer[]
 }
   

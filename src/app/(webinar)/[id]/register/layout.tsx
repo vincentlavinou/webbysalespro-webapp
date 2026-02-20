@@ -13,7 +13,7 @@ export default async function RegistrationLayout(props: RegistrationLayoutProps)
 
     const webinarId = (await props.params).id
     const webinar = await getWebinar(webinarId)
-    const sessions = webinar.series?.flatMap((series) => series.sessions)
+    const sessions = webinar.series?.sessions || []
 
 
 
