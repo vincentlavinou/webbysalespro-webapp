@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, Percent } from 'lucide-react';
+import { Percent } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
@@ -264,16 +264,6 @@ export function OfferCarousel({ offers, onOfferClick }: OfferCarouselProps) {
 
   if (offers.length === 0) return null;
   const currentOffer = offers[index];
-
-  const navBtnClass = [
-    "absolute top-1/2 -translate-y-1/2 z-10",
-    "h-8 w-8 rounded-full grid place-items-center",
-    "bg-card/80 supports-[backdrop-filter]:bg-card/70 backdrop-blur",
-    "ring-1 ring-border/70 shadow-sm",
-    "text-muted-foreground hover:text-foreground",
-    "hover:ring-border hover:shadow-md transition",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-  ].join(" ");
 
   return (
     <div ref={mergedRef} className="relative w-full" {...handlers}>
