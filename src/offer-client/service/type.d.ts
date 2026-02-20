@@ -83,8 +83,10 @@ export interface OfferSessionDto {
   status: OfferSessionStatus;
   real_percent_sold: number | null;
   display_percent_sold: number | null;
-  display_total_slots: number | null;
-  scarcity_mode: "none" | "real" | "manual" | "hybrid";
+  display_available_count: number | null;
+  display_type: "percentage" | "count" | null;
+  quantity_total: number | null;
+  scarcity_mode: "none" | "real" | "manual";
 }
 
 export type OfferView = "offers-hidden" | "offers-visible" | "offer-selected" | "offer-checkingout" | "offer-purchased"

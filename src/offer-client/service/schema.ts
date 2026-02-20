@@ -27,8 +27,10 @@ export const offerScarcityUpdateMetadataSchema = z.object({
   payload: z.object({
     session_id: z.string(),
     offer_session_id: z.string(),
-    mode: z.enum(["real", "manual", "hybrid", "none"]),
+    mode: z.enum(["real", "manual", "none"]),
+    display_type: z.enum(["percentage", "count"]),
+    quantity_total: z.number().int(),
     display_percent_sold: z.number().nullable(),
-    display_total_slots: z.number().nullable(),
+    display_available_count: z.number().int().nullable(),
   }),
 });

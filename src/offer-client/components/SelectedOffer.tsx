@@ -155,24 +155,26 @@ export function SelectedOffer() {
           </div>
         </div>
 
-        {/* Scarcity bar */}
-        {selectedOffer.scarcity_mode !== "none" && selectedOffer.display_percent_sold != null && (
+        {/* Scarcity widget */}
+        {selectedOffer.scarcity_mode !== "none" && selectedOffer.display_type != null && (
           <div className="w-full">
-            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: `${Math.min(selectedOffer.display_percent_sold, 100)}%` }}
-              />
-            </div>
-            {selectedOffer.display_total_slots != null ? (
-              <p className="mt-1 text-[11px] text-muted-foreground text-center">
-                {Math.round(selectedOffer.display_total_slots * selectedOffer.display_percent_sold / 100)} of {selectedOffer.display_total_slots} spots claimed
+            {selectedOffer.display_type === "count" && selectedOffer.display_available_count != null ? (
+              <p className="mt-1 text-[11px] text-muted-foreground text-center font-medium">
+                {selectedOffer.display_available_count} spot{selectedOffer.display_available_count !== 1 ? "s" : ""} left
               </p>
-            ) : (
-              <p className="mt-1 text-[11px] text-muted-foreground text-center">
-                {Math.round(selectedOffer.display_percent_sold)}% claimed
-              </p>
-            )}
+            ) : selectedOffer.display_type === "percentage" && selectedOffer.display_percent_sold != null ? (
+              <>
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                    style={{ width: `${Math.min(selectedOffer.display_percent_sold, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground text-center">
+                  {Math.round(selectedOffer.display_percent_sold)}% claimed
+                </p>
+              </>
+            ) : null}
           </div>
         )}
 

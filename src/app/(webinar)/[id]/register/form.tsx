@@ -101,7 +101,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       // get latest session once registration is completed
       const session = await getSessionAction({id: selectedSession?.id, token: data.data.access_token})
       if (session.data?.status === WebinarSessionStatus.IN_PROGRESS && data?.data?.access_token) {
-        router.push(`/${selectedSession.id}/live?token=${data.data.access_token}`);
+        router.push(`/${session.data.id}/live?token=${data.data.access_token}`);
       } else {
         router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
       }

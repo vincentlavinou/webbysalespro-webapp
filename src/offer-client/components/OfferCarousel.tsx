@@ -7,34 +7,40 @@ import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { OfferSessionDto } from '../service/type';
 
-function ScarcityBar({
+function ScarcityWidget({
+  displayType,
   percentSold,
-  totalSlots,
+  availableCount,
 }: {
-  percentSold: number;
-  totalSlots: number | null;
+  displayType: "percentage" | "count";
+  percentSold: number | null;
+  availableCount: number | null;
 }) {
-  const claimed = totalSlots != null ? Math.round(totalSlots * percentSold / 100) : null;
+  if (displayType === "count" && availableCount != null) {
+    return (
+      <p className="mt-0.5 text-[10px] text-muted-foreground text-right font-medium">
+        {availableCount} spot{availableCount !== 1 ? "s" : ""} left
+      </p>
+    );
+  }
 
-  return (
-    <div className="w-full mt-1">
-      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-          style={{ width: `${Math.min(percentSold, 100)}%` }}
-        />
-      </div>
-      {claimed != null && totalSlots != null ? (
-        <p className="mt-0.5 text-[10px] text-muted-foreground text-right">
-          {claimed} of {totalSlots} claimed
-        </p>
-      ) : (
+  if (displayType === "percentage" && percentSold != null) {
+    return (
+      <div className="w-full mt-1">
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+            style={{ width: `${Math.min(percentSold, 100)}%` }}
+          />
+        </div>
         <p className="mt-0.5 text-[10px] text-muted-foreground text-right">
           {Math.round(percentSold)}% claimed
         </p>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
+
+  return null;
 }
 
 interface VisibleOfferProps {
@@ -166,11 +172,12 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
               </div>
             )}
 
-            {/* Scarcity bar */}
-            {offer.scarcity_mode !== "none" && offer.display_percent_sold != null && (
-              <ScarcityBar
+            {/* Scarcity widget */}
+            {offer.scarcity_mode !== "none" && offer.display_type != null && (
+              <ScarcityWidget
+                displayType={offer.display_type}
                 percentSold={offer.display_percent_sold}
-                totalSlots={offer.display_total_slots ?? null}
+                availableCount={offer.display_available_count}
               />
             )}
           </div>

@@ -55,14 +55,16 @@ export function OfferSessionClientProvider({
                         ? {
                             ...os,
                             scarcity_mode: event.payload.mode,
+                            display_type: event.payload.display_type,
+                            quantity_total: event.payload.quantity_total,
                             display_percent_sold: event.payload.display_percent_sold,
-                            display_total_slots: event.payload.display_total_slots,
+                            display_available_count: event.payload.display_available_count,
                         }
                         : os
                 )
             })
         },
-        getSignature: (evt) => `${evt.payload.offer_session_id}-${evt.payload.display_percent_sold}-${evt.payload.mode}`,
+        getSignature: (evt) => `${evt.payload.offer_session_id}-${evt.payload.mode}-${evt.payload.display_type}-${evt.payload.display_percent_sold}-${evt.payload.display_available_count}`,
     }, [])
 
     useEffect(() => {
