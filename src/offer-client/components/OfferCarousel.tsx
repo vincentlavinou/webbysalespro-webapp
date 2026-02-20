@@ -2,46 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Percent } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Progress } from '@/components/ui/progress';
 import type { OfferSessionDto } from '../service/type';
-
-function ScarcityWidget({
-  displayType,
-  percentSold,
-  availableCount,
-}: {
-  displayType: "percentage" | "count";
-  percentSold: number | null;
-  availableCount: number | null;
-}) {
-  if (displayType === "count" && availableCount != null) {
-    return (
-      <p className="mt-0.5 text-[10px] text-muted-foreground text-right font-medium">
-        {availableCount} spot{availableCount !== 1 ? "s" : ""} left
-      </p>
-    );
-  }
-
-  if (displayType === "percentage" && percentSold != null) {
-    return (
-      <div className="w-full mt-1">
-        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-            style={{ width: `${Math.min(percentSold, 100)}%` }}
-          />
-        </div>
-        <p className="mt-0.5 text-[10px] text-muted-foreground text-right">
-          {Math.round(percentSold)}% claimed
-        </p>
-      </div>
-    );
-  }
-
-  return null;
-}
 
 interface VisibleOfferProps {
   offer: OfferSessionDto;
@@ -59,7 +24,6 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
 
   const currency = offer.offer.price?.currency ?? "";
   const effective = offer.offer.price?.effective_price ?? null;
-
   const compareAt = offer.offer.price?.compare_at ?? null;
 
   const showCompareAt =
@@ -67,33 +31,36 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
     effective != null &&
     Number(compareAt) > Number(effective);
 
-  // ---- Display support (make minimal assumptions about the DTO shape)
+  const discountPct =
+    showCompareAt && compareAt != null && effective != null
+      ? Math.round(((Number(compareAt) - Number(effective)) / Number(compareAt)) * 100)
+      : null;
+
   const display = offer.offer.display ?? null;
-
-  const badgeText =
-    display?.badge_text ??
-    null;
-
-  // Optional accent “type” if you have it (featured, hot, limited, etc.)
-  const accent =
-    display?.accent_color ??
-    null;
+  const badgeText = display?.badge_text ?? null;
+  const accentColor = display?.accent_color ?? null;
 
   const accentClass =
-    accent === "featured"
+    accentColor === "featured"
       ? "ring-primary/20"
-      : accent === "warning"
+      : accentColor === "warning"
       ? "ring-amber-500/20"
-      : accent === "success"
+      : accentColor === "success"
       ? "ring-emerald-500/20"
       : "ring-border/70";
 
   const badgeClass =
-    accent === "warning"
+    accentColor === "warning"
       ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-500/20"
-      : accent === "success"
+      : accentColor === "success"
       ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/20"
       : "bg-primary/10 text-primary ring-primary/15";
+
+  const hasScarcity = offer.scarcity_mode !== "none";
+  const scarcityDisplayType = offer.display_type ?? "percentage";
+  const percentSold = offer.display_percent_sold;
+  const availableCount = offer.display_available_count;
+  const totalSlots = offer.quantity_total;
 
   return (
     <button
@@ -107,80 +74,105 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       ].join(" ")}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         {/* Thumbnail */}
         {thumbnail ? (
           <div className="shrink-0">
-            <div className="relative h-14 w-14 overflow-hidden rounded-lg bg-muted ring-1 ring-border/70">
-              <Image
-                src={thumbnail.file_url}
-                alt={offer.offer.name}
-                height={14}
-                width={14}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-              />
-            </div>
+            <Image
+              src={thumbnail.file_url}
+              alt={offer.offer.name}
+              height={80}
+              width={80}
+              className="h-20 w-20 rounded-md border border-border object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            />
           </div>
         ) : (
-          <div className="h-14 w-14 shrink-0 rounded-lg bg-muted ring-1 ring-border/70" />
+          <div className="h-20 w-20 shrink-0 rounded-md bg-muted ring-1 ring-border/70" />
         )}
 
-        {/* Main content + right stack */}
-        <div className="min-w-0 flex-1 flex items-start justify-between gap-3">
-          {/* Left: Title + display badge + description */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 min-w-0">
-              <h4 className="truncate text-sm font-semibold text-foreground">
-                {offer.offer.name}
-              </h4>
+        {/* Main content */}
+        <div className="min-w-0 flex-1">
+          {/* Title + badge */}
+          <div className="flex items-center gap-2 min-w-0">
+            <h4 className="truncate text-sm font-semibold text-foreground">
+              {offer.offer.name}
+            </h4>
+            {badgeText ? (
+              <span
+                className={[
+                  "shrink-0 inline-flex items-center rounded-full px-2 py-0.5",
+                  "text-[11px] font-semibold ring-1",
+                  badgeClass,
+                ].join(" ")}
+              >
+                {badgeText}
+              </span>
+            ) : null}
+          </div>
 
-              {badgeText ? (
-                <span
-                  className={[
-                    "shrink-0 inline-flex items-center rounded-full px-2 py-0.5",
-                    "text-[11px] font-semibold ring-1",
-                    badgeClass,
-                  ].join(" ")}
-                >
-                  {badgeText}
-                </span>
-              ) : null}
+          {/* Subheading */}
+          {offer.offer.subheading ? (
+            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+              {offer.offer.subheading}
+            </p>
+          ) : null}
+
+          {/* Description */}
+          {offer.offer.description ? (
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/80">
+              {offer.offer.description}
+            </p>
+          ) : null}
+
+          {/* Price row */}
+          {effective != null ? (
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <span className="font-semibold text-primary">
+                {currency} {Number(effective).toFixed(2)}
+              </span>
+              {showCompareAt && compareAt != null && (
+                <>
+                  <span className="text-[11px] text-muted-foreground line-through">
+                    {Number(compareAt).toFixed(2)}
+                  </span>
+                  {discountPct !== null && (
+                    <span className="flex items-center gap-1 text-[11px] text-emerald-500">
+                      <Percent className="h-3 w-3" />
+                      -{discountPct}%
+                    </span>
+                  )}
+                </>
+              )}
             </div>
+          ) : null}
 
-            {offer.offer.description ? (
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                {offer.offer.description}
-              </p>
-            ) : (
-              <p className="mt-0.5 text-xs text-muted-foreground/70">
-                Tap to view details
-              </p>
-            )}
-          </div>
-
-          {/* Right: compare-at + effective (scarcity/bonuses later) */}
-          <div className="shrink-0 w-[132px] flex flex-col items-end gap-1">
-            {showCompareAt && (
-              <div className="text-[11px] text-muted-foreground line-through">
-                {currency} {compareAt}
+          {/* Scarcity */}
+          {hasScarcity && (
+            <div className="mt-1 space-y-1">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                {scarcityDisplayType === "count" ? (
+                  <span className="font-medium">
+                    {availableCount !== null
+                      ? `${availableCount} spot${availableCount !== 1 ? "s" : ""} left`
+                      : "Spots filling up"}
+                  </span>
+                ) : (
+                  <>
+                    <span>
+                      {totalSlots != null ? `${totalSlots} spots` : "Spots filling up"}
+                    </span>
+                    {percentSold !== null && (
+                      <span className="font-medium">{Math.round(percentSold)}% claimed</span>
+                    )}
+                  </>
+                )}
               </div>
-            )}
-
-            {effective != null && (
-              <div className="rounded-full px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary ring-1 ring-primary/15">
-                {currency} {effective}
-              </div>
-            )}
-
-            {/* Scarcity widget */}
-            {offer.scarcity_mode !== "none" && offer.display_type != null && (
-              <ScarcityWidget
-                displayType={offer.display_type}
-                percentSold={offer.display_percent_sold}
-                availableCount={offer.display_available_count}
+              <Progress
+                value={Math.max(0, Math.min(100, percentSold ?? 0))}
+                className="h-1.5"
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </button>

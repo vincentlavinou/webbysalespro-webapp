@@ -14,14 +14,17 @@ export function OfferChatBubble() {
         setSelectedOffer
     } = useOfferSessionClient()
 
+    const visibleOffers = offers.filter(
+        (os) => !["closed", "scheduled"].includes(os.status)
+    )
 
     const getOfferView = (view: OfferView) => {
         switch(view) {
             case "offers-hidden":
-                return 
+                return
             case "offers-visible":
-                return <OfferCarousel 
-                    offers={offers}
+                return <OfferCarousel
+                    offers={visibleOffers}
                     onOfferClick={setSelectedOffer}
                     />
             case "offer-selected":
