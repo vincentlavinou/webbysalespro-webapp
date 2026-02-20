@@ -277,28 +277,6 @@ export function OfferCarousel({ offers, onOfferClick }: OfferCarouselProps) {
 
   return (
     <div ref={mergedRef} className="relative w-full" {...handlers}>
-      {hasMultiple && (
-        <>
-          <button
-            type="button"
-            onClick={handlePrev}
-            aria-label="Previous offer"
-            className={`${navBtnClass} left-2`}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleNext}
-            aria-label="Next offer"
-            className={`${navBtnClass} right-2`}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </>
-      )}
-
       {/* No more px-10. Just add small inset padding so buttons don't overlap */}
       <div className="px-1 sm:px-1">
         <AnimatePresence mode="wait">
