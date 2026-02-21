@@ -28,7 +28,7 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [filteredMessages, autoStick, scrollRef]);
 
-  if ((chatConfig?.is_enabled || false) === false) {
+  if (chatConfig && chatConfig.is_enabled === false) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-6 py-8">
         <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>

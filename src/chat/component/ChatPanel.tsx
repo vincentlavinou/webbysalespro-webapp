@@ -58,7 +58,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
         className="flex-1 h-full overflow-y-auto pr-2 scroll-smooth overscroll-contain"
         onScroll={handleScroll}
       >
-        {(chatConfig?.is_enabled || false) === false ? (
+        {chatConfig && chatConfig.is_enabled === false ? (
           <div className={clsx("flex flex-col items-center justify-center h-full rounded-md border shadow bg-background text-center px-6 py-8", className)}>
           <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
         </div>
