@@ -1,7 +1,7 @@
 // WebinarChat.tsx
 'use client';
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { ChatToken } from "amazon-ivs-chat-messaging";
 import { ChatConfigurationProvider } from "../provider/ChatConfigurationProvider";
 import { tokenProvider } from "../service/action";
@@ -24,10 +24,26 @@ export function WebinarChat({ token, region, render }: WebinarChatProps) {
   const { sessionId, getRequestHeaders, accessToken } = useBroadcastConfiguration();
   const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
 
+  // Eagerly fetch chat config on mount so it's available before IVS connects.
+  // Without this, chatConfig stays null until the IVS room calls tokenProvider,
+  // which only happens after room.connect() — leaving the attendee out of sync
+  // with whatever the host has configured (disabled chat, pinned announcements, etc.)
+  useEffect(() => {
+    let cancelled = false;
+    tokenProvider(sessionId, accessToken, getRequestHeaders).then((response) => {
+      if (!cancelled) setInitialChatConfig(response.chat_config);
+    });
+    return () => { cancelled = true; };
+  // sessionId and accessToken are stable for the lifetime of this mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <ChatConfigurationProvider
       region={region}
       tokenProvider={async () => {
+        // IVS SDK manages its own token lifecycle (initial connect + refresh).
+        // We also update chatConfig here so it stays in sync on each token refresh.
         const response = await tokenProvider(sessionId, accessToken, getRequestHeaders);
         setInitialChatConfig(response.chat_config);
         return {
