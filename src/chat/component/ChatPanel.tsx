@@ -24,7 +24,6 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoStick, setAutoStick] = useState(true); // only autoscroll if user is near bottom
 
-  const isLocked = chatConfig?.mode === 'locked';
 
   useEffect(() => {
     if (!connected) connect();
@@ -46,14 +45,6 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
     }
   }, [filteredMessages, autoStick]);
 
-  if (chatConfig?.is_enabled === false) {
-    return (
-      <div className={clsx("flex flex-col items-center justify-center h-full rounded-md border shadow bg-background text-center px-6 py-8", className)}>
-        <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
-      </div>
-    );
-  }
-
   return (
     <div className={clsx("flex flex-col h-full rounded-md border shadow bg-background", className)}>
       {/* Pinned announcements */}
@@ -67,7 +58,11 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
         className="flex-1 h-full overflow-y-auto pr-2 scroll-smooth overscroll-contain"
         onScroll={handleScroll}
       >
-        {filteredMessages.length === 0 ? (
+        {(chatConfig?.is_enabled || false) === false ? (
+          <div className={clsx("flex flex-col items-center justify-center h-full rounded-md border shadow bg-background text-center px-6 py-8", className)}>
+          <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
+        </div>
+        ) : filteredMessages.length === 0 ? (
           <div className="p-3 text-sm text-muted-foreground">No messages yet</div>
         ) : (
           <div className="px-2 py-2 space-y-2">
@@ -87,7 +82,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
 
       {/* Composer (controls + input) */}
       {!hideComposer && (
-        <ChatComposer isLocked={isLocked} />
+        <ChatComposer />
       )}
     </div>
   );

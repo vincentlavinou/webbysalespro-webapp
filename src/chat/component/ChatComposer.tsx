@@ -1,14 +1,29 @@
 'use client';
 
+import { useEffect } from 'react';
 import { OfferChatBubble } from '@/offer-client/components/OfferChatBubble';
 import { ChatControl } from './ChatControl';
 import { ChatInput } from './ChatInput';
+import { useChat } from '../hooks';
+import { useChatControl } from '../hooks/use-chat-control';
+import { defaultRecipient } from '../service/utils';
+import { DefaultChatRecipient } from '../service/enum';
 
-interface ChatComposerProps {
-  isLocked?: boolean;
-}
+export function ChatComposer() {
+  const { chatConfig } = useChat();
+  const { setChatRecipient } = useChatControl();
+  const isLocked = chatConfig?.mode === 'locked';
 
-export function ChatComposer({ isLocked = false }: ChatComposerProps) {
+  // Keep the active recipient in sync with the chat mode so sendMessage always
+  // uses the right value regardless of which layout renders this composer.
+  useEffect(() => {
+    if (chatConfig?.mode === 'private') {
+      setChatRecipient(defaultRecipient(DefaultChatRecipient.HOST));
+    } else if (chatConfig?.mode === 'public') {
+      setChatRecipient(defaultRecipient(DefaultChatRecipient.EVERYONE));
+    }
+  }, [chatConfig?.mode]);
+
   return (
     <div
       className="

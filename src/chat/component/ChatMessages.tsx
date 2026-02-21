@@ -13,7 +13,7 @@ interface ChatMessagesProps {
 }
 
 export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
-  const { connect, filteredMessages, connected } = useChat();
+  const { connect, filteredMessages, connected, chatConfig } = useChat();
   const { userId } = useBroadcastUser();
 
   // Connect once
@@ -27,6 +27,14 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
     if (!el || !autoStick) return;
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [filteredMessages, autoStick, scrollRef]);
+
+  if ((chatConfig?.is_enabled || false) === false) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center px-6 py-8">
+        <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
+      </div>
+    );
+  }
 
   if (filteredMessages.length === 0) {
     return (

@@ -45,11 +45,12 @@ export function ChatProvider({ children, token, initialChatConfig }: ChatProvide
 
     const processMessage = (messages: ChatMessage[], recipient: ChatRecipient, userId: string) => {
         const filteredMessages = messages.filter((message) => {
-            const recipientId = message.attributes?.recipientId;
+            const messageRecipient = message.attributes?.recipient;
 
-            if (recipient.value === DefaultChatRecipient.EVERYONE) return true
+            if (recipient.value === DefaultChatRecipient.EVERYONE) return true;
 
-            return message.sender.userId === userId || recipientId === userId;
+            // In host-channel view: show messages the current user sent + all host-targeted messages
+            return message.sender.userId === userId || messageRecipient === DefaultChatRecipient.HOST;
         });
 
         return filteredMessages
@@ -131,7 +132,7 @@ export function ChatProvider({ children, token, initialChatConfig }: ChatProvide
     }, [messages, setFilteredMessages, recipient, userId])
 
     useEffect(() => {
-        if (initialChatConfig && !chatConfig) {
+        if (initialChatConfig) {
             setChatConfig(initialChatConfig);
         }
     }, [initialChatConfig])
@@ -141,7 +142,11 @@ export function ChatProvider({ children, token, initialChatConfig }: ChatProvide
         schema: chatConfigUpdateSchema,
         sessionId,
         onEvent: (event) => {
+            console.debug(event)
             setChatConfig(event.payload);
+        },
+        onError: (erro) => {
+            console.error(erro)
         },
         getSignature: (evt) => `${evt.payload.chat_session_id}-${evt.payload.mode}-${evt.payload.is_enabled}-${evt.payload.is_active}-${evt.payload.pinned_announcements.length}`,
     }, [sessionId])
