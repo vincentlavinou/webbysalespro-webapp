@@ -6,11 +6,23 @@ import { useChat } from "../hooks";
 import { useChatControl } from "../hooks/use-chat-control";
 import { Send } from "lucide-react";
 
-export function ChatInput() {
+interface ChatInputProps {
+  isLocked?: boolean;
+}
+
+export function ChatInput({ isLocked = false }: ChatInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputValue, setInputValue] = useState<string>('');
   const { recipient } = useChatControl();
   const { connected, sendMessage } = useChat();
+
+  if (isLocked) {
+    return (
+      <div className="mt-2 flex items-center justify-center rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">
+        Chat is read-only
+      </div>
+    );
+  }
 
   const handleSend = () => {
     const content = inputValue.trim();

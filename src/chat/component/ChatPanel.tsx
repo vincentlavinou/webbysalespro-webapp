@@ -6,6 +6,7 @@ import { useChat } from '@chat/hooks';
 import { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
+import { PinnedAnnouncements } from './PinnedAnnouncements';
 
 import clsx from 'clsx';
 import { ChatComposer } from './ChatComposer';
@@ -17,11 +18,13 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
-  const { connect, filteredMessages, connected } = useChat();
+  const { connect, filteredMessages, connected, chatConfig } = useChat();
   const { userId } = useBroadcastUser();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoStick, setAutoStick] = useState(true); // only autoscroll if user is near bottom
+
+  const isLocked = chatConfig?.mode === 'locked';
 
   useEffect(() => {
     if (!connected) connect();
@@ -43,8 +46,21 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
     }
   }, [filteredMessages, autoStick]);
 
+  if (chatConfig?.is_enabled === false) {
+    return (
+      <div className={clsx("flex flex-col items-center justify-center h-full rounded-md border shadow bg-background text-center px-6 py-8", className)}>
+        <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
+      </div>
+    );
+  }
+
   return (
     <div className={clsx("flex flex-col h-full rounded-md border shadow bg-background", className)}>
+      {/* Pinned announcements */}
+      {chatConfig?.pinned_announcements && (
+        <PinnedAnnouncements announcements={chatConfig.pinned_announcements} />
+      )}
+
       {/* Scrollable message list */}
       <div
         ref={scrollRef}
@@ -71,7 +87,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
 
       {/* Composer (controls + input) */}
       {!hideComposer && (
-        <ChatComposer />
+        <ChatComposer isLocked={isLocked} />
       )}
     </div>
   );

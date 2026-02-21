@@ -1,23 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatContext } from "../context/ChatContext"
 import { ChatEvent, ChatMessage, ChatRoom, DeleteMessageEvent, DisconnectUserEvent, SendMessageRequest } from "amazon-ivs-chat-messaging";
-import { ChatMetadata, ChatRecipient } from "../service/type";
+import { ChatConfigUpdate, ChatMetadata, ChatRecipient } from "../service/type";
 import { defaultRecipient } from "../service/utils";
 import { DefaultChatRecipient } from "../service/enum";
 import { useChatConfiguration } from "../hooks/use-chat-configuration";
 import { useChatControl } from "../hooks/use-chat-control";
 import { useBroadcastUser } from "@/broadcast/hooks/use-broadcast-user";
 import { useWebinar } from "@/webinar/hooks";
+import { usePlaybackMetadataEvent } from "@/emitter/playback";
+import { chatConfigUpdateSchema } from "../service/schema";
+import { useBroadcastConfiguration } from "@/broadcast/hooks";
 
 export type ChatProviderProps = {
     children: React.ReactNode,
     token?: string
+    initialChatConfig?: ChatConfigUpdate | null
 }
 
-export function ChatProvider({ children, token }: ChatProviderProps) {
+export function ChatProvider({ children, token, initialChatConfig }: ChatProviderProps) {
 
     const { userId } = useBroadcastUser()
     const { recordEvent } = useWebinar()
+    const { sessionId } = useBroadcastConfiguration()
     const { region, tokenProvider } = useChatConfiguration()
     const { recipient } = useChatControl()
     const roomRef = useRef<ChatRoom | null>(null);
@@ -25,6 +30,7 @@ export function ChatProvider({ children, token }: ChatProviderProps) {
     const [filteredMessages, setFilteredMessages] = useState<ChatMessage[]>([])
     const [events, setEvents] = useState<ChatEvent[]>([]);
     const [connected, setConnected] = useState(false);
+    const [chatConfig, setChatConfig] = useState<ChatConfigUpdate | null>(initialChatConfig ?? null);
 
     const listenerUnsubs = useRef<(() => void)[]>([]);
 
@@ -124,6 +130,21 @@ export function ChatProvider({ children, token }: ChatProviderProps) {
         setFilteredMessages(filteredMessages)
     }, [messages, setFilteredMessages, recipient, userId])
 
+    useEffect(() => {
+        if (initialChatConfig && !chatConfig) {
+            setChatConfig(initialChatConfig);
+        }
+    }, [initialChatConfig])
+
+    usePlaybackMetadataEvent({
+        eventType: "chat:config:update",
+        schema: chatConfigUpdateSchema,
+        sessionId,
+        onEvent: (event) => {
+            setChatConfig(event.payload);
+        },
+        getSignature: (evt) => `${evt.payload.chat_session_id}-${evt.payload.mode}-${evt.payload.is_enabled}-${evt.payload.is_active}-${evt.payload.pinned_announcements.length}`,
+    }, [sessionId])
 
     return <ChatContext.Provider value={{
         connect,
@@ -133,6 +154,7 @@ export function ChatProvider({ children, token }: ChatProviderProps) {
         filteredMessages,
         events,
         connected,
+        chatConfig,
     }}>
         {children}
     </ChatContext.Provider>

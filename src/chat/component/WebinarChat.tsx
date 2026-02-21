@@ -1,5 +1,7 @@
 // WebinarChat.tsx
-import { ReactNode } from "react";
+'use client';
+
+import { ReactNode, useState } from "react";
 import { ChatToken } from "amazon-ivs-chat-messaging";
 import { ChatConfigurationProvider } from "../provider/ChatConfigurationProvider";
 import { tokenProvider } from "../service/action";
@@ -9,6 +11,7 @@ import { defaultRecipient } from "../service/utils";
 import { DefaultChatRecipient } from "../service/enum";
 import { ChatProvider } from "../provider/ChatProvider";
 import { ChatPanel } from "./ChatPanel";
+import { ChatConfigUpdate } from "../service/type";
 
 export interface WebinarChatProps {
   region: string;
@@ -19,12 +22,14 @@ export interface WebinarChatProps {
 
 export function WebinarChat({ token, region, render }: WebinarChatProps) {
   const { sessionId, getRequestHeaders, accessToken } = useBroadcastConfiguration();
+  const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
 
   return (
     <ChatConfigurationProvider
       region={region}
       tokenProvider={async () => {
         const response = await tokenProvider(sessionId, accessToken, getRequestHeaders);
+        setInitialChatConfig(response.chat_config);
         return {
           token: response.chat.token,
           sessionExpirationTime: response.chat.session_expiration_time,
@@ -38,7 +43,7 @@ export function WebinarChat({ token, region, render }: WebinarChatProps) {
           defaultRecipient(DefaultChatRecipient.HOST),
         ]}
       >
-        <ChatProvider token={token}>
+        <ChatProvider token={token} initialChatConfig={initialChatConfig}>
           {render ? render() : <ChatPanel />}
         </ChatProvider>
       </ChatControlProvider>

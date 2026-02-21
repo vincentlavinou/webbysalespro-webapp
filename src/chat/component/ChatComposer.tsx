@@ -4,7 +4,11 @@ import { OfferChatBubble } from '@/offer-client/components/OfferChatBubble';
 import { ChatControl } from './ChatControl';
 import { ChatInput } from './ChatInput';
 
-export function ChatComposer() {
+interface ChatComposerProps {
+  isLocked?: boolean;
+}
+
+export function ChatComposer({ isLocked = false }: ChatComposerProps) {
   return (
     <div
       className="
@@ -21,7 +25,7 @@ export function ChatComposer() {
     >
       <OfferChatBubble />
       <ChatControl />
-      <ChatInput />
+      <ChatInput isLocked={isLocked} />
     </div>
   );
 }
