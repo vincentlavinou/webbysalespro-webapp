@@ -1,5 +1,6 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { LinkifiedText } from "./LinkifiedText";
 
 interface Reaction {
   emoji: string;
@@ -62,7 +63,7 @@ export function ChatMessageBubble({
           >
             {isSelf ? "You" : name}
           </span>
-          <span className="break-all">{content}</span>
+          <LinkifiedText className="break-all" text={content} />
         </div>
 
         {/* Reactions */}

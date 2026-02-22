@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PinnedAnnouncement } from "../service/type";
 import { Pin } from "lucide-react";
+import { LinkifiedText } from "./LinkifiedText";
 
 interface PinnedAnnouncementsProps {
     announcements: PinnedAnnouncement[];
@@ -17,7 +18,9 @@ export function PinnedAnnouncements({ announcements }: PinnedAnnouncementsProps)
                 <div key={item.id} className="flex items-start gap-2 text-sm">
                     <Pin className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
                     <div className="flex-1 min-w-0">
-                        <p className="text-foreground leading-snug break-words">{item.content}</p>
+                        <p className="text-foreground leading-snug break-words">
+                            <LinkifiedText text={item.content} />
+                        </p>
                         {item.cta_label && item.cta_url && (
                             <Link
                                 href={item.cta_url}
