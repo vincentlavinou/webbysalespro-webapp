@@ -23,3 +23,8 @@ export const chatConfigUpdateSchema = z.object({
         pinned_announcements: z.array(pinnedAnnouncementSchema),
     }),
 });
+
+export const getAttendeeChatSessionSchema = z.object({
+    token: z.string(),
+    sessionId: z.string().uuid()
+})
