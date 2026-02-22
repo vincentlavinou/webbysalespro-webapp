@@ -11,6 +11,7 @@ import { useWebinar } from "@/webinar/hooks";
 import { usePlaybackMetadataEvent } from "@/emitter/playback";
 import { chatConfigUpdateSchema } from "../service/schema";
 import { useBroadcastConfiguration } from "@/broadcast/hooks";
+import { moderateText } from "../service/moderation";
 
 export type ChatProviderProps = {
     children: React.ReactNode,
@@ -100,6 +101,24 @@ export function ChatProvider({ children, token, initialChatConfig }: ChatProvide
     const sendMessage = useCallback(async (content: string, recipient: ChatRecipient = defaultRecipient(DefaultChatRecipient.EVERYONE)) => {
         const room = roomRef.current;
         if (!room || !connected) return;
+
+        const validation = moderateText(content, {
+            role: "attendee",
+            profanityMode: "block",
+        });
+
+        if (!validation.ok) {
+            setMessages((prev) => [...prev, {
+                sender: {
+                    userId
+                },
+                content: content,
+                attributes: {
+                    "name": "You"
+                } as Record<string, string>
+            } as ChatMessage]);
+            return
+        }
 
         const request = new SendMessageRequest(content);
 
