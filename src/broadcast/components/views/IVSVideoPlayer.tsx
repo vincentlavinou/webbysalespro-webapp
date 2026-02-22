@@ -32,9 +32,9 @@ interface WebKitVideoElement extends HTMLVideoElement {
 
 // Standard PiP API properties that may be missing from older TS lib typings
 interface DocumentWithPiP extends Document {
-  pictureInPictureEnabled?: boolean;
-  pictureInPictureElement?: Element | null;
-  exitPictureInPicture?: () => Promise<void>;
+  pictureInPictureEnabled: boolean;
+  pictureInPictureElement: Element | null;
+  exitPictureInPicture: () => Promise<void>;
 }
 
 type Props = {
@@ -408,11 +408,11 @@ export default function IVSPlayer({
         try {
           const doc = document as DocumentWithPiP;
           if (doc.pictureInPictureElement) {
-            doc.exitPictureInPicture?.().catch(() => {});
+            doc.exitPictureInPicture().catch(() => {});
           }
           const video = videoRef.current as WebKitVideoElement;
           if (video?.webkitPresentationMode === 'picture-in-picture') {
-            video.webkitSetPresentationMode('inline');
+            video.webkitSetPresentationMode?.('inline');
           }
         } catch { /* ignore */ }
       };
