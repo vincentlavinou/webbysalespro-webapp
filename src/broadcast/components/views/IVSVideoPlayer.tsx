@@ -23,6 +23,20 @@ const LATENCY_RELOAD_THRESHOLD = 10;   // seconds – full reload (faster than s
 const LATENCY_POLL_MS          = 3000; // how often to check latency while playing
 const BUFFERING_TIMEOUT_MS     = 5000; // ms stuck in BUFFERING before we force a live sync
 
+// WebKit-specific PiP extensions not in standard TypeScript DOM types
+interface WebKitVideoElement extends HTMLVideoElement {
+  webkitSupportsPresentationMode?: (mode: string) => boolean;
+  webkitSetPresentationMode?: (mode: string) => void;
+  webkitPresentationMode?: string;
+}
+
+// Standard PiP API properties that may be missing from older TS lib typings
+interface DocumentWithPiP extends Document {
+  pictureInPictureEnabled?: boolean;
+  pictureInPictureElement?: Element | null;
+  exitPictureInPicture?: () => Promise<void>;
+}
+
 type Props = {
   /** IVS playback URL (master.m3u8) */
   src: string;
@@ -64,6 +78,13 @@ export default function IVSPlayer({
   // `muted` prop so we can start muted for iOS autoplay compat and then
   // attempt to unmute once we have a playing context.
   const [isMuted, setIsMuted] = useState(true);
+  // Driven by PiP enter/leave events so the in-app UI suppresses overlays
+  // while the stream is healthy inside a PiP window.
+  const [isInPiP, setIsInPiP] = useState(false);
+
+  // Ref counterpart kept in sync with isInPiP so reconnect logic can read
+  // PiP state synchronously inside visibilitychange handlers.
+  const isPiPRef = useRef(false);
 
   // --- helpers --------------------------------------------------------------
 
@@ -169,12 +190,32 @@ export default function IVSPlayer({
     }
   };
 
+  // --- restoreToLive --------------------------------------------------------
+  // Called when returning from background without an active PiP session.
+  // Always does a full reload: getLiveLatency() is unreliable when the player
+  // was paused/backgrounded, and reloading is the safest way to reach the
+  // live edge from an unknown offset.
+
+  const restoreToLive = async () => {
+    if (!playerRef.current || !videoRef.current || disposedRef.current) return;
+    clearRetry();
+    backoffRef.current = START_BACKOFF;
+    playerRef.current.load(src);
+    try {
+      await videoRef.current.play();
+    } catch {
+      setAutoplayFailed(true);
+    }
+  };
+
   // --- main effect ----------------------------------------------------------
 
   useEffect(() => {
     disposedRef.current = false;
     setAutoplayFailed(false);
     setIsMuted(true); // always begin muted so iOS allows autoplay
+    setIsInPiP(false);
+    isPiPRef.current = false;
 
     // Holds the cleanup returned by setup() once the async work finishes.
     let innerCleanup: (() => void) | undefined;
@@ -342,37 +383,107 @@ export default function IVSPlayer({
         }
       }
 
-      // Network + visibility resilience
+      // --- PiP helpers -------------------------------------------------------
+
+      const enterPiP = async () => {
+        const video = videoRef.current as WebKitVideoElement;
+        if (!video) return;
+        try {
+          // Standard API — Chrome 70+, Safari 14+, Firefox (behind flag)
+          const doc = document as DocumentWithPiP;
+          if (doc.pictureInPictureEnabled && !doc.pictureInPictureElement) {
+            await video.requestPictureInPicture();
+            return;
+          }
+          // WebKit API — older iOS Safari
+          if (video.webkitSupportsPresentationMode?.('picture-in-picture')) {
+            video.webkitSetPresentationMode?.('picture-in-picture');
+          }
+        } catch {
+          // PiP blocked or unsupported — onVisible will reconnect instead
+        }
+      };
+
+      const exitPiP = () => {
+        try {
+          const doc = document as DocumentWithPiP;
+          if (doc.pictureInPictureElement) {
+            doc.exitPictureInPicture?.().catch(() => {});
+          }
+          const video = videoRef.current as WebKitVideoElement;
+          if (video?.webkitPresentationMode === 'picture-in-picture') {
+            video.webkitSetPresentationMode('inline');
+          }
+        } catch { /* ignore */ }
+      };
+
+      // --- PiP event listeners on the video element -------------------------
+
+      const video = videoRef.current!;
+
+      const onEnterPiP = () => {
+        isPiPRef.current = true;
+        setIsInPiP(true);
+      };
+
+      const onLeavePiP = () => {
+        isPiPRef.current = false;
+        setIsInPiP(false);
+        // User closed PiP — restore inline playback to the live edge.
+        restoreToLive();
+      };
+
+      const onWebkitPresentationModeChanged = () => {
+        const mode = (video as WebKitVideoElement).webkitPresentationMode;
+        const inPiP = mode === 'picture-in-picture';
+        isPiPRef.current = inPiP;
+        setIsInPiP(inPiP);
+        if (mode === 'inline') restoreToLive();
+      };
+
+      video.addEventListener('enterpictureinpicture', onEnterPiP);
+      video.addEventListener('leavepictureinpicture', onLeavePiP);
+      video.addEventListener('webkitpresentationmodechanged', onWebkitPresentationModeChanged);
+
+      // --- Network + visibility resilience ----------------------------------
+
       const onOnline = () => {
         clearRetry();
         backoffRef.current = START_BACKOFF;
         scheduleRetry();
       };
 
-      const onVisible = () => {
-        if (document.visibilityState !== "visible" || !playerRef.current) return;
-        clearRetry();
-        backoffRef.current = START_BACKOFF;
+      const onHidden = () => {
+        if (document.visibilityState !== "hidden") return;
+        // Attempt PiP so the stream keeps playing in a floating window.
+        // If this fails the browser pauses the video; onVisible will reconnect.
+        enterPiP();
+      };
 
-        // After being backgrounded iOS often accumulates significant drift.
-        // Check and correct immediately rather than relying on the next poll.
-        const latency = playerRef.current.getLiveLatency();
-        if (typeof latency === "number" && latency >= LATENCY_RELOAD_THRESHOLD) {
-          playerRef.current.load(src);
-        } else if (typeof latency === "number" && latency >= LATENCY_SEEK_THRESHOLD) {
-          seekToLive();
-        } else {
-          scheduleRetry();
+      const onVisible = () => {
+        if (document.visibilityState !== "visible") return;
+        // If stream is still alive in a PiP window, exit PiP back to inline.
+        // The leavepictureinpicture event will call restoreToLive if needed.
+        if (isPiPRef.current) {
+          exitPiP();
+          return;
         }
+        restoreToLive();
       };
 
       window.addEventListener("online", onOnline);
+      document.addEventListener("visibilitychange", onHidden);
       document.addEventListener("visibilitychange", onVisible);
 
       // Return cleanup so the outer effect can call it on unmount.
       return () => {
         window.removeEventListener("online", onOnline);
+        document.removeEventListener("visibilitychange", onHidden);
         document.removeEventListener("visibilitychange", onVisible);
+
+        video.removeEventListener('enterpictureinpicture', onEnterPiP);
+        video.removeEventListener('leavepictureinpicture', onLeavePiP);
+        video.removeEventListener('webkitpresentationmodechanged', onWebkitPresentationModeChanged);
 
         player.removeEventListener(PlayerState.READY, onReady);
         player.removeEventListener(PlayerState.PLAYING, onPlaying);
@@ -428,7 +539,8 @@ export default function IVSPlayer({
       effectiveState === PlayerState.READY ||
       effectiveState === PlayerState.BUFFERING);
 
-  const shouldBlur = !isPlaying;
+  // While PiP is active the stream is still playing — don't blur or show overlays.
+  const shouldBlur = !isPlaying && !isInPiP;
 
   // Show the unmute nudge when playing but still muted and the caller
   // wants audio (muted prop is false).
