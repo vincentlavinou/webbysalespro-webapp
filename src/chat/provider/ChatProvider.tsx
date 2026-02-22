@@ -31,7 +31,6 @@ export function ChatProvider({ children, token, initialChatConfig }: ChatProvide
     const [events, setEvents] = useState<ChatEvent[]>([]);
     const [connected, setConnected] = useState(false);
     const [chatConfig, setChatConfig] = useState<ChatConfigUpdate | null>(initialChatConfig ?? null);
-
     const listenerUnsubs = useRef<(() => void)[]>([]);
 
     // instantiate only once
@@ -84,6 +83,10 @@ export function ChatProvider({ children, token, initialChatConfig }: ChatProvide
             }),
             room.addListener('userDisconnect', (event: DisconnectUserEvent) => {
                 console.log('[IVS Chat] User disconnected', event);
+                setMessages((prev) => prev.filter((message) => message.sender.userId !== event.userId));
+                if(userId === event.userId) {
+                    disconnect()
+                }
             })
         )
 
