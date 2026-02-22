@@ -15,6 +15,14 @@ const START_BACKOFF = 800; // ms
 const MAX_BACKOFF = 8000;  // ms
 const JITTER = 0.25;       // +/-25%
 
+// --- latency / live-sync tuning ---
+// If the player drifts past these thresholds we act immediately rather than
+// waiting for the browser's own rebuffer logic (which iOS often ignores).
+const LATENCY_SEEK_THRESHOLD   = 5;    // seconds – seek to live edge
+const LATENCY_RELOAD_THRESHOLD = 10;   // seconds – full reload (faster than seeking from far behind)
+const LATENCY_POLL_MS          = 3000; // how often to check latency while playing
+const BUFFERING_TIMEOUT_MS     = 5000; // ms stuck in BUFFERING before we force a live sync
+
 type Props = {
   /** IVS playback URL (master.m3u8) */
   src: string;
@@ -41,15 +49,21 @@ export default function IVSPlayer({
   showStats = true,
   ariaLabel = "IVS player",
 }: Props) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const playerRef = useRef<Player | null>(null);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const backoffRef = useRef<number>(START_BACKOFF);
-  const disposedRef = useRef<boolean>(false);
+  const videoRef        = useRef<HTMLVideoElement | null>(null);
+  const playerRef       = useRef<Player | null>(null);
+  const retryTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bufferingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latencyPollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const backoffRef      = useRef<number>(START_BACKOFF);
+  const disposedRef     = useRef<boolean>(false);
 
-  const [stats, setStats] = useState<StatsState>({});
-  const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
+  const [stats, setStats]               = useState<StatsState>({});
+  const [playerState, setPlayerState]   = useState<PlayerState | "INIT">("INIT");
   const [autoplayFailed, setAutoplayFailed] = useState(false);
+  // Tracks the actual muted state of the video element separately from the
+  // `muted` prop so we can start muted for iOS autoplay compat and then
+  // attempt to unmute once we have a playing context.
+  const [isMuted, setIsMuted] = useState(true);
 
   // --- helpers --------------------------------------------------------------
 
@@ -62,6 +76,20 @@ export default function IVSPlayer({
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
+    }
+  };
+
+  const clearBufferingTimer = () => {
+    if (bufferingTimerRef.current) {
+      clearTimeout(bufferingTimerRef.current);
+      bufferingTimerRef.current = null;
+    }
+  };
+
+  const clearLatencyPoll = () => {
+    if (latencyPollRef.current) {
+      clearInterval(latencyPollRef.current);
+      latencyPollRef.current = null;
     }
   };
 
@@ -105,18 +133,39 @@ export default function IVSPlayer({
     }
   };
 
-  // manual play for autoplay-blocked devices (iOS low power, etc.)
+  // manual play for autoplay-blocked devices (iOS low power mode, etc.)
   const handleManualPlay = async () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !playerRef.current) return;
 
     try {
       clearRetry();
       backoffRef.current = START_BACKOFF;
+      // Always play muted first — guarantees the call succeeds even if the
+      // browser still considers audio blocked at this point.
+      videoRef.current.muted = true;
       await videoRef.current.play();
       setAutoplayFailed(false);
+      // We are now inside a user-gesture callback. Unmute immediately.
+      if (!muted) {
+        videoRef.current.muted = false;
+        playerRef.current.setMuted(false);
+        setIsMuted(false);
+      }
     } catch (err) {
       console.warn("Manual play failed", err);
       setAutoplayFailed(true);
+    }
+  };
+
+  // shown when the stream is playing but still muted (iOS autoplay policy)
+  const handleTapToUnmute = () => {
+    if (!videoRef.current || !playerRef.current) return;
+    try {
+      videoRef.current.muted = false;
+      playerRef.current.setMuted(false);
+      setIsMuted(false);
+    } catch {
+      // ignore — button stays visible if unmute keeps failing
     }
   };
 
@@ -124,7 +173,11 @@ export default function IVSPlayer({
 
   useEffect(() => {
     disposedRef.current = false;
-    setAutoplayFailed(false); // reset when src/autoPlay/muted changes
+    setAutoplayFailed(false);
+    setIsMuted(true); // always begin muted so iOS allows autoplay
+
+    // Holds the cleanup returned by setup() once the async work finishes.
+    let innerCleanup: (() => void) | undefined;
 
     async function setup() {
       if (!videoRef.current) return;
@@ -145,12 +198,39 @@ export default function IVSPlayer({
       playerRef.current = player;
       player.attachHTMLVideoElement(videoRef.current);
 
-      // Player config
+      // Always start muted — iOS will not autoplay unmuted streams and
+      // setRebufferToLive / low-latency mode have no effect if playback never
+      // begins. We unmute as soon as we are inside a user-gesture context.
       player.setAutoplay(autoPlay);
-      player.setMuted(muted);
+      player.setMuted(true);
       player.setAutoQualityMode(true);
+      // Let ABR choose quality on ALL devices. Previously we forced the
+      // highest bitrate on READY, which overrode this setting and caused
+      // mobile to buffer much more data per segment — a major latency source.
       player.setLiveLowLatencyEnabled(true);
       player.setRebufferToLive(true);
+
+      // Helper: seek the IVS player to the live edge.
+      const seekToLive = () => {
+        try {
+          const dur = player.getDuration();
+          if (isFinite(dur) && dur > 0) player.seekTo(dur);
+        } catch {
+          // ignore
+        }
+      };
+
+      // Helper: attempt unmute from within a playing / gesture context.
+      const tryUnmute = () => {
+        if (muted || !videoRef.current) return;
+        try {
+          player.setMuted(false);
+          videoRef.current.muted = false;
+          setIsMuted(false);
+        } catch {
+          // Will show the "Tap to unmute" button instead.
+        }
+      };
 
       // Initial load
       try {
@@ -159,40 +239,73 @@ export default function IVSPlayer({
         scheduleRetry();
       }
 
+      // --- Latency watchdog -------------------------------------------------
+      // Poll every LATENCY_POLL_MS while playing. If the player has drifted
+      // past our thresholds we either seek or do a full reload.
+      // This is the primary workaround for iOS ignoring setRebufferToLive.
+      latencyPollRef.current = setInterval(() => {
+        if (disposedRef.current || !playerRef.current) return;
+        if (playerRef.current.getState() !== PlayerState.PLAYING) return;
+
+        const latency = playerRef.current.getLiveLatency();
+        if (typeof latency !== "number") return;
+
+        if (latency >= LATENCY_RELOAD_THRESHOLD) {
+          // So far behind that reloading is faster than seeking.
+          playerRef.current.load(src);
+        } else if (latency >= LATENCY_SEEK_THRESHOLD) {
+          seekToLive();
+        }
+      }, LATENCY_POLL_MS);
+
       // --- event handlers ---------------------------------------------------
 
       const onReady = () => {
         updateStats(player);
-
-        try {
-          const v = videoRef.current!;
-          const keep = v.controls;
-          v.controls = false;
-
-          const qualities = player.getQualities();
-          const best = qualities.sort((a, b) => b.bitrate - a.bitrate)[0];
-          if (best) player.setQuality(best);
-
-          v.controls = keep;
-        } catch {
-          // ignore
-        }
+        // No quality override here — setAutoQualityMode(true) handles it.
+        // Forcing the highest bitrate was causing excessive buffering on mobile.
       };
 
       const onPlaying = () => {
         backoffRef.current = START_BACKOFF;
-        setAutoplayFailed(false); // once playing, clear autoplay failure
+        clearBufferingTimer();
+        setAutoplayFailed(false);
+        updateStats(player);
+        // Best-effort unmute now that we are in a playing state.
+        // On iOS this succeeds if play() was triggered by a user gesture.
+        tryUnmute();
+      };
+
+      const onBuffering = () => {
+        updateStats(player);
+        // setRebufferToLive does not reliably fire on iOS native HLS.
+        // If we stay stuck in BUFFERING too long, seek/reload manually.
+        clearBufferingTimer();
+        bufferingTimerRef.current = setTimeout(() => {
+          if (disposedRef.current || !playerRef.current) return;
+          if (playerRef.current.getState() !== PlayerState.BUFFERING) return;
+          const latency = playerRef.current.getLiveLatency();
+          if (typeof latency === "number" && latency >= LATENCY_RELOAD_THRESHOLD) {
+            playerRef.current.load(src);
+          } else {
+            seekToLive();
+          }
+        }, BUFFERING_TIMEOUT_MS);
+      };
+
+      const onIdle = () => {
+        clearBufferingTimer();
         updateStats(player);
       };
 
-      const onBuffering = () => updateStats(player);
-      const onIdle = () => updateStats(player);
       const onEnded = () => {
+        clearBufferingTimer();
         updateStats(player);
         emitPlaybackEnded();
       };
 
       const onError = (e: PlayerError) => {
+        clearBufferingTimer();
         if (e?.code === 404 && e?.source === "MasterPlaylist") {
           scheduleRetry();
         }
@@ -200,7 +313,7 @@ export default function IVSPlayer({
 
       const onMeta = (payload: TextMetadataCue) => {
         try {
-          emitPlaybackMetadata(payload.text)
+          emitPlaybackMetadata(payload.text);
         } catch (e) {
           console.warn("onMetadataText handler error", e);
         }
@@ -215,13 +328,16 @@ export default function IVSPlayer({
       player.addEventListener(PlayerEventType.ERROR, onError);
       player.addEventListener(PlayerEventType.TEXT_METADATA_CUE, onMeta);
 
-      // Attempt autoplay
+      // Attempt muted autoplay. This works on iOS without a gesture.
       if (autoPlay && videoRef.current) {
         try {
           await videoRef.current.play();
           setAutoplayFailed(false);
+          // If the page already had a prior user interaction (e.g. waiting
+          // room tap) the browser may allow unmuting immediately.
+          tryUnmute();
         } catch {
-          // autoplay blocked; show manual play button
+          // Fully blocked — show the "Tap to start" overlay.
           setAutoplayFailed(true);
         }
       }
@@ -234,9 +350,18 @@ export default function IVSPlayer({
       };
 
       const onVisible = () => {
-        if (document.visibilityState === "visible") {
-          clearRetry();
-          backoffRef.current = START_BACKOFF;
+        if (document.visibilityState !== "visible" || !playerRef.current) return;
+        clearRetry();
+        backoffRef.current = START_BACKOFF;
+
+        // After being backgrounded iOS often accumulates significant drift.
+        // Check and correct immediately rather than relying on the next poll.
+        const latency = playerRef.current.getLiveLatency();
+        if (typeof latency === "number" && latency >= LATENCY_RELOAD_THRESHOLD) {
+          playerRef.current.load(src);
+        } else if (typeof latency === "number" && latency >= LATENCY_SEEK_THRESHOLD) {
+          seekToLive();
+        } else {
           scheduleRetry();
         }
       };
@@ -244,7 +369,7 @@ export default function IVSPlayer({
       window.addEventListener("online", onOnline);
       document.addEventListener("visibilitychange", onVisible);
 
-      // Cleanup for this setup() call
+      // Return cleanup so the outer effect can call it on unmount.
       return () => {
         window.removeEventListener("online", onOnline);
         document.removeEventListener("visibilitychange", onVisible);
@@ -266,16 +391,25 @@ export default function IVSPlayer({
       };
     }
 
-    const cleanupPromise = setup();
+    setup()
+      .then((cleanup) => {
+        // Stash the cleanup so the outer effect can call it.
+        if (cleanup) innerCleanup = cleanup;
+      })
+      .catch(() => {
+        // setup failed silently
+      });
 
     return () => {
       disposedRef.current = true;
       clearRetry();
+      clearBufferingTimer();
+      clearLatencyPoll();
       playerRef.current = null;
-
-      if (cleanupPromise instanceof Promise) {
-        cleanupPromise.catch(() => { });
-      }
+      // Call the inner cleanup that removes event listeners and deletes the
+      // IVS player. If setup() hasn't resolved yet this is a no-op — the
+      // disposedRef guard inside setup() prevents further work.
+      innerCleanup?.();
     };
   }, [src, autoPlay, muted]);
 
@@ -285,7 +419,7 @@ export default function IVSPlayer({
     playerState !== "INIT" ? playerState : (stats.state as PlayerState | undefined);
 
   const isPlaying = effectiveState === PlayerState.PLAYING;
-  const isEnded = effectiveState === PlayerState.ENDED;
+  const isEnded   = effectiveState === PlayerState.ENDED;
 
   const isLoading =
     !autoplayFailed &&
@@ -294,7 +428,11 @@ export default function IVSPlayer({
       effectiveState === PlayerState.READY ||
       effectiveState === PlayerState.BUFFERING);
 
-  const shouldBlur = !isPlaying; // blur for everything except actively playing
+  const shouldBlur = !isPlaying;
+
+  // Show the unmute nudge when playing but still muted and the caller
+  // wants audio (muted prop is false).
+  const showUnmuteNudge = isPlaying && isMuted && !muted;
 
   // --- render ---------------------------------------------------------------
 
@@ -307,7 +445,7 @@ export default function IVSPlayer({
             poster={poster}
             playsInline
             controls
-            muted={muted}
+            muted={isMuted}
             preload="auto"
             aria-label={ariaLabel}
             className={`h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
@@ -316,13 +454,7 @@ export default function IVSPlayer({
 
         {/* Overlay for loading / ended states */}
         {shouldBlur && (
-          <div
-            className={`
-              absolute inset-0 flex flex-col items-center justify-center gap-3
-              bg-black/40 backdrop-blur-sm
-              ${isLoading || isEnded ? "pointer-events-none" : "pointer-events-none"}
-            `}
-          >
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm pointer-events-none">
             {isLoading && (
               <>
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
@@ -349,16 +481,28 @@ export default function IVSPlayer({
               className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-300">
-                {/* simple play icon */}
-                <svg
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                  className="h-4 w-4 translate-x-[1px]"
-                >
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 translate-x-[1px]">
                   <polygon points="6,4 20,12 6,20" fill="currentColor" />
                 </svg>
               </span>
               <span>Tap to start the live webinar</span>
+            </button>
+          </div>
+        )}
+
+        {/* Unmute nudge — iOS autoplay only allows muted streams to start
+            automatically. Once playing we ask the user to tap to unmute. */}
+        {showUnmuteNudge && (
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
+            <button
+              type="button"
+              onClick={handleTapToUnmute}
+              className="flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-sm hover:bg-black/90 focus:outline-none"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="currentColor" aria-hidden="true">
+                <path d="M16.5 12A4.5 4.5 0 0 0 14 7.97V10.18L16.45 12.63C16.48 12.43 16.5 12.21 16.5 12ZM19 12C19 12.94 18.8 13.82 18.46 14.64L19.97 16.15C20.63 14.91 21 13.5 21 12C21 7.72 18.01 4.14 14 3.23V5.29C16.89 6.15 19 8.83 19 12ZM4.27 3L3 4.27 7.73 9H3V15H7L12 20V13.27L16.25 17.52C15.58 18.04 14.83 18.45 14 18.7V20.77C15.38 20.45 16.63 19.82 17.68 18.96L19.73 21 21 19.73 12 10.73 4.27 3ZM12 4L9.91 6.09 12 8.18V4Z" />
+              </svg>
+              Tap to unmute
             </button>
           </div>
         )}
