@@ -1,0 +1,90 @@
+// components/ivs/hooks/use-latency-watchdog.ts
+"use client";
+
+import { useEffect, useRef } from "react";
+import type { Player } from "amazon-ivs-player";
+import { PlayerState } from "amazon-ivs-player";
+
+const LATENCY_SEEK_THRESHOLD = 5;
+const LATENCY_RELOAD_THRESHOLD = 10;
+const LATENCY_POLL_MS = 3000;
+const BUFFERING_TIMEOUT_MS = 5000;
+
+export function useLatencyWatchdog(
+  playerRef: React.RefObject<Player | null>,
+  src: string
+) {
+  const latencyPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bufferingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+
+    const seekToLive = () => {
+      try {
+        const dur = p.getDuration();
+        if (isFinite(dur) && dur > 0) p.seekTo(dur);
+      } catch {}
+    };
+
+    const clearBufferingTimer = () => {
+      if (bufferingTimerRef.current) {
+        clearTimeout(bufferingTimerRef.current);
+        bufferingTimerRef.current = null;
+      }
+    };
+
+    const clearLatencyPoll = () => {
+      if (latencyPollRef.current) {
+        clearInterval(latencyPollRef.current);
+        latencyPollRef.current = null;
+      }
+    };
+
+    // Poll latency while playing
+    latencyPollRef.current = setInterval(() => {
+      const p2 = playerRef.current;
+      if (!p2) return;
+      if (p2.getState() !== PlayerState.PLAYING) return;
+
+      const latency = p2.getLiveLatency();
+      if (typeof latency !== "number") return;
+
+      if (latency >= LATENCY_RELOAD_THRESHOLD) p2.load(src);
+      else if (latency >= LATENCY_SEEK_THRESHOLD) seekToLive();
+    }, LATENCY_POLL_MS);
+
+    // Buffering timeout recovery
+    const onBuffering = () => {
+      clearBufferingTimer();
+      bufferingTimerRef.current = setTimeout(() => {
+        const p2 = playerRef.current;
+        if (!p2) return;
+        if (p2.getState() !== PlayerState.BUFFERING) return;
+        const latency = p2.getLiveLatency();
+        if (typeof latency === "number" && latency >= LATENCY_RELOAD_THRESHOLD) {
+          p2.load(src);
+        } else {
+          seekToLive();
+        }
+      }, BUFFERING_TIMEOUT_MS);
+    };
+
+    const onPlayingOrIdle = () => clearBufferingTimer();
+
+    p.addEventListener(PlayerState.BUFFERING, onBuffering);
+    p.addEventListener(PlayerState.PLAYING, onPlayingOrIdle);
+    p.addEventListener(PlayerState.IDLE, onPlayingOrIdle);
+
+    return () => {
+      clearBufferingTimer();
+      clearLatencyPoll();
+      try {
+        p.removeEventListener(PlayerState.BUFFERING, onBuffering);
+        p.removeEventListener(PlayerState.PLAYING, onPlayingOrIdle);
+        p.removeEventListener(PlayerState.IDLE, onPlayingOrIdle);
+      } catch {}
+    };
+  }, [playerRef, src]);
+}

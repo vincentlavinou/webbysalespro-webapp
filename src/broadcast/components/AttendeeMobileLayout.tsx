@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { AttendeeBroadcastServiceToken } from "../service/type";
-import IVSPlayer from "./views/IVSVideoPlayer";
 import { ChatComposer } from "@/chat/component/ChatComposer";
 import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
 import { VideoInjectionPlayer } from "@/video-injection";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
+import WebbySalesProIVSPlayer from "./ivs/WebbySalesProIVSPlayer";
 
 interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -91,7 +91,7 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
             <header ref={headerRef} className="bg-black">
                 <div className="w-full aspect-video grid place-items-center text-sm text-white/80 relative">
                     {broadcast.stream ? (
-                        <IVSPlayer
+                        <WebbySalesProIVSPlayer
                             src={broadcast.stream.config.playback_url}
                             poster="/poster.jpg"
                             autoPlay
