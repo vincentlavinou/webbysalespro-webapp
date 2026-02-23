@@ -8,7 +8,7 @@ import { usePlayer } from "./hooks/use-player";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
-import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
+// import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
 
 type Props = {
   src: string;
@@ -32,7 +32,6 @@ export default function WebbySalesProIVSPlayer({
   ariaLabel = "IVS player",
   title,
   artwork,
-  backgroundAudioEnabled = true,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -49,19 +48,19 @@ export default function WebbySalesProIVSPlayer({
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
   // Background audio fallback (Option 1)
-  const bgAudio = useBackgroundAudioPlayback(videoRef, {
-    enabled: backgroundAudioEnabled,
-    hlsUrl: src,
-    onRestoreVideo: ivs.restoreToLive,
-  });
+//   const bgAudio = useBackgroundAudioPlayback(videoRef, {
+//     enabled: backgroundAudioEnabled,
+//     hlsUrl: src,
+//     onRestoreVideo: ivs.restoreToLive,
+//   });
 
   // Visibility resilience: prefer audio fallback when hidden
   const vis = useVisibilityResilience({
     enabled: true,
     hasPlayedRef: ivs.hasPlayedRef,
     restoreToLive: ivs.restoreToLive,
-    onHiddenAudio: () => void bgAudio.toAudio(),
-    onVisibleAudio: () => void bgAudio.toVideo(),
+    // onHiddenAudio: () => void bgAudio.toAudio(),
+    // onVisibleAudio: () => void bgAudio.toVideo(),
   });
 
   // Lock screen metadata once we’re playing
@@ -147,7 +146,7 @@ export default function WebbySalesProIVSPlayer({
               type="button"
               onClick={async () => {
                 // Prime audio in the user gesture path so Safari will allow background audio
-                bgAudio.prime();
+                // bgAudio.prime();
                 await ivs.handleManualPlay();
               }}
               className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -185,7 +184,7 @@ export default function WebbySalesProIVSPlayer({
             <div>Latency: {typeof ivs.stats.latency === "number" ? `${ivs.stats.latency.toFixed(1)}s` : "…"}</div>
             <div>Bitrate: {ivs.stats.bitrate ? `${ivs.stats.bitrate} kbps` : "…"}</div>
             <div>Res: {ivs.stats.resolution ?? "…"}</div>
-            <div>Mode: {backgroundAudioEnabled ? bgAudio.mode : "video"}</div>
+            {/* <div>Mode: {backgroundAudioEnabled ? bgAudio.mode : "video"}</div> */}
           </div>
         )}
       </div>
