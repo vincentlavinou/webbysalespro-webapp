@@ -125,15 +125,12 @@ export function usePlayer({
     const p = playerRef.current;
     const v = videoRef.current;
     if (!p || !v) return;
+    
+    restoreToLive()
 
     try {
-      clearRetry();
-      backoffRef.current = START_BACKOFF;
 
       v.muted = true;
-      await v.play();
-      setAutoplayFailed(false);
-
       // user gesture context -> safe to try unmute
       if (!mutedProp) {
         v.muted = false;
@@ -141,9 +138,9 @@ export function usePlayer({
         setIsMuted(false);
       }
     } catch {
-      setAutoplayFailed(true);
+        
     }
-  }, [videoRef, mutedProp, clearRetry]);
+  }, [videoRef, mutedProp, restoreToLive]);
 
   const tapToUnmute = useCallback(() => {
     const p = playerRef.current;

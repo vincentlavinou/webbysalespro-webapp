@@ -26,10 +26,10 @@ type Props = {
 export default function WebbySalesProIVSPlayer({
   src,
   poster,
-  autoPlay = true,
+  autoPlay = false,
   muted = false,
   showStats = false,
-  ariaLabel = "IVS player",
+  ariaLabel = "WebbySalesPro player",
   title,
   artwork,
 }: Props) {
@@ -99,7 +99,6 @@ export default function WebbySalesProIVSPlayer({
             poster={poster}
             playsInline
             autoPlay
-            controls
             muted={ivs.isMuted}
             preload="auto"
             aria-label={ariaLabel}
