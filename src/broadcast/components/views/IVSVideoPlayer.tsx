@@ -622,6 +622,9 @@ export default function IVSPlayer({
       <div className="relative w-full overflow-hidden rounded-xl border bg-black shadow-sm">
         <div className="aspect-video">
           <video
+            style={{
+              userSelect: 'none'
+            }}
             ref={videoRef}
             poster={poster}
             playsInline
