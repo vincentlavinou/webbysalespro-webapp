@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 type Options = {
   enabled: boolean;
   hasPlayedRef: React.RefObject<boolean>;
-  isPiPRef: React.RefObject<boolean>;
+  isPiPRef?: React.RefObject<boolean>;
   enterPiP?: () => void;
   exitPiP?: () => void;
   restoreToLive: () => Promise<void>;
@@ -58,7 +58,7 @@ export function useVisibilityResilience({
         }
 
         // If in PiP, exit to inline; otherwise restore live.
-        if (isPiPRef.current) {
+        if (isPiPRef?.current) {
           exitPiP?.();
           return;
         }

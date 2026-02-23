@@ -7,7 +7,6 @@ import { emitPlaybackMetadata, emitPlaybackEnded } from "@/emitter/playback/";
 import { usePlayer } from "./hooks/use-player";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
-import { usePiP } from "./hooks/use-pip";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
 import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
 
@@ -29,7 +28,7 @@ export default function WebbySalesProIVSPlayer({
   poster,
   autoPlay = true,
   muted = false,
-  showStats = true,
+  showStats = false,
   ariaLabel = "IVS player",
   title,
   artwork,
@@ -49,11 +48,6 @@ export default function WebbySalesProIVSPlayer({
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
-  // PiP (optional). Keep it because it can help on some devices, but Option 1 uses audio first.
-  const pip = usePiP(videoRef, () => {
-    void ivs.restoreToLive();
-  });
-
   // Background audio fallback (Option 1)
   const bgAudio = useBackgroundAudioPlayback(videoRef, {
     enabled: backgroundAudioEnabled,
@@ -65,9 +59,6 @@ export default function WebbySalesProIVSPlayer({
   const vis = useVisibilityResilience({
     enabled: true,
     hasPlayedRef: ivs.hasPlayedRef,
-    isPiPRef: pip.isPiPRef,
-    enterPiP: pip.enterPiP,
-    exitPiP: pip.exitPiP,
     restoreToLive: ivs.restoreToLive,
     onHiddenAudio: () => void bgAudio.toAudio(),
     onVisibleAudio: () => void bgAudio.toVideo(),
@@ -86,7 +77,7 @@ export default function WebbySalesProIVSPlayer({
       effectiveState === PlayerState.READY ||
       effectiveState === PlayerState.BUFFERING);
 
-  const shouldBlur = !isPlaying && !pip.isInPiP;
+  const shouldBlur = !isPlaying;
   const showUnmuteNudge = isPlaying && ivs.isMuted && !muted;
 
   useMediaSession({
@@ -102,7 +93,7 @@ export default function WebbySalesProIVSPlayer({
 
   return (
     <div className="w-full">
-      <div className="relative w-full overflow-hidden rounded-xl border bg-black shadow-sm">
+      <div className="relative w-full overflow-hidden border bg-black shadow-sm">
         <div className="aspect-video">
           <video
             ref={videoRef}
