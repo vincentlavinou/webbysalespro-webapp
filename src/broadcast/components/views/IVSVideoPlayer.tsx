@@ -46,6 +46,14 @@ type Props = {
   muted?: boolean;
   showStats?: boolean;
   ariaLabel?: string;
+  /** Webinar title shown on the OS lock screen / notification via Media Session API */
+  title?: string;
+  /**
+   * Artwork shown on the OS lock screen / notification center.
+   * Should be the webinar's thumbnail images mapped to MediaImage objects.
+   * Falls back to `poster` if not provided.
+   */
+  artwork?: MediaImage[];
 };
 
 type StatsState = {
@@ -62,6 +70,8 @@ export default function IVSPlayer({
   muted = false,
   showStats = true,
   ariaLabel = "IVS player",
+  title,
+  artwork,
 }: Props) {
   const videoRef        = useRef<HTMLVideoElement | null>(null);
   const playerRef       = useRef<Player | null>(null);
@@ -70,6 +80,9 @@ export default function IVSPlayer({
   const latencyPollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const backoffRef      = useRef<number>(START_BACKOFF);
   const disposedRef     = useRef<boolean>(false);
+  // Tracks whether playback has ever started (guards the return banner from
+  // showing on the very first page load).
+  const hasPlayedRef    = useRef<boolean>(false);
 
   const [stats, setStats]               = useState<StatsState>({});
   const [playerState, setPlayerState]   = useState<PlayerState | "INIT">("INIT");
@@ -81,6 +94,10 @@ export default function IVSPlayer({
   // Driven by PiP enter/leave events so the in-app UI suppresses overlays
   // while the stream is healthy inside a PiP window.
   const [isInPiP, setIsInPiP] = useState(false);
+  // True briefly after returning to the page, so we can show a "you were
+  // still in the live webinar" nudge.
+  const [showReturnBanner, setShowReturnBanner] = useState(false);
+  const returnBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Ref counterpart kept in sync with isInPiP so reconnect logic can read
   // PiP state synchronously inside visibilitychange handlers.
@@ -111,6 +128,13 @@ export default function IVSPlayer({
     if (latencyPollRef.current) {
       clearInterval(latencyPollRef.current);
       latencyPollRef.current = null;
+    }
+  };
+
+  const clearReturnBannerTimer = () => {
+    if (returnBannerTimerRef.current) {
+      clearTimeout(returnBannerTimerRef.current);
+      returnBannerTimerRef.current = null;
     }
   };
 
@@ -212,9 +236,11 @@ export default function IVSPlayer({
 
   useEffect(() => {
     disposedRef.current = false;
+    hasPlayedRef.current = false;
     setAutoplayFailed(false);
     setIsMuted(true); // always begin muted so iOS allows autoplay
     setIsInPiP(false);
+    setShowReturnBanner(false);
     isPiPRef.current = false;
 
     // Holds the cleanup returned by setup() once the async work finishes.
@@ -315,6 +341,33 @@ export default function IVSPlayer({
         // Best-effort unmute now that we are in a playing state.
         // On iOS this succeeds if play() was triggered by a user gesture.
         tryUnmute();
+
+        hasPlayedRef.current = true;
+
+        // Media Session API — shows a lock-screen / notification-center card
+        // telling the user the live webinar audio is still active when they
+        // leave the browser. Supported on iOS Safari 15+ and Android Chrome.
+        // Pause is intentionally not registered — pausing a live webinar from
+        // the OS controls is not a supported action.
+        if ("mediaSession" in navigator) {
+          const resolvedArtwork: MediaImage[] = artwork && artwork.length > 0
+            ? artwork
+            : poster
+              ? [{ src: poster, sizes: "512x512", type: "image/jpeg" }]
+              : [];
+
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: title || ariaLabel,
+            artist: "Live Webinar",
+            artwork: resolvedArtwork,
+          });
+          navigator.mediaSession.playbackState = "playing";
+          navigator.mediaSession.setActionHandler("play", () => {
+            videoRef.current?.play().catch(() => {});
+          });
+          // Explicitly clear the pause handler so the OS hides/disables the button.
+          navigator.mediaSession.setActionHandler("pause", null);
+        }
       };
 
       const onBuffering = () => {
@@ -462,6 +515,17 @@ export default function IVSPlayer({
 
       const onVisible = () => {
         if (document.visibilityState !== "visible") return;
+
+        // Show a brief banner so the user knows audio was playing while away.
+        // Only shown after playback has started at least once (not on first load).
+        if (hasPlayedRef.current) {
+          setShowReturnBanner(true);
+          clearReturnBannerTimer();
+          returnBannerTimerRef.current = setTimeout(() => {
+            setShowReturnBanner(false);
+          }, 4000);
+        }
+
         // If stream is still alive in a PiP window, exit PiP back to inline.
         // The leavepictureinpicture event will call restoreToLive if needed.
         if (isPiPRef.current) {
@@ -516,6 +580,11 @@ export default function IVSPlayer({
       clearRetry();
       clearBufferingTimer();
       clearLatencyPoll();
+      clearReturnBannerTimer();
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "none";
+        navigator.mediaSession.setActionHandler("play", null);
+      }
       playerRef.current = null;
       // Call the inner cleanup that removes event listeners and deletes the
       // IVS player. If setup() hasn't resolved yet this is a no-op — the
@@ -563,6 +632,19 @@ export default function IVSPlayer({
             className={`h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
           />
         </div>
+
+        {/* Return banner — briefly shown when the user comes back to the page
+            so they know audio was still playing while they were away. */}
+        {showReturnBanner && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+            <div className="flex items-center gap-2 rounded-full bg-emerald-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-sm whitespace-nowrap">
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="currentColor" aria-hidden="true">
+                <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z"/>
+              </svg>
+              Audio was playing while you were away
+            </div>
+          </div>
+        )}
 
         {/* Overlay for loading / ended states */}
         {shouldBlur && (

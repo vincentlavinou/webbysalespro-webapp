@@ -3,6 +3,8 @@ import { AttendeeBroadcastServiceToken } from "../service/type";
 import { WebinarChat } from "@/chat/component";
 import IVSPlayer from "./views/IVSVideoPlayer";
 import { VideoInjectionPlayer } from "@/video-injection";
+import { WebinarMediaFieldType } from "@/media";
+import type { WebinarMedia } from "@/media";
 
 interface AttendeeDesktopLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -25,6 +27,10 @@ export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: Attende
                                 autoPlay
                                 showStats
                                 ariaLabel="Live Webinar Player"
+                                title={broadcast.webinar.title}
+                                artwork={broadcast.webinar.media
+                                    .filter((m: WebinarMedia) => m.field_type === WebinarMediaFieldType.THUMBNAIL)
+                                    .map((m: WebinarMedia) => ({ src: m.file_url }))}
                             />
                         ) : (
                             <div className="w-full h-full bg-black/80 grid place-items-center text-white">
