@@ -625,7 +625,7 @@ export default function IVSPlayer({
             ref={videoRef}
             poster={poster}
             playsInline
-            controls
+            autoPlay
             muted={isMuted}
             preload="auto"
             aria-label={ariaLabel}
