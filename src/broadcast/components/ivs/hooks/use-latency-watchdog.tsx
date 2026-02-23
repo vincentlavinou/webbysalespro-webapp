@@ -12,14 +12,15 @@ const BUFFERING_TIMEOUT_MS = 5000;
 
 export function useLatencyWatchdog(
   playerRef: React.RefObject<Player | null>,
-  src: string
+  src: string,
+  playerVersion: number
 ) {
   const latencyPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const p = playerRef.current;
-    if (!p) return;
+    if (!p) return; // playerVersion guarantees p is set, but guard defensively
 
     const seekToLive = () => {
       try {
@@ -86,5 +87,5 @@ export function useLatencyWatchdog(
         p.removeEventListener(PlayerState.IDLE, onPlayingOrIdle);
       } catch {}
     };
-  }, [playerRef, src]);
+  }, [playerRef, src, playerVersion]);
 }

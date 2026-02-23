@@ -42,12 +42,12 @@ export default function WebbySalesProIVSPlayer({
     autoPlay,
     mutedProp: muted,
     videoRef,
-    onTextMetadata: (text) => emitPlaybackMetadata(text),
-    onEnded: () => emitPlaybackEnded(),
+    onTextMetadata: emitPlaybackMetadata,
+    onEnded: emitPlaybackEnded,
   });
 
-  // Latency + buffering watchdog
-  useLatencyWatchdog(ivs.playerRef, src);
+  // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
+  useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
   // PiP (optional). Keep it because it can help on some devices, but Option 1 uses audio first.
   const pip = usePiP(videoRef, () => {
@@ -58,7 +58,6 @@ export default function WebbySalesProIVSPlayer({
   const bgAudio = useBackgroundAudioPlayback(videoRef, {
     enabled: backgroundAudioEnabled,
     hlsUrl: src,
-    hasPlayedRef: ivs.hasPlayedRef,
     onRestoreVideo: ivs.restoreToLive,
   });
 

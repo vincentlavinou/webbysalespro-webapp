@@ -52,6 +52,7 @@ export function usePlayer({
   const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
   const [autoplayFailed, setAutoplayFailed] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [playerVersion, setPlayerVersion] = useState(0);
 
   const clearRetry = useCallback(() => {
     if (retryTimerRef.current) {
@@ -185,6 +186,7 @@ export function usePlayer({
 
       playerRef.current = p;
       p.attachHTMLVideoElement(v);
+      setPlayerVersion(v => v + 1);
 
       p.setAutoplay(autoPlay);
       p.setMuted(true); // always start muted (iOS)
@@ -276,6 +278,7 @@ export function usePlayer({
 
   return {
     playerRef,
+    playerVersion,
     stats,
     playerState,
     autoplayFailed,

@@ -1,20 +1,18 @@
 // components/ivs/hooks/use-background-audio-playback.tsx
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 type Options = {
   enabled?: boolean;
   hlsUrl: string | null;
-  /** for stats/UX: only show "audio was playing" after user has played once */
-  hasPlayedRef?: React.RefObject<boolean>;
   /** called when we return to visible and should restore live video */
   onRestoreVideo?: () => Promise<void> | void;
 };
 
 export function useBackgroundAudioPlayback(
   videoRef: React.RefObject<HTMLVideoElement | null>,
-  { enabled = true, hlsUrl, hasPlayedRef, onRestoreVideo }: Options
+  { enabled = true, hlsUrl, onRestoreVideo }: Options
 ) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [mode, setMode] = useState<"video" | "audio">("video");
@@ -94,22 +92,6 @@ export function useBackgroundAudioPlayback(
       }
     } catch {}
   }, [videoRef, onRestoreVideo]);
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    const onVis = () => {
-      if (document.visibilityState === "hidden") {
-        // Only attempt audio if playback has started at least once
-        if (hasPlayedRef?.current) void toAudio();
-      } else if (document.visibilityState === "visible") {
-        void toVideo();
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [enabled, toAudio, toVideo, hasPlayedRef]);
 
   return { mode, prime, toAudio, toVideo, getAudioEl: () => audioRef.current };
 }
