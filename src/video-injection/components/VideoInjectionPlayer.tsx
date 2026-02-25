@@ -107,6 +107,13 @@ export function VideoInjectionPlayer() {
     }
   }, [videoRef, isActive, elapsedSeconds]);
 
+  // Pause the injection video the moment we hand control back to the live stream.
+  useEffect(() => {
+    if (!isActive) {
+      videoRef.current?.pause();
+    }
+  }, [isActive, videoRef]);
+
   // Always mount the <video> so the ref stays alive for priming.
   // Only show the overlay when injection is active.
   return (
