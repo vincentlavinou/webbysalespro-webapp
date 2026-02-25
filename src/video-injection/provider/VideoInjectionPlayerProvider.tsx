@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { VideoInjectionPlayerContext } from "../context/VideoInjectionPlayerContext";
 import { getVideoInjectionState } from "../service/action";
-import { videoInjectionUpdateMetadataSchema } from "../service/schema";
-import { usePlaybackMetadataEvent } from "@/emitter/playback";
 
 interface VideoInjectionPlayerProviderProps {
   children: React.ReactNode;
@@ -50,44 +48,44 @@ export function VideoInjectionPlayerProvider({
     };
   }, [sessionId, token]);
 
-  const handleMetadataEvent = useCallback(
-    (evt: { payload: { action: string; playback_url?: string; title?: string; duration_ms?: number; video_injection_id?: string } }) => {
-      const { action, playback_url, title: t, duration_ms, video_injection_id } = evt.payload;
+  // const handleMetadataEvent = useCallback(
+  //   (evt: { payload: { action: string; playback_url?: string; title?: string; duration_ms?: number; video_injection_id?: string } }) => {
+  //     const { action, playback_url, title: t, duration_ms, video_injection_id } = evt.payload;
 
-      if (action === "start") {
-        setIsActive(true);
-        setPlaybackUrl(playback_url ?? null);
-        setTitle(t ?? null);
-        setDurationMs(duration_ms ?? null);
-        setElapsedSeconds(0);
-        setVideoInjectionId(video_injection_id ?? null);
-      } else if (action === "stop") {
-        setIsActive(false);
-        setPlaybackUrl(null);
-        setTitle(null);
-        setDurationMs(null);
-        setElapsedSeconds(null);
-        setVideoInjectionId(null);
-      }
-    },
-    []
-  );
+  //     if (action === "start") {
+  //       setIsActive(true);
+  //       setPlaybackUrl(playback_url ?? null);
+  //       setTitle(t ?? null);
+  //       setDurationMs(duration_ms ?? null);
+  //       setElapsedSeconds(0);
+  //       setVideoInjectionId(video_injection_id ?? null);
+  //     } else if (action === "stop") {
+  //       setIsActive(false);
+  //       setPlaybackUrl(null);
+  //       setTitle(null);
+  //       setDurationMs(null);
+  //       setElapsedSeconds(null);
+  //       setVideoInjectionId(null);
+  //     }
+  //   },
+  //   []
+  // );
 
   // Listen for IVS metadata events
-  usePlaybackMetadataEvent(
-    {
-      eventType: "webinar:video-injection:update",
-      schema: videoInjectionUpdateMetadataSchema,
-      sessionId,
-      onEvent: handleMetadataEvent,
-      onError: (error) => {
-        console.debug(error)
-      },
-      getSignature: (evt) =>
-        `${evt.payload.action}-${evt.payload.video_injection_id ?? ""}`,
-    },
-    []
-  );
+  // usePlaybackMetadataEvent(
+  //   {
+  //     eventType: "webinar:video-injection:update",
+  //     schema: videoInjectionUpdateMetadataSchema,
+  //     sessionId,
+  //     onEvent: handleMetadataEvent,
+  //     onError: (error) => {
+  //       console.debug(error)
+  //     },
+  //     getSignature: (evt) =>
+  //       `${evt.payload.action}-${evt.payload.video_injection_id ?? ""}`,
+  //   },
+  //   []
+  // );
 
   // Listen for natural video end from the player component
   useEffect(() => {

@@ -1,11 +1,9 @@
 "use client";
 import { AttendeeBroadcastServiceToken } from "../service/type";
 import { WebinarChat } from "@/chat/component";
-import { VideoInjectionPlayer } from "@/video-injection";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import WebbySalesProIVSPlayer from "./ivs/WebbySalesProIVSPlayer";
-import { useVideoInjectionPlayer } from "@/video-injection/hooks/use-video-injection-player";
 
 interface AttendeeDesktopLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -15,7 +13,6 @@ interface AttendeeDesktopLayoutProps {
 
 
 export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: AttendeeDesktopLayoutProps) => {
-    const { isActive: injectionActive } = useVideoInjectionPlayer();
     return (
         <div className="flex flex-col w-full h-[90vh] overflow-hidden md:px-4">
             <div className="flex flex-col flex-1 min-h-0 lg:flex-row overflow-hidden gap-2">
@@ -33,14 +30,14 @@ export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: Attende
                                 artwork={broadcast.webinar.media
                                     .filter((m: WebinarMedia) => m.field_type === WebinarMediaFieldType.THUMBNAIL)
                                     .map((m: WebinarMedia) => ({ src: m.file_url }))}
-                                keepAlive={injectionActive}
+
                             />
                         ) : (
                             <div className="w-full h-full bg-black/80 grid place-items-center text-white">
                             Waiting for {title} to start...
                         </div>
                         )}
-                        <VideoInjectionPlayer />
+                        {/* <VideoInjectionPlayer /> */}
                     </div>
                 </div>
                                     {/* Chat container (grows under controls) */}

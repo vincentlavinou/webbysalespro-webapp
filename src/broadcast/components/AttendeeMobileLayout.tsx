@@ -4,11 +4,9 @@ import { AttendeeBroadcastServiceToken } from "../service/type";
 import { ChatComposer } from "@/chat/component/ChatComposer";
 import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
-import { VideoInjectionPlayer } from "@/video-injection";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import WebbySalesProIVSPlayer from "./ivs/WebbySalesProIVSPlayer";
-import { useVideoInjectionPlayer } from "@/video-injection/hooks/use-video-injection-player";
 
 interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -17,7 +15,6 @@ interface AttendeeMobileLayoutProps {
 }
 
 export default function AttendeeMobileLayout({ accessToken, broadcast, title }: AttendeeMobileLayoutProps) {
-    const { isActive: injectionActive } = useVideoInjectionPlayer();
 
     const headerRef = useRef<HTMLDivElement | null>(null);
     const footerRef = useRef<HTMLDivElement | null>(null);
@@ -103,14 +100,13 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                             artwork={broadcast.webinar.media
                                 .filter((m: WebinarMedia) => m.field_type === WebinarMediaFieldType.THUMBNAIL)
                                 .map((m: WebinarMedia) => ({ src: m.file_url }))}
-                            keepAlive={injectionActive}
                         />
                     ) : (
                         <div className="w-full h-full bg-black/80 grid place-items-center text-white">
                             Waiting for {title} to start...
                         </div>
                     )}
-                    <VideoInjectionPlayer />
+                    {/* <VideoInjectionPlayer /> */}
                 </div>
             </header>
 
