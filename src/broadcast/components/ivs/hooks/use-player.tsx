@@ -168,6 +168,8 @@ export function usePlayer({
       p.setMuted(true);
       v.muted = true;
       setIsMuted(true);
+      // Resume if already paused without reloading the stream
+      if (v.paused) v.play().catch(() => {});
 
       const onPause = () => {
         if (disposedRef.current) return;
