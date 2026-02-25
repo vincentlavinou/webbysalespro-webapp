@@ -22,6 +22,8 @@ type Options = {
   onTextMetadata?: (text: string) => void;
   onEnded?: () => void;
   onError?: (e: PlayerError) => void;
+  /** Keep the player muted and re-play if the browser pauses it, so timed metadata cues keep firing while something else (e.g. video injection) is in the foreground. */
+  keepAlive?: boolean;
 };
 
 type StatsState = {
@@ -39,6 +41,7 @@ export function usePlayer({
   onTextMetadata,
   onEnded,
   onError,
+  keepAlive = false,
 }: Options) {
   const playerRef = useRef<Player | null>(null);
   const disposedRef = useRef(false);
@@ -152,6 +155,34 @@ export function usePlayer({
       setIsMuted(false);
     } catch {}
   }, [videoRef]);
+
+  // When keepAlive is true (e.g. video injection overlay is active), force the
+  // player muted and re-play immediately if the browser suspends the video.
+  // This keeps currentTime advancing so IVS timed metadata cues keep firing.
+  useEffect(() => {
+    const p = playerRef.current;
+    const v = videoRef.current;
+    if (!p || !v) return;
+
+    if (keepAlive) {
+      p.setMuted(true);
+      v.muted = true;
+      setIsMuted(true);
+
+      const onPause = () => {
+        if (disposedRef.current) return;
+        v.play().catch(() => {});
+      };
+
+      v.addEventListener("pause", onPause);
+      return () => v.removeEventListener("pause", onPause);
+    }
+
+    // keepAlive turned off — restore mute state to match mutedProp
+    p.setMuted(mutedProp);
+    v.muted = mutedProp;
+    setIsMuted(mutedProp);
+  }, [keepAlive, mutedProp, videoRef]);
 
   useEffect(() => {
     disposedRef.current = false;

@@ -21,6 +21,8 @@ type Props = {
   artwork?: MediaImage[];
   /** Option 1: keep audio alive when tab hidden */
   backgroundAudioEnabled?: boolean;
+  /** Keep the player muted and alive in the background so timed metadata cues keep firing (e.g. while video injection overlay is active). */
+  keepAlive?: boolean;
 };
 
 export default function WebbySalesProIVSPlayer({
@@ -32,6 +34,7 @@ export default function WebbySalesProIVSPlayer({
   ariaLabel = "WebbySalesPro player",
   title,
   artwork,
+  keepAlive = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -42,6 +45,7 @@ export default function WebbySalesProIVSPlayer({
     videoRef,
     onTextMetadata: emitPlaybackMetadata,
     onEnded: emitPlaybackEnded,
+    keepAlive,
   });
 
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
