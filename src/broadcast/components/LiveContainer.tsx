@@ -11,6 +11,7 @@ import { useSessionPresence } from "@/broadcast/hooks";
 import { OfferSessionClientProvider } from "@/offer-client/providers/OfferSessionClientProvider";
 import { OfferSessionDto } from "@/offer-client/service/type";
 import { VideoInjectionPlayerProvider } from "@/video-injection";
+import { notifyErrorUiMessage } from "@/lib/notify";
 
 type Props = {
   sessionId: string;
@@ -41,6 +42,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: 
         if (!cancelled) {
           setBroadcastToken(null);
           setBootstrapError("Unable to join live stream.");
+          notifyErrorUiMessage("Unable to join live stream.");
         }
       }
     }

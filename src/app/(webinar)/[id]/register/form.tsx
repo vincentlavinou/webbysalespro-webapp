@@ -15,12 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { webinarApiUrl, type Webinar, type RegisterAttendeeResponse } from "@/webinar/service";
+import { type Webinar } from "@/webinar/service";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
-import { actionClient } from "@/lib/safe-action";
-import { registerForWebinarInput } from "@/webinar/service/schema";
-import { handleStatus } from "@/lib/http";
-import { getSessionAction } from "@/webinar/service/action";
+import { getSessionAction, registerForWebinarAction } from "@/webinar/service/action";
 
 interface DefaultRegistrationFormProps {
   webinar: Webinar;
@@ -35,39 +32,6 @@ const attendeeSchema = z.object({
 });
 
 type AttendeeFormData = z.infer<typeof attendeeSchema>;
-
-const registerForWebinarAction = actionClient
-    .inputSchema(registerForWebinarInput)
-    .action(
-        async (input) => {
-            const { webinar_id, session_id, first_name, last_name, email, phone } = input.parsedInput;
-
-            const requestBody = {
-                session_ids: [session_id],
-                first_name,
-                last_name,
-                email,
-                phone: phone ?? null,
-            };
-
-            let response = await fetch(
-                `${webinarApiUrl}/v1/webinars/${webinar_id}/attendees/`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(requestBody),
-                    cache: "no-store",
-                }
-            );
-
-            response = await handleStatus(response)
-
-            const data: RegisterAttendeeResponse = await response.json();
-            return { success: response.ok, data };
-        }
-    );
 
 
 export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProps) => {
@@ -102,12 +66,17 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       }
 
       // get latest session once registration is completed
-      const session = await getSessionAction({id: selectedSession?.id, token: data.data.access_token})
-      if (session.data?.status === WebinarSessionStatus.IN_PROGRESS && data?.data?.access_token) {
-        router.push(`/${session.data.id}/live?token=${data.data.access_token}`);
-      } else {
-        router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
+      try {
+        const session = await getSessionAction({id: selectedSession.id, token: data.access_token})
+        if (session.data?.status === WebinarSessionStatus.IN_PROGRESS && data.access_token) {
+          router.push(`/${session.data.id}/live?token=${data.access_token}`);
+          return
+        }
+      } catch {
+        toast.error("Registration succeeded, but we couldn't fetch the latest session status.");
       }
+
+        router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
     },
     onError: ({error, input}) => {
       submitLockRef.current = false;

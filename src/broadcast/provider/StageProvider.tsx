@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { StageContext, WebiSalesProParticipant } from "../context/StageContext";
 import { useMediaStrategy } from "../hooks/use-media-strategy";
 import { LocalStreamEvent } from "../service/type";
+import { notifyErrorUiMessage } from "@/lib/notify";
 
 // ✅ Use type-only imports to avoid SSR errors
 type Stage = import("amazon-ivs-web-broadcast").Stage;
@@ -82,7 +83,11 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
         onStreamEvent
       );
       if(getRequestHeaders) {
-        await sessionController("start", seriesId, sessionId, {}, getRequestHeaders)
+        try {
+          await sessionController("start", seriesId, sessionId, {}, getRequestHeaders)
+        } catch {
+          notifyErrorUiMessage("Failed to start the live session.");
+        }
       }
     },
     [strategy, stageRef, createLocalMedia, seriesId, sessionId, getRequestHeaders, isViewer, onStreamEvent]
@@ -100,7 +105,11 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
     setMainParticipant(undefined);
     setParticipants([]);
     if(getRequestHeaders) {
-        await sessionController("stop", seriesId, sessionId, {}, getRequestHeaders)
+        try {
+          await sessionController("stop", seriesId, sessionId, {}, getRequestHeaders)
+        } catch {
+          notifyErrorUiMessage("Failed to stop the live session cleanly.");
+        }
         router.replace("/webinars")
       }
   }, [stageRef, getRequestHeaders, router, seriesId, sessionId]);

@@ -13,6 +13,7 @@ import { PresentationPicker } from "./controls/PresentationPicker";
 import { useVideoInjection } from "../hooks/use-video-injection";
 import { VideoInjectionPicker } from "./controls/VideoInjectionPicker";
 import { LocalStreamEventType } from "../service/enum";
+import { notifyErrorUiMessage } from "@/lib/notify";
 
 interface LocalMediaControlProps {
   title?: string
@@ -38,11 +39,15 @@ export function LocalMediaControl({ title }: LocalMediaControlProps) {
 
   const toggleOffer = useCallback(async () => {
     if (getRequestHeaders) {
-      await sessionController('toggle-offer', seriesId, sessionId, { visible: !offerVisible }, getRequestHeaders)
-      sendStreamEvent(LocalStreamEventType.OFFER_EVENT, {
-        "visible": !offerVisible
-      })
-      setOfferVisible(prev => !prev)
+      try {
+        await sessionController('toggle-offer', seriesId, sessionId, { visible: !offerVisible }, getRequestHeaders)
+        sendStreamEvent(LocalStreamEventType.OFFER_EVENT, {
+          "visible": !offerVisible
+        })
+        setOfferVisible(prev => !prev)
+      } catch {
+        notifyErrorUiMessage("Failed to update offer visibility.");
+      }
     }
   }, [offerVisible, getRequestHeaders, sendStreamEvent, seriesId, sessionId])
 

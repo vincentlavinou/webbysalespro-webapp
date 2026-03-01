@@ -3,6 +3,7 @@ import { ChatConfigUpdate, ChatService } from "./type"
 import { chatApiUrl } from "."
 import { actionClient } from "@/lib/safe-action"
 import { getAttendeeChatSessionSchema } from "./schema"
+import { handleStatus } from "@/lib/http"
 
 export const tokenProvider = async (session: string, accessToken?: string, getRequestHeaders?: () => Promise<RequestHeaders | undefined>) : Promise<ChatService> => {
     const response = await fetch(`${chatApiUrl}/v1/chat/token/`,{
@@ -11,13 +12,15 @@ export const tokenProvider = async (session: string, accessToken?: string, getRe
             ...(await getRequestHeaders?.())
         },
         method: 'POST',
+        cache: "no-store",
         body: JSON.stringify({
             session: session,
             access_token: accessToken
         })
     })
 
-    return await response.json() as ChatService
+    const checkedResponse = await handleStatus(response)
+    return await checkedResponse.json() as ChatService
 }
 
 export const getAttendeeChatSession = actionClient.inputSchema(
@@ -30,9 +33,11 @@ export const getAttendeeChatSession = actionClient.inputSchema(
             headers: {
                 'Content-Type': 'application/json',
             },
-            method: 'GET'
+            method: 'GET',
+            cache: "no-store",
         }
     )
-    const result = await response.json() as ChatConfigUpdate
+    const checkedResponse = await handleStatus(response)
+    const result = await checkedResponse.json() as ChatConfigUpdate
     return result
 })

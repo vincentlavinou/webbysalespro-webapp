@@ -3,11 +3,12 @@ import { actionClient } from "@/lib/safe-action";
 import { OfferSessionDto, StripeCheckout } from "./type";
 import { paymentProviderApiUrl } from "@/paymentprovider/service";
 import { offersForSessionSchema, startCheckoutSchema } from "./schema";
+import { handleStatus } from "@/lib/http";
 
 export const startCheckout = actionClient
     .inputSchema(startCheckoutSchema)
     .action(async ({ parsedInput: { offerId, token, sessionId } }) => {
-        const res = await fetch(
+        const response = await fetch(
             `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/?token=${token}`,
             {
                 method: 'post',
@@ -17,18 +18,19 @@ export const startCheckout = actionClient
                 body: JSON.stringify({})
             },
         )
-        const data = await res.json() as StripeCheckout
+        const checkedResponse = await handleStatus(response)
+        const data = await checkedResponse.json() as StripeCheckout
         return data
     })
 
 export const getOfferSessionsForAttendee = actionClient
   .inputSchema(offersForSessionSchema)
   .action(async ({ parsedInput: { token, sessionId } }) => {
-    const res = await fetch(
+    const response = await fetch(
       `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/?token=${token}`,
       { method: "GET", headers: { "Content-Type": "application/json" } }
     );
 
-    if (!res.ok) throw new Error("Failed to load offer sessions");
-    return (await res.json()) as OfferSessionDto[];
+    const checkedResponse = await handleStatus(response);
+    return (await checkedResponse.json()) as OfferSessionDto[];
   });

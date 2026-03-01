@@ -4,6 +4,10 @@ import { notFound, redirect } from "next/navigation";
 import { getSessionAction, getWebinarFromSession } from "@/webinar/service/action";
 import { LiveContainer } from "@/broadcast/components/LiveContainer";
 import { getOfferSessionsForAttendee } from "@/offer-client/service/action";
+import { isSessionPayload, isWebinarPayload } from "@/webinar/service/guards";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface Props {
     params: Promise<{
@@ -17,15 +21,19 @@ interface Props {
 export default async function AttendeeLivePage({ params, searchParams }: Props) {
 
     const token = (await searchParams).token
+    if (!token) {
+        notFound()
+    }
+
     const sessionId = (await params).id
     const session = await  getSessionAction({id: sessionId, token})
-    if(!session.data) {
+    if(!isSessionPayload(session.data)) {
         notFound()
     }
 
     const webinar = await getWebinarFromSession({id: sessionId, token})
 
-    if(!webinar.data) {
+    if(!isWebinarPayload(webinar.data)) {
         notFound()
     }
 

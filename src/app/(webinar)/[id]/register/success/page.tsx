@@ -2,6 +2,8 @@ import Link from "next/link";
 import { DateTime } from "luxon";
 import { CheckCircle } from "lucide-react";
 import { getWebinar, WebinarPresenter } from "@/webinar/service";
+import { isWebinarPayload } from "@/webinar/service/guards";
+import { notFound } from "next/navigation";
 
 interface RegistrationSuccessProps {
   params: Promise<{ id: string }>;
@@ -13,10 +15,16 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
   const sessionId = (await props.searchParams).session_id;
 
   const webinar = await getWebinar(webinarId);
+  if (!isWebinarPayload(webinar) || !sessionId) {
+    notFound();
+  }
+
   const sessions = webinar.series?.sessions ?? [];
   const session = sessions.find((s) => s.id === sessionId);
 
-  if (!session) return null;
+  if (!session) {
+    notFound();
+  }
 
   const formattedDate = DateTime.fromISO(session.scheduled_start, { zone: session.timezone || "utc" })
     .toFormat("cccc, LLL d @ t ZZZZ");

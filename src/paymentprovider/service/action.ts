@@ -1,106 +1,90 @@
 'use server'
 
-import { RequestHeaders } from "next/dist/client/components/router-reducer/fetch-server-response";
-import { CreatePaymentProviderPayload, PaymentProvider } from "./type";
+import { actionClient } from "@/lib/safe-action";
+import { handleStatus } from "@/lib/http";
 import { paymentProviderApiUrl } from ".";
+import { PaymentProvider } from "./type";
+import {
+  createPaymentProviderSchema,
+  deletePaymentProviderSchema,
+  getPaymentProviderSchema,
+  listPaymentProvidersSchema,
+  updatePaymentProviderSchema,
+} from "./schema";
 
-export async function getAllPaymentProviders(
-  getRequestHeaders: () => Promise<RequestHeaders | undefined>
-) {
-  const res = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(await getRequestHeaders()),
-    },
+export const getAllPaymentProvidersAction = actionClient
+  .inputSchema(listPaymentProvidersSchema)
+  .action(async ({ parsedInput }) => {
+    const response = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(parsedInput.headers ?? {}),
+      },
+    });
+
+    const checkedResponse = await handleStatus(response);
+    return (await checkedResponse.json()) as PaymentProvider[];
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error?.detail || 'Failed to fetch payment providers');
-  }
+export const getPaymentProviderAction = actionClient
+  .inputSchema(getPaymentProviderSchema)
+  .action(async ({ parsedInput }) => {
+    const response = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/${parsedInput.provider}/`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(parsedInput.headers ?? {}),
+      },
+    });
 
-  return res.json(); // returns PaymentProvider[]
-}
-
-
-export async function getPaymentProvider(
-  provider: string,
-  getRequestHeaders: () => Promise<RequestHeaders | undefined>
-) {
-  const res = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/${provider}/`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(await getRequestHeaders()),
-    },
+    const checkedResponse = await handleStatus(response);
+    return (await checkedResponse.json()) as PaymentProvider;
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error?.detail || 'Failed to fetch payment provider');
-  }
+export const createPaymentProviderAction = actionClient
+  .inputSchema(createPaymentProviderSchema)
+  .action(async ({ parsedInput }) => {
+    const response = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(parsedInput.headers ?? {}),
+      },
+      body: JSON.stringify(parsedInput.data),
+    });
 
-  return res.json(); // returns PaymentProvider instance
-}
-
-
-export async function createPaymentProvider(data: CreatePaymentProviderPayload, getRequestHeaders: () => Promise<RequestHeaders | undefined>): Promise<PaymentProvider> {
-  const res = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(await getRequestHeaders())
-    },
-    body: JSON.stringify(data),
+    const checkedResponse = await handleStatus(response);
+    return (await checkedResponse.json()) as PaymentProvider;
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error?.detail || 'Failed to create payment provider');
-  }
+export const updatePaymentProviderAction = actionClient
+  .inputSchema(updatePaymentProviderSchema)
+  .action(async ({ parsedInput }) => {
+    const response = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/${parsedInput.id}/`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(parsedInput.headers ?? {}),
+      },
+      body: JSON.stringify(parsedInput.data),
+    });
 
-  return res.json(); // returns the created PaymentProvider instance
-}
-
-export async function updatePaymentProvider(
-  id: string,
-  data: CreatePaymentProviderPayload,
-  getRequestHeaders: () => Promise<RequestHeaders | undefined>
-): Promise<PaymentProvider> {
-  const res = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/${id}/`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(await getRequestHeaders()),
-    },
-    body: JSON.stringify(data),
+    const checkedResponse = await handleStatus(response);
+    return (await checkedResponse.json()) as PaymentProvider;
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error?.detail || 'Failed to update payment provider');
-  }
+export const deletePaymentProviderAction = actionClient
+  .inputSchema(deletePaymentProviderSchema)
+  .action(async ({ parsedInput }) => {
+    const response = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/${parsedInput.id}/`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...(parsedInput.headers ?? {}),
+      },
+    });
 
-  return res.json(); // returns updated PaymentProvider instance
-}
-
-export async function deletePaymentProvider(
-  id: string,
-  getRequestHeaders: () => Promise<RequestHeaders | undefined>
-) {
-  const res = await fetch(`${paymentProviderApiUrl}/v1/payment-providers/${id}/`, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(await getRequestHeaders()),
-    },
+    await handleStatus(response);
+    return { success: true };
   });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error?.detail || 'Failed to delete payment provider');
-  }
-
-  return true;
-}

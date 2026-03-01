@@ -1,6 +1,6 @@
 'use server'
 import { actionClient } from "@/lib/safe-action";
-import { QueryWebinar, SeriesSession, Webinar } from "./type";
+import { QueryWebinar, RegisterAttendeeResponse, SeriesSession, Webinar } from "./type";
 import { emptyPage, PaginationPage } from "@/components/pagination";
 import { webinarApiUrl } from ".";
 import { AlreadyRegisteredError } from "./error";
@@ -26,13 +26,17 @@ export async function getWebinars(query?: QueryWebinar) {
     params.set('status', query?.status?.join(',') || ['scheduled'].join(','))
 
     const hasLiveFilter = query?.status?.includes("in_progress") ?? false;
-    const response = await fetch(`${webinarApiUrl}/v1/webinars/public/?${params.toString()}`, {
-        next: {
-            // Keep live listings fresher while still leveraging cache.
-            revalidate: hasLiveFilter ? 15 : 60,
-            tags: ["webinars-public"],
-        },
-    })
+    const response = await fetch(`${webinarApiUrl}/v1/webinars/public/?${params.toString()}`, hasLiveFilter
+      ? {
+          // Live lists should always bypass cache to avoid stale status transitions.
+          cache: "no-store",
+        }
+      : {
+          next: {
+              revalidate: 60,
+              tags: ["webinars-public"],
+          },
+        })
     const data: PaginationPage<Webinar[]> = await response.json()
     return data ? data : emptyPage<Webinar[]>([]);
 }
@@ -113,7 +117,8 @@ export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).a
     const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/?token=${parsedInput.token}`, {
         cache: "no-store",
     })
-    return await response.json() as SeriesSession
+    const checkedResponse = await handleStatus(response)
+    return await checkedResponse.json() as SeriesSession
 })
 
 
@@ -123,7 +128,8 @@ export const getWebinarFromSession = actionClient
         const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/?token=${parsedInput.token}`, {
             cache: "no-store",
         })
-        return await response.json() as Webinar
+        const checkedResponse = await handleStatus(response)
+        return await checkedResponse.json() as Webinar
     })
 
 export type RegisterForWebinarInput = z.infer<typeof registerForWebinarInput>;
@@ -155,7 +161,8 @@ export const registerForWebinarAction = actionClient
             );
 
             response = await handleStatus(response)
-
-            return { success: response.ok };
+            const result = await response.json() as RegisterAttendeeResponse
+            console.log(result)
+            return result
         }
     );

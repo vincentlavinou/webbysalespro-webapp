@@ -13,6 +13,7 @@ import { ChatProvider } from "../provider/ChatProvider";
 import { ChatPanel } from "./ChatPanel";
 import { ChatConfigUpdate } from "../service/type";
 import { useAction } from "next-safe-action/hooks";
+import { notifyErrorUiMessage } from "@/lib/notify";
 
 export interface WebinarChatProps {
   region: string;
@@ -24,31 +25,35 @@ export interface WebinarChatProps {
 
 export function WebinarChat({ token, region, currentUserRole = "attendee", render }: WebinarChatProps) {
   const { sessionId, getRequestHeaders, accessToken } = useBroadcastConfiguration();
+  const activeToken = token || accessToken;
 
   const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
 
   const {execute: getLatestChatConfig} = useAction(getAttendeeChatSession, {
     onSuccess({data}) {
       setInitialChatConfig(data)
+    },
+    onError({ error: { serverError } }) {
+      notifyErrorUiMessage(serverError, "Failed to load chat settings. Please try again.");
     }
   })
 
   useEffect(() => {
 
-    if(!token) return
+    if(!activeToken) return
 
     getLatestChatConfig({
       sessionId: sessionId,
-      token: token
+      token: activeToken
     })
     
-  },[sessionId, token, getLatestChatConfig])
+  },[sessionId, activeToken, getLatestChatConfig])
 
   return (
     <ChatConfigurationProvider
       region={region}
       tokenProvider={async () => {
-        const response = await tokenProvider(sessionId, accessToken, getRequestHeaders);
+        const response = await tokenProvider(sessionId, activeToken, getRequestHeaders);
         return {
           token: response.chat.token,
           sessionExpirationTime: response.chat.session_expiration_time,
@@ -63,7 +68,7 @@ export function WebinarChat({ token, region, currentUserRole = "attendee", rende
         ]}
       >
         <ChatProvider
-          token={token}
+          token={activeToken}
           initialChatConfig={initialChatConfig}
           currentUserRole={currentUserRole}
         >

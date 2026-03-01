@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatContext } from "../context/ChatContext"
 import { ChatEvent, ChatMessage, ChatRoom, DeleteMessageEvent, DisconnectUserEvent, SendMessageRequest } from "amazon-ivs-chat-messaging";
 import { ChatConfigUpdate, ChatMetadata, ChatRecipient } from "../service/type";
@@ -44,14 +44,30 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
     const manualDisconnectRef = useRef(false);
     const connectRef = useRef<(() => Promise<() => void>) | null>(null);
 
-    // instantiate only once
-    if (!roomRef.current) {
-        roomRef.current = new ChatRoom({
-            regionOrUrl: `wss://edge.ivschat.${region}.amazonaws.com`,
-            tokenProvider,
-        });
-    }
-    const room = roomRef.current;
+    const room = useMemo(
+        () =>
+            new ChatRoom({
+                regionOrUrl: `wss://edge.ivschat.${region}.amazonaws.com`,
+                tokenProvider,
+            }),
+        [region, tokenProvider]
+    );
+
+    useEffect(() => {
+        const previousRoom = roomRef.current;
+        if (previousRoom && previousRoom !== room) {
+            previousRoom.disconnect();
+        }
+
+        roomRef.current = room;
+
+        return () => {
+            room.disconnect();
+            if (roomRef.current === room) {
+                roomRef.current = null;
+            }
+        };
+    }, [room]);
 
     const clearReconnectTimer = useCallback(() => {
         if (!reconnectTimerRef.current) return;

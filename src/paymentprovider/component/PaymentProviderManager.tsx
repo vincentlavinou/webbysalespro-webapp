@@ -3,15 +3,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PaymentProviderCard } from './PaymentProviderCard';
 import {
-  createPaymentProvider,
-  deletePaymentProvider,
-  updatePaymentProvider,
-  getAllPaymentProviders,
+  createPaymentProviderAction,
+  deletePaymentProviderAction,
+  updatePaymentProviderAction,
+  getAllPaymentProvidersAction,
 } from '../service';
 import { CreatePaymentProviderPayload, PaymentProvider } from '../service/type';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { RequestHeaders } from 'next/dist/client/components/router-reducer/fetch-server-response';
+import { useAction } from 'next-safe-action/hooks';
 
 interface Props {
     getRequestHeaders: () => Promise<RequestHeaders | undefined>
@@ -23,15 +24,56 @@ export function PaymentProviderManager({
   const [providers, setProviders] = useState<PaymentProvider[]>([]);
   const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
 
+  const resolveHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
+    const rawHeaders = await getRequestHeaders();
+    if (!rawHeaders) return undefined;
+
+    if (rawHeaders instanceof Headers) {
+      return Object.fromEntries(rawHeaders.entries());
+    }
+
+    return Object.entries(rawHeaders).reduce<Record<string, string>>((acc, [key, value]) => {
+      if (typeof value === 'string') {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+  }, [getRequestHeaders]);
+
+  const { executeAsync: listPaymentProviders } = useAction(getAllPaymentProvidersAction, {
+    onError: ({ error: { serverError } }) => {
+      toast.error(serverError || 'Failed to load payment providers');
+    },
+  });
+
+  const { executeAsync: createProvider } = useAction(createPaymentProviderAction, {
+    onError: ({ error: { serverError } }) => {
+      toast.error(serverError || 'Failed to create payment provider');
+    },
+  });
+
+  const { executeAsync: updateProvider } = useAction(updatePaymentProviderAction, {
+    onError: ({ error: { serverError } }) => {
+      toast.error(serverError || 'Failed to update payment provider');
+    },
+  });
+
+  const { executeAsync: removeProvider } = useAction(deletePaymentProviderAction, {
+    onError: ({ error: { serverError } }) => {
+      toast.error(serverError || 'Failed to delete payment provider');
+    },
+  });
+
   const loadProviders = useCallback(async () => {
     try {
-      const all = await getAllPaymentProviders(getRequestHeaders);
-      setProviders(all);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load payment providers';
-      toast.error(message);
+      const result = await listPaymentProviders({ headers: await resolveHeaders() });
+      if (result?.data) {
+        setProviders(result.data);
+      }
+    } catch {
+      toast.error('Failed to load payment providers');
     }
-  }, [getRequestHeaders]);
+  }, [listPaymentProviders, resolveHeaders]);
 
   useEffect(() => {
     loadProviders();
@@ -39,27 +81,33 @@ export function PaymentProviderManager({
 
   const handleCreate = async (data: CreatePaymentProviderPayload) => {
     try {
-      const newProvider = await createPaymentProvider(data, getRequestHeaders);
+      const result = await createProvider({ data, headers: await resolveHeaders() });
+      const newProvider = result?.data;
+      if (!newProvider) {
+        return undefined;
+      }
       toast.success('Payment provider created');
       setProviders((prev) => [...prev, newProvider]);
       return newProvider
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load payment providers';
-      toast.error(message);
+    } catch {
+      toast.error('Failed to create payment provider');
     }
     return undefined
   };
 
   const handleUpdate = async (id: string, data: CreatePaymentProviderPayload) => {
     try {
-      const updated = await updatePaymentProvider(id, data, getRequestHeaders);
+      const result = await updateProvider({ id, data, headers: await resolveHeaders() });
+      const updated = result?.data;
+      if (!updated) {
+        return undefined;
+      }
       toast.success('Payment provider updated');
       setProviders((prev) => prev.map((p) => (p.id === id ? updated : p)));
       setEditingProviderId(null);
       return updated
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load payment providers';
-      toast.error(message);
+    } catch {
+      toast.error('Failed to update payment provider');
     }
 
     return undefined
@@ -67,12 +115,14 @@ export function PaymentProviderManager({
 
   const handleDelete = async (id: string) => {
     try {
-      await deletePaymentProvider(id, getRequestHeaders);
+      const result = await removeProvider({ id, headers: await resolveHeaders() });
+      if (!result?.data?.success) {
+        return;
+      }
       toast.success('Payment provider deleted');
       setProviders((prev) => prev.filter((p) => p.id !== id));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load payment providers';
-      toast.error(message);
+    } catch {
+      toast.error('Failed to delete payment provider');
     }
   };
 

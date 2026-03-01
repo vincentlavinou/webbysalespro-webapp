@@ -15,6 +15,7 @@ import { WebinarSessionStatus } from "../service/enum";
 import { useEventSource } from "@/sse";
 import { getSessionAction } from "../service/action";
 import { useAction } from "next-safe-action/hooks";
+import { notifyErrorUiMessage } from "@/lib/notify";
 
 // ---- Tuning knobs (can be shared with hook defaults or overridden) ----
 const HEARTBEAT_TIMEOUT_MS = 45_000;
@@ -37,6 +38,9 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     const { execute: getSession } = useAction(getSessionAction, {
         onSuccess: async ({ data, input }) => {
             handleUpdateSession(data, input.token)
+        },
+        onError: ({ error: { serverError } }) => {
+            notifyErrorUiMessage(serverError, "Unable to refresh webinar session details.");
         }
     })
 
@@ -64,6 +68,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 setToken(attendeeToken);
             } catch (e) {
                 console.error("[WebinarProvider] Failed to create service token", e);
+                notifyErrorUiMessage("Unable to connect to the webinar stream.");
             }
         })();
 
@@ -110,6 +115,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 setToken(newToken);
             } catch (e) {
                 console.error("[WebinarProvider] Failed to create service token", e);
+                notifyErrorUiMessage("Unable to refresh your webinar connection.");
             }
         },
         [sessionId]
@@ -123,6 +129,10 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
             case WebinarSessionStatus.IN_PROGRESS:
                 setIsRedirecting(true);
                 router.replace(`/${sessionId}/live?token=${token}`);
+                break;
+            case WebinarSessionStatus.COMPLETED:
+                setIsRedirecting(true);
+                router.replace(`/${sessionId}/completed?token=${token}`);
                 break;
         }
 

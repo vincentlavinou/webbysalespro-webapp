@@ -1,8 +1,10 @@
 import { getWebinar } from '@/webinar/service'
+import { isWebinarPayload } from '@/webinar/service/guards'
 import { DefaultRegistrationForm } from './form'
 import { NoAvailableSessionsMessage } from '@/webinar/components'
 import Image from 'next/image'
 import { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 
 interface DefaultRegistrationPageProps {
     params: Promise<{
@@ -16,6 +18,12 @@ interface DefaultRegistrationPageProps {
 export async function generateMetadata({ params }: DefaultRegistrationPageProps): Promise<Metadata> {
     const webinarId = (await params).id
     const webinar = await getWebinar(webinarId)
+    if (!isWebinarPayload(webinar)) {
+      return {
+        title: 'Webinar Registration',
+        description: 'Register now to attend this exciting webinar session.',
+      }
+    }
 
   return {
     title: webinar.title ?? 'Webinar Registration',
@@ -39,6 +47,9 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
     
     const webinarId = (await props.params).id
     const webinar = await getWebinar(webinarId)
+    if (!isWebinarPayload(webinar)) {
+      notFound()
+    }
     const sessions = webinar.series?.sessions || []
 
     const thumbnail = webinar.media.find(
