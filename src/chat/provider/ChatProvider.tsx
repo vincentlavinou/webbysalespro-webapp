@@ -167,9 +167,6 @@ export function ChatProvider({ children, token, initialChatConfig }: ChatProvide
             console.debug(event)
             setChatConfig(event.payload);
         },
-        onError: (erro) => {
-            console.error(erro)
-        },
         getSignature: (evt) => `${evt.payload.chat_session_id}-${evt.payload.mode}-${evt.payload.is_enabled}-${evt.payload.is_active}-${evt.payload.pinned_announcements.length}`,
     }, [sessionId])
 

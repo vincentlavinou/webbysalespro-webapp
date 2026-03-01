@@ -106,7 +106,6 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                             Waiting for {title} to start...
                         </div>
                     )}
-                    {/* <VideoInjectionPlayer /> */}
                 </div>
             </header>
 

@@ -5,6 +5,7 @@ import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
+import { notifyErrorUiMessage } from "@/lib/notify";
 
 function toNumber(v: unknown): number | null {
   if (v == null) return null;
@@ -16,6 +17,29 @@ function discountPercent(compareAt: number | null, effective: number | null) {
   if (compareAt == null || effective == null) return null;
   if (compareAt <= effective) return null;
   return Math.round(((compareAt - effective) / compareAt) * 100);
+}
+
+function getExternalUrl(actionPayload: Record<string, unknown> | undefined): string | null {
+  if (!actionPayload) return null;
+
+  const keys = ["external_link", "external_url", "url", "link", "href", "cta_url"];
+  for (const key of keys) {
+    const value = actionPayload[key];
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (!trimmed) continue;
+
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol === "http:" || url.protocol === "https:") {
+        return url.toString();
+      }
+    } catch {
+      // ignore malformed URLs and continue checking other keys
+    }
+  }
+
+  return null;
 }
 
 export function SelectedOffer() {
@@ -51,6 +75,7 @@ export function SelectedOffer() {
   const savePct = discountPercent(compareAt, effectivePrice);
 
   const ctaLabel = display?.cta_label || "Buy now";
+  const isExternalLinkOffer = offer?.offer_type === "external_link";
 
   if (!selectedOffer || !offer) return null;
 
@@ -152,6 +177,11 @@ export function SelectedOffer() {
                 Complete a form
               </span>
             )}
+            {offer.offer_type === "external_link" && (
+              <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-400">
+                External link
+              </span>
+            )}
           </div>
         </div>
 
@@ -183,7 +213,23 @@ export function SelectedOffer() {
           className="w-full"
           type="button"
           disabled={selectedOffer.status === "sold_out"}
-          onClick={() => setIsCheckingOut(true)}
+          onClick={() => {
+            if (isExternalLinkOffer) {
+              const externalUrl = getExternalUrl(offer.action_payload);
+              if (!externalUrl) {
+                notifyErrorUiMessage(
+                  undefined,
+                  "This offer link is unavailable right now."
+                );
+                return;
+              }
+
+              window.open(externalUrl, "_blank", "noopener,noreferrer");
+              return;
+            }
+
+            setIsCheckingOut(true);
+          }}
         >
           {selectedOffer.status === "sold_out" ? "Sold Out" : ctaLabel}
         </Button>
