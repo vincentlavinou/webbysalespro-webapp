@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DateTime } from 'luxon'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +18,7 @@ const BRAND_DARK = '#1fa653'       // slightly darker for dark mode accents
 export default function EarlyAccessRoomPage() {
   const [timeLeft, setTimeLeft] = useState<string>('')
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const hasRedirectedRef = useRef(false)
 
   const router = useRouter()
   const { session, webinar, token, broadcastServiceToken } = useWebinar()
@@ -54,13 +55,14 @@ export default function EarlyAccessRoomPage() {
 
   // Redirect to live room once session is in progress
   useEffect(() => {
-    if (!session || !token) return
+    if (!session || !token || hasRedirectedRef.current) return
 
     if (session.status === WebinarSessionStatus.IN_PROGRESS && broadcastServiceToken?.stream) {
+      hasRedirectedRef.current = true
       setIsRedirecting(true)
       router.replace(`/${session.id}/live?token=${token}`)
     }
-  }, [session, token, router])
+  }, [session, token, router, broadcastServiceToken])
 
   if (!session || !webinar || !token) {
     return <WaitingRoomShimmer />

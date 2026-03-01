@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DateTime } from "luxon";
 import { useForm, Controller } from "react-hook-form";
@@ -72,6 +72,8 @@ const registerForWebinarAction = actionClient
 
 export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProps) => {
   const router = useRouter();
+  const submitLockRef = useRef(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const sessions = useMemo(
     () => webinar.series?.sessions || [],
@@ -92,6 +94,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
 
   const { execute, isPending } = useAction(registerForWebinarAction, {
     onSuccess: async ({data, input}) => {
+      setIsNavigating(true);
       const selectedSession = sessions.find((s) => s.id === input.session_id);
       if(!selectedSession)  {
         router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
@@ -107,6 +110,8 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       }
     },
     onError: ({error, input}) => {
+      submitLockRef.current = false;
+      setIsNavigating(false);
       // `error` here is whatever your action throws / returns as serverError
       if (!error) {
         toast.error("Something went wrong. Please try again.");
@@ -150,6 +155,12 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   });
 
   const onSubmit = (data: AttendeeFormData) => {
+    if (submitLockRef.current || isPending || isNavigating) {
+      return;
+    }
+
+    submitLockRef.current = true;
+
     execute({
       webinar_id: webinar.id,
       session_id: data.session_id,
@@ -159,6 +170,8 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       phone: data.phone,
     });
   };
+
+  const isBusy = isPending || isNavigating;
 
   return (
     <div>
@@ -206,7 +219,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
           <Input
             id="first_name"
             {...register("first_name")}
-            disabled={isPending}
+            disabled={isBusy}
             autoComplete="given-name"
           />
           {errors.first_name && (
@@ -220,7 +233,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
           <Input
             id="last_name"
             {...register("last_name")}
-            disabled={isPending}
+            disabled={isBusy}
             autoComplete="family-name"
           />
           {errors.last_name && (
@@ -235,7 +248,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
             id="email"
             type="email"
             {...register("email")}
-            disabled={isPending}
+            disabled={isBusy}
             autoComplete="email"
           />
           {errors.email && (
@@ -249,7 +262,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
           <Input
             id="phone"
             {...register("phone")}
-            disabled={isPending}
+            disabled={isBusy}
             autoComplete="tel"
           />
         </div>
@@ -257,10 +270,11 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         <Button
           type="submit"
           className="bg-emerald-600"
-          disabled={isPending || sessions.length === 0}
+          disabled={isBusy || sessions.length === 0}
+          aria-busy={isBusy}
         >
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
-          {isPending ? "Registering..." : "Register"}
+          {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
+          {isPending ? "Registering..." : isNavigating ? "Redirecting..." : "Register"}
         </Button>
       </form>
     </div>
