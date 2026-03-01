@@ -5,10 +5,12 @@ import { useEffect, useRef } from "react";
 import type { Player } from "amazon-ivs-player";
 import { PlayerState } from "amazon-ivs-player";
 
-const LATENCY_SEEK_THRESHOLD = 5;
-const LATENCY_RELOAD_THRESHOLD = 10;
-const LATENCY_POLL_MS = 3000;
-const BUFFERING_TIMEOUT_MS = 5000;
+// Less aggressive defaults to avoid reload/rebuffer loops after tab switches.
+const LATENCY_SEEK_THRESHOLD = 8;
+const LATENCY_RELOAD_THRESHOLD = 20;
+const LATENCY_POLL_MS = 5000;
+const BUFFERING_TIMEOUT_MS = 8000;
+const RELOAD_COOLDOWN_MS = 30000;
 
 export function useLatencyWatchdog(
   playerRef: React.RefObject<Player | null>,
@@ -17,6 +19,7 @@ export function useLatencyWatchdog(
 ) {
   const latencyPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastReloadRef = useRef<number>(0);
 
   useEffect(() => {
     const p = playerRef.current;
@@ -43,6 +46,13 @@ export function useLatencyWatchdog(
       }
     };
 
+    const reloadToLive = () => {
+      const now = Date.now();
+      if (now - lastReloadRef.current < RELOAD_COOLDOWN_MS) return;
+      lastReloadRef.current = now;
+      p.load(src);
+    };
+
     // Poll latency while playing
     latencyPollRef.current = setInterval(() => {
       const p2 = playerRef.current;
@@ -52,7 +62,7 @@ export function useLatencyWatchdog(
       const latency = p2.getLiveLatency();
       if (typeof latency !== "number") return;
 
-      if (latency >= LATENCY_RELOAD_THRESHOLD) p2.load(src);
+      if (latency >= LATENCY_RELOAD_THRESHOLD) reloadToLive();
       else if (latency >= LATENCY_SEEK_THRESHOLD) seekToLive();
     }, LATENCY_POLL_MS);
 
@@ -65,7 +75,7 @@ export function useLatencyWatchdog(
         if (p2.getState() !== PlayerState.BUFFERING) return;
         const latency = p2.getLiveLatency();
         if (typeof latency === "number" && latency >= LATENCY_RELOAD_THRESHOLD) {
-          p2.load(src);
+          reloadToLive();
         } else {
           seekToLive();
         }

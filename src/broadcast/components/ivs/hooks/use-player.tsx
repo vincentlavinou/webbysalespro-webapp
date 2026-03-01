@@ -8,11 +8,12 @@ import type {
   PlayerState,
   TextMetadataCue,
 } from "amazon-ivs-player";
-import { PlayerEventType } from "amazon-ivs-player";
+import { PlayerEventType, PlayerState as IvsPlayerState } from "amazon-ivs-player";
 
 const START_BACKOFF = 800;
 const MAX_BACKOFF = 8000;
 const JITTER = 0.25;
+const RESTORE_COOLDOWN_MS = 3000;
 
 type Options = {
   src: string;
@@ -48,6 +49,7 @@ export function usePlayer({
 
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffRef = useRef<number>(START_BACKOFF);
+  const lastRestoreRef = useRef<number>(0);
 
   const hasPlayedRef = useRef(false);
 
@@ -92,7 +94,7 @@ export function usePlayer({
         scheduleRetry();
       }
     }, delay);
-  }, [autoPlay, src, videoRef, clearRetry]);
+  }, [autoPlay, src, videoRef]);
 
   const updateStats = useCallback(() => {
     const p = playerRef.current;
@@ -113,6 +115,33 @@ export function usePlayer({
     const p = playerRef.current;
     const v = videoRef.current;
     if (!p || !v || disposedRef.current) return;
+
+    const now = Date.now();
+    if (now - lastRestoreRef.current < RESTORE_COOLDOWN_MS) return;
+    lastRestoreRef.current = now;
+
+    const state = p.getState();
+    if (state === IvsPlayerState.PLAYING) {
+      if (v.paused) {
+        try {
+          await v.play();
+        } catch {
+          setAutoplayFailed(true);
+        }
+      } else {
+        setAutoplayFailed(false);
+      }
+      return;
+    }
+
+    if (state === IvsPlayerState.BUFFERING || state === IvsPlayerState.READY) {
+      try {
+        await v.play();
+        setAutoplayFailed(false);
+        return;
+      } catch {}
+    }
+
     clearRetry();
     backoffRef.current = START_BACKOFF;
     p.load(src);
