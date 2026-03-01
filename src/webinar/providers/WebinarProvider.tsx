@@ -149,7 +149,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 console.error("[SSE] Parse error (session:update)", e, event.data);
             }
         },
-        [token, session, handleUpdateSession]
+        [token, session, handleUpdateSession, regenerateBroadcastToken]
     );
 
     // ---- Build SSE URL (generic for hook) ----

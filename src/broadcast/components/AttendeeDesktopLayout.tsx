@@ -42,7 +42,11 @@ export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: Attende
                 </div>
                                     {/* Chat container (grows under controls) */}
                     {broadcast.stream && <div className="flex flex-col w-full lg:w-[320px] min-w-[280px] lg:max-w-[400px] flex-1 overflow-y-auto px-2">
-                        <WebinarChat token={accessToken} region={broadcast.stream?.region} />
+                        <WebinarChat
+                          token={accessToken}
+                          region={broadcast.stream?.region}
+                          currentUserRole={broadcast.role}
+                        />
                     </div>}
             </div>
         </div>

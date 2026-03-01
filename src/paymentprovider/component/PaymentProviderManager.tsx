@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { PaymentProviderCard } from './PaymentProviderCard';
 import {
   createPaymentProvider,
@@ -23,7 +23,7 @@ export function PaymentProviderManager({
   const [providers, setProviders] = useState<PaymentProvider[]>([]);
   const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
 
-  const loadProviders = async () => {
+  const loadProviders = useCallback(async () => {
     try {
       const all = await getAllPaymentProviders(getRequestHeaders);
       setProviders(all);
@@ -31,11 +31,11 @@ export function PaymentProviderManager({
       const message = err instanceof Error ? err.message : 'Failed to load payment providers';
       toast.error(message);
     }
-  };
+  }, [getRequestHeaders]);
 
   useEffect(() => {
     loadProviders();
-  }, []);
+  }, [loadProviders]);
 
   const handleCreate = async (data: CreatePaymentProviderPayload) => {
     try {

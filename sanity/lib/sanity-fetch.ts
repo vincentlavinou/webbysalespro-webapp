@@ -20,13 +20,15 @@ export async function sanityFetch<QueryResponse>({
 }): Promise<QueryResponse> {
 
   const isDevelopment = process.env.NODE_ENV === "development";
+  const { isEnabled: isDraftMode } = await draftMode();
   
   return client
-    .withConfig({ useCdn: false })
+    .withConfig({ useCdn: !isDevelopment && !isDraftMode })
     .fetch<QueryResponse>(query, params, {
-      cache: isDevelopment ? 'no-cache' : "force-cache",
+      cache: isDevelopment || isDraftMode ? "no-store" : "force-cache",
       next: {
         tags,
+        revalidate: isDraftMode ? 0 : 300,
       },
     });
 }

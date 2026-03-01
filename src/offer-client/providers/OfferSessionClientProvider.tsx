@@ -42,7 +42,7 @@ export function OfferSessionClientProvider({
                 return prev.map((os) => os.id === event.payload.id ? { ...os, status: event.payload.status } : os)
             })
         }
-    }, [])
+    })
 
     usePlaybackMetadataEvent({
         eventType: "session:offer:scarcity:update",
@@ -65,7 +65,7 @@ export function OfferSessionClientProvider({
             })
         },
         getSignature: (evt) => `${evt.payload.offer_session_id}-${evt.payload.mode}-${evt.payload.display_type}-${evt.payload.display_percent_sold}-${evt.payload.display_available_count}`,
-    }, [])
+    })
 
     useEffect(() => {
 
@@ -109,7 +109,7 @@ export function OfferSessionClientProvider({
             })
             setView("offer-purchased")
         }
-    }, [selectedOffer]);
+    }, [selectedOffer, recordEvent, token]);
 
 
     return (

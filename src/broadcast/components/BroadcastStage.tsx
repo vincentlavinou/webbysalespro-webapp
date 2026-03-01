@@ -96,7 +96,7 @@ export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
 
           {/* Chat container (grows under controls) */}
           <div className="flex flex-col w-full lg:w-[320px] min-w-[280px] lg:max-w-[400px] flex-1 overflow-y-auto px-2">
-            <WebinarChat region={token.stream.region} />
+            <WebinarChat region={token.stream.region} currentUserRole={token.role} />
           </div>
         </div>
       </div>

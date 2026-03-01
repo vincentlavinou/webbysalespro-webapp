@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 export interface PresentationViewCardProps {
     presentation?: {
@@ -30,10 +30,7 @@ const PresentationViewCard = ({
     const showPresentation = !!presentation?.active && !!presentation?.downloadUrl
 
     const [iframeLoaded, setIframeLoaded] = useState(false)
-    const officeSrc = useMemo(
-        () => showPresentation ? buildOfficeEmbedUrl(presentation!.downloadUrl, presentation?.ui) : '',
-        [showPresentation, presentation?.downloadUrl, presentation?.ui]
-    )
+    const officeSrc = showPresentation ? buildOfficeEmbedUrl(presentation!.downloadUrl, presentation?.ui) : ''
 
     return (
         <div className={`w-full max-h-[80vh] aspect-video rounded-md border overflow-hidden relative bg-black group`}>

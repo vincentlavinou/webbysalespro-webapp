@@ -17,11 +17,12 @@ import { useAction } from "next-safe-action/hooks";
 export interface WebinarChatProps {
   region: string;
   token?: string;
+  currentUserRole?: "host" | "presenter" | "attendee";
   /** Optional render slot to fully control the chat layout inside providers */
   render?: () => ReactNode;
 }
 
-export function WebinarChat({ token, region, render }: WebinarChatProps) {
+export function WebinarChat({ token, region, currentUserRole = "attendee", render }: WebinarChatProps) {
   const { sessionId, getRequestHeaders, accessToken } = useBroadcastConfiguration();
 
   const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
@@ -41,7 +42,7 @@ export function WebinarChat({ token, region, render }: WebinarChatProps) {
       token: token
     })
     
-  },[sessionId, token])
+  },[sessionId, token, getLatestChatConfig])
 
   return (
     <ChatConfigurationProvider
@@ -61,7 +62,11 @@ export function WebinarChat({ token, region, render }: WebinarChatProps) {
           defaultRecipient(DefaultChatRecipient.HOST),
         ]}
       >
-        <ChatProvider token={token} initialChatConfig={initialChatConfig}>
+        <ChatProvider
+          token={token}
+          initialChatConfig={initialChatConfig}
+          currentUserRole={currentUserRole}
+        >
           {render ? render() : <ChatPanel />}
         </ChatProvider>
       </ChatControlProvider>

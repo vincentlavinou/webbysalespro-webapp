@@ -113,6 +113,7 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                 <WebinarChat
                     token={accessToken}
                     region={broadcast.stream.region}
+                    currentUserRole={broadcast.role}
                     render={() => {
                         return (<>
 

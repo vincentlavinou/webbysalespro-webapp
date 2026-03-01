@@ -44,7 +44,7 @@ export function LocalMediaControl({ title }: LocalMediaControlProps) {
       })
       setOfferVisible(prev => !prev)
     }
-  }, [offerVisible, setOfferVisible, getRequestHeaders])
+  }, [offerVisible, getRequestHeaders, sendStreamEvent, seriesId, sessionId])
 
   return (<div className="w-full flex flex-wrap gap-2 items-center justify-between">
     <div className="flex gap-2">

@@ -85,7 +85,7 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
         await sessionController("start", seriesId, sessionId, {}, getRequestHeaders)
       }
     },
-    [strategy, stageRef, createLocalMedia, seriesId, sessionId, getRequestHeaders]
+    [strategy, stageRef, createLocalMedia, seriesId, sessionId, getRequestHeaders, isViewer, onStreamEvent]
   );
 
   const leave = useCallback(async () => {
@@ -103,7 +103,7 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
         await sessionController("stop", seriesId, sessionId, {}, getRequestHeaders)
         router.replace("/webinars")
       }
-  }, [stageRef, getRequestHeaders]);
+  }, [stageRef, getRequestHeaders, router, seriesId, sessionId]);
 
   return (
     <StageContext.Provider

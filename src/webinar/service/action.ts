@@ -25,13 +25,25 @@ export async function getWebinars(query?: QueryWebinar) {
 
     params.set('status', query?.status?.join(',') || ['scheduled'].join(','))
 
-    const response = await fetch(`${webinarApiUrl}/v1/webinars/public/?${params.toString()}`)
+    const hasLiveFilter = query?.status?.includes("in_progress") ?? false;
+    const response = await fetch(`${webinarApiUrl}/v1/webinars/public/?${params.toString()}`, {
+        next: {
+            // Keep live listings fresher while still leveraging cache.
+            revalidate: hasLiveFilter ? 15 : 60,
+            tags: ["webinars-public"],
+        },
+    })
     const data: PaginationPage<Webinar[]> = await response.json()
     return data ? data : emptyPage<Webinar[]>([]);
 }
 
 export async function getWebinar(id: string): Promise<Webinar> {
-    const response = await fetch(`${webinarApiUrl}/v1/webinars/${id}/public/`)
+    const response = await fetch(`${webinarApiUrl}/v1/webinars/${id}/public/`, {
+        next: {
+            revalidate: 60,
+            tags: [`webinar-${id}`],
+        },
+    })
     return await response.json()
 }
 
@@ -98,7 +110,9 @@ const sessionIdTokenSchema = z.object({
 })
 
 export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).action(async ({parsedInput}) => {
-    const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/?token=${parsedInput.token}`)
+    const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/?token=${parsedInput.token}`, {
+        cache: "no-store",
+    })
     return await response.json() as SeriesSession
 })
 
@@ -106,7 +120,9 @@ export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).a
 export const getWebinarFromSession = actionClient
     .inputSchema(sessionIdTokenSchema)
     .action( async ({parsedInput}) => {
-        const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/?token=${parsedInput.token}`)
+        const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/?token=${parsedInput.token}`, {
+            cache: "no-store",
+        })
         return await response.json() as Webinar
     })
 

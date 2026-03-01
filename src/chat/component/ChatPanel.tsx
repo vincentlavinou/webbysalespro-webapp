@@ -18,7 +18,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
-  const { connect, filteredMessages, connected, chatConfig } = useChat();
+  const { connect, filteredMessages, connected, chatConfig, connectionStatus, reconnectAttempt, reconnectDelayMs, reconnectNow } = useChat();
   const { userId } = useBroadcastUser();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -35,7 +35,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
     setAutoStick(distanceFromBottom < 75); // ~4.5rem tolerance
-  }, [scrollRef.current]);
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -47,6 +47,25 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
 
   return (
     <div className={clsx("flex flex-col h-full rounded-md border shadow bg-background", className)}>
+      {(connectionStatus === "connecting" || connectionStatus === "reconnecting" || connectionStatus === "error") && (
+        <div className="border-b bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+          <div className="flex items-center justify-between gap-2">
+            <p>
+              {connectionStatus === "connecting" && "Connecting to chat..."}
+              {connectionStatus === "reconnecting" && `Reconnecting to chat (attempt ${reconnectAttempt})${reconnectDelayMs ? ` in ${Math.ceil(reconnectDelayMs / 1000)}s` : "..."}`}
+              {connectionStatus === "error" && "Chat connection interrupted."}
+            </p>
+            <button
+              type="button"
+              onClick={reconnectNow}
+              className="rounded-md bg-amber-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-amber-700"
+            >
+              Retry now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Pinned announcements */}
       {chatConfig?.pinned_announcements && (
         <PinnedAnnouncements announcements={chatConfig.pinned_announcements} />

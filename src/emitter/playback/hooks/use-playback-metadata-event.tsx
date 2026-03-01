@@ -1,6 +1,6 @@
 "use client";
 
-import { DependencyList, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { z } from "zod";
 import { onPlaybackMetadata } from "../playbackEventEmitter";
 
@@ -33,7 +33,7 @@ export function usePlaybackMetadataEvent<
     onEvent: (evt: BaseEvent<TType, TPayload>) => void;
     getSignature?: (evt: BaseEvent<TType, TPayload>) => string;
     onError?: (error: string) => void
-  }, dependecies: DependencyList
+  }
 ) {
   const lastSigRef = useRef<string>("");
 
@@ -86,5 +86,5 @@ export function usePlaybackMetadataEvent<
 
       onEvent(evt);
     });
-  }, [eventType, schema, sessionId, onEvent, getSignature, ...dependecies]);
+  }, [eventType, schema, sessionId, onEvent, getSignature, onError]);
 }

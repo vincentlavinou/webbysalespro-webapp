@@ -22,7 +22,7 @@ export function ChatComposer() {
     } else if (chatConfig?.mode === 'public') {
       setChatRecipient(defaultRecipient(DefaultChatRecipient.EVERYONE));
     }
-  }, [chatConfig?.mode]);
+  }, [chatConfig?.mode, setChatRecipient]);
 
   return (
     <div

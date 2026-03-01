@@ -43,7 +43,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     audioCleanUpRef.current = undefined;
 
     setIsScreenSharing(false);
-  }, [videoStream, audioStream, setIsScreenSharing]);
+  }, []);
 
   const updateVideoState = useCallback((video: Media) => {
     setVideoStream(video);
@@ -55,13 +55,13 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     setAudioStream(audio);
     setAudioMuted(audio?.stageStream.isMuted === true);
     saveSelectedMedia(audio.deviceId, LocalStorage.AUDIO_ID);
-  }, [setVideoStream, setVideoMuted, saveSelectedMedia])
+  }, [setAudioStream, setAudioMuted, saveSelectedMedia])
 
   const startVideoStageStream = useCallback(async () => {
     const stream = await createLocalStageStream(selectedVideoId, DeviceType.CAMERA)
     if (stream) updateVideoState(stream)
     return stream
-  }, [selectedVideoId])
+  }, [selectedVideoId, updateVideoState])
 
   const startScreenShareStream = useCallback(async () => {
     const stream = await createScreenShareComposite({
@@ -69,7 +69,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     });
     if (stream) updateVideoState(stream)
     return stream
-  }, [selectedVideoId])
+  }, [selectedVideoId, updateVideoState])
 
   const startVieoInjectionStream = useCallback(async (injection: WebinarVideoInjection) => {
 
@@ -89,13 +89,13 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     if (composite?.videoMedia) updateVideoState(composite.videoMedia)
     if (composite?.audioMedia) updateAudioState(composite.audioMedia)
     return composite
-  }, [selectedVideoId, selectedAudioId])
+  }, [selectedVideoId, selectedAudioId, updateVideoState, updateAudioState])
 
   const startAudioStageStream = useCallback(async () => {
     const stream = await createLocalStageStream(selectedAudioId, DeviceType.MIC)
     if (stream) updateAudioState(stream)
     return stream
-  }, [selectedAudioId])
+  }, [selectedAudioId, updateAudioState])
 
   const refreshVideoAndAudioStreamIfDefined = useCallback((video: Media | undefined, audio: Media | undefined, options?: RefreshMediaOption) => {
     if (!video) {
@@ -129,7 +129,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
       cleanupVideo: true,
       cleanupAudio: true
     })
-  }, [stageRef, strategy, startVideoStageStream, startAudioStageStream, refreshVideoAndAudioStreamIfDefined]);
+  }, [startVideoStageStream, startAudioStageStream, refreshVideoAndAudioStreamIfDefined]);
 
   useEffect(() => {
     const refreshVideoStream = async () => {
@@ -143,7 +143,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     }
 
     refreshVideoStream()
-  }, [selectedVideoId, startVideoStageStream, refreshVideoAndAudioStreamIfDefined])
+  }, [selectedVideoId, videoStream?.deviceId, audioStream, startVideoStageStream, refreshVideoAndAudioStreamIfDefined])
 
   useEffect(() => {
     const refreshAudioStream = async () => {
@@ -156,13 +156,13 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     }
 
     refreshAudioStream()
-  }, [selectedAudioId, isScreenSharing, startAudioStageStream, refreshVideoAndAudioStreamIfDefined])
+  }, [selectedAudioId, audioStream?.deviceId, videoStream, startAudioStageStream, refreshVideoAndAudioStreamIfDefined])
 
   useEffect(() => {
     return () => {
       stopTracks();
     }
-  }, []);
+  }, [stopTracks]);
 
   const toggleMedia = useCallback((deviceType: DeviceType): void => {
     switch (deviceType) {
@@ -176,7 +176,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
         break;
     }
     refreshVideoAndAudioStreamIfDefined(videoStream, audioStream)
-  }, [audioStream, videoStream, refreshVideoAndAudioStreamIfDefined]);
+  }, [audioStream, videoStream, refreshVideoAndAudioStreamIfDefined, setAudioMuted, setVideoMuted]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!strategy || !audioStream) return;
@@ -195,7 +195,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
       })
       setIsScreenSharing(true);
     }
-  }, [audioStream, isScreenSharing, stageRef, strategy, startScreenShareStream, refreshVideoAndAudioStreamIfDefined]);
+  }, [audioStream, isScreenSharing, strategy, startScreenShareStream, startVideoStageStream, refreshVideoAndAudioStreamIfDefined]);
 
   const toggleVideoInjection = useCallback(async (injection: WebinarVideoInjection | undefined) => {
     if (!injection) {
@@ -215,7 +215,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
       cleanupAudio: streams?.audioMedia !== undefined
     })
     setSelectedVideoInjection(injection)
-  }, [setSelectedVideoInjection, startVieoInjectionStream, startAudioStageStream, startVideoStageStream, refreshVideoAndAudioStreamIfDefined])
+  }, [audioStream, setSelectedVideoInjection, startVieoInjectionStream, startAudioStageStream, startVideoStageStream, refreshVideoAndAudioStreamIfDefined])
 
   const sendStreamEvent = useCallback((type: LocalStreamEventType, payload: Record<string, unknown>) => {
     const bytes = new TextEncoder().encode(
@@ -251,4 +251,3 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     </LocalMediaContext.Provider>
   );
 }
-

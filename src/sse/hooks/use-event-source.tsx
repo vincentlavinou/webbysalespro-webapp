@@ -55,6 +55,8 @@ export function useEventSource(options: UseEventSourceOptions) {
   const intentionallyClosedRef = useRef<boolean>(false);
   const mountedRef = useRef<boolean>(false);
   const hasStartedRef = useRef(false);
+  const openRef = useRef<() => void>(() => {});
+  const reopenRef = useRef<() => void>(() => {});
 
   const [isConnected, setIsConnected] = useState(false);
 
@@ -89,7 +91,7 @@ export function useEventSource(options: UseEventSourceOptions) {
     heartbeatTimerRef.current = setTimeout(() => {
       if (!mountedRef.current || !enabled) return;
       console.warn("[SSE] Heartbeat timeout — reconnecting");
-      reopen();
+      reopenRef.current();
     }, heartbeatTimeoutMs);
   }, [heartbeatTimeoutMs, enabled]);
 
@@ -112,7 +114,7 @@ export function useEventSource(options: UseEventSourceOptions) {
 
     reconnectTimerRef.current = setTimeout(() => {
       reconnectTimerRef.current = null;
-      open();
+      openRef.current();
     }, delay);
 
     backoffRef.current = Math.min(backoffRef.current * 2, maxBackoffMs);
@@ -192,6 +194,14 @@ export function useEventSource(options: UseEventSourceOptions) {
     if (!mountedRef.current || !enabled) return;
     open();
   }, [open, enabled]);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    reopenRef.current = reopen;
+  }, [reopen]);
 
   // Mount / unmount
   useEffect(() => {

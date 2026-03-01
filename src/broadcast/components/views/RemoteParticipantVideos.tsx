@@ -29,7 +29,7 @@ const RemoteParticipantVideos = ({ isInitializeComplete, role }: Props) => {
       setUpdatedParticipants(participants.filter((participant) => participant.participant.id !== mainParticiant?.participant.id))
     }
 
-  }, [participants, presentationIsActive, videoInjectionIsActive])
+  }, [participants, presentationIsActive, videoInjectionIsActive, mainParticiant?.participant.id])
 
   if (!isInitializeComplete || role === 'attendee') return null;
 

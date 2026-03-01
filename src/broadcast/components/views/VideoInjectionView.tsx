@@ -37,7 +37,6 @@ export function VideoInjectionView({ injection, active = true, autoPlay = true, 
   return (
     <div className={cn('w-full max-h-[80vh] aspect-video rounded-md border overflow-hidden relative bg-black group')}>
       {show ? (
-        // eslint-disable-next-line jsx-a11y/media-has-caption
         <video
           ref={ref}
           poster={poster}
