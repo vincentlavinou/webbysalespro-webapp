@@ -23,6 +23,12 @@ export function OfferChatBubble() {
             case "offers-hidden":
                 return
             case "offers-visible":
+                // Guard: view and offers state update in two separate renders.
+                // If the host closes all offers, `visibleOffers` can be empty
+                // while `view` is still "offers-visible". Rendering OfferCarousel
+                // with an empty array causes framer-motion to try exit-animating
+                // an unmounted element, which crashes WebKit on iOS.
+                if (visibleOffers.length === 0) return null;
                 return <OfferCarousel
                     offers={visibleOffers}
                     onOfferClick={setSelectedOffer}

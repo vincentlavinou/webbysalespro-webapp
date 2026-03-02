@@ -136,7 +136,6 @@ export type RegisterAttendeeResponse = {
     phone?: string
     access_token: string
     session_ids: string[]
-    attendee_sessions: unknown[]
     webinar: string
 }
 

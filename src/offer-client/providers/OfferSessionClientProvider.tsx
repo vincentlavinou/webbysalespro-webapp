@@ -67,6 +67,18 @@ export function OfferSessionClientProvider({
         getSignature: (evt) => `${evt.payload.offer_session_id}-${evt.payload.mode}-${evt.payload.display_type}-${evt.payload.display_percent_sold}-${evt.payload.display_available_count}`,
     })
 
+    // When the host closes all offers, clear any in-progress selection / checkout
+    // so the attendee isn't stuck on a view for an offer that no longer exists.
+    useEffect(() => {
+        const hasVisibleOffer = offers.some(
+            (os) => !["closed", "scheduled"].includes(os.status)
+        );
+        if (!hasVisibleOffer) {
+            setSelectedOffer(undefined);
+            setIsCheckingOut(false);
+        }
+    }, [offers]);
+
     useEffect(() => {
 
         const calculateView = () => {

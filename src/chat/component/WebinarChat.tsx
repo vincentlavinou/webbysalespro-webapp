@@ -1,7 +1,7 @@
 // WebinarChat.tsx
 'use client';
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { ChatToken } from "amazon-ivs-chat-messaging";
 import { ChatConfigurationProvider } from "../provider/ChatConfigurationProvider";
 import { getAttendeeChatSession, tokenProvider } from "../service/action";
@@ -26,6 +26,32 @@ export interface WebinarChatProps {
 export function WebinarChat({ token, region, currentUserRole = "attendee", render }: WebinarChatProps) {
   const { sessionId, getRequestHeaders, accessToken } = useBroadcastConfiguration();
   const activeToken = token || accessToken;
+
+  // Refs so the stable tokenProvider always has the latest values when IVS calls
+  // it for a fresh token — without changing the function reference on every render.
+  // Mobile Safari fires visualViewport resize on every keyboard open/close, which
+  // causes parent re-renders. A changing tokenProvider reference would recreate
+  // the ChatRoom and trigger a disconnect/reconnect loop on every keystroke.
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
+  const activeTokenRef = useRef(activeToken);
+  activeTokenRef.current = activeToken;
+  const getRequestHeadersRef = useRef(getRequestHeaders);
+  getRequestHeadersRef.current = getRequestHeaders;
+
+  // Created once. Stable reference across all re-renders.
+  const stableTokenProvider = useRef(async (): Promise<ChatToken> => {
+    const response = await tokenProvider(
+      sessionIdRef.current,
+      activeTokenRef.current,
+      getRequestHeadersRef.current,
+    );
+    return {
+      token: response.chat.token,
+      sessionExpirationTime: response.chat.session_expiration_time,
+      tokenExpirationTime: response.chat.token_expiration_time,
+    } as ChatToken;
+  });
 
   const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
 
@@ -52,14 +78,7 @@ export function WebinarChat({ token, region, currentUserRole = "attendee", rende
   return (
     <ChatConfigurationProvider
       region={region}
-      tokenProvider={async () => {
-        const response = await tokenProvider(sessionId, activeToken, getRequestHeaders);
-        return {
-          token: response.chat.token,
-          sessionExpirationTime: response.chat.session_expiration_time,
-          tokenExpirationTime: response.chat.token_expiration_time,
-        } as ChatToken;
-      }}
+      tokenProvider={stableTokenProvider.current}
     >
       <ChatControlProvider
         options={[

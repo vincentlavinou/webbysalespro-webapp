@@ -29,6 +29,7 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
     const { sessionId } = useBroadcastConfiguration()
     const { region, tokenProvider } = useChatConfiguration()
     const roomRef = useRef<ChatRoom | null>(null);
+    const tokenProviderRef = useRef(tokenProvider);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [filteredMessages, setFilteredMessages] = useState<ChatMessage[]>([])
     const [events, setEvents] = useState<ChatEvent[]>([]);
@@ -44,13 +45,19 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
     const manualDisconnectRef = useRef(false);
     const connectRef = useRef<(() => Promise<() => void>) | null>(null);
 
+    useEffect(() => {
+        tokenProviderRef.current = tokenProvider;
+    }, [tokenProvider]);
+
+    const stableTokenProvider = useCallback(async () => tokenProviderRef.current(), []);
+
     const room = useMemo(
         () =>
             new ChatRoom({
                 regionOrUrl: `wss://edge.ivschat.${region}.amazonaws.com`,
-                tokenProvider,
+                tokenProvider: stableTokenProvider,
             }),
-        [region, tokenProvider]
+        [region, stableTokenProvider]
     );
 
     useEffect(() => {
