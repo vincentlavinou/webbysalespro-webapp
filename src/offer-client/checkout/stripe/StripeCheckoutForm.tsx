@@ -71,7 +71,10 @@ export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFo
             type="button"
             aria-label="Close checkout"
             disabled={loading}
-            onClick={() => setIsCheckingOut(false)}
+            onClick={async () => {
+              setIsCheckingOut(false)
+              await recordEvent("checkout_canceled", token)
+            }}
             className="
               absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md
               text-muted-foreground hover:text-foreground hover:bg-accent
