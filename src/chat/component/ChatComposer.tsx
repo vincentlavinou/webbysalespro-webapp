@@ -13,6 +13,7 @@ export function ChatComposer() {
   const { chatConfig } = useChat();
   const { setChatRecipient } = useChatControl();
   const isLocked = chatConfig?.mode === 'locked';
+  const isDisabled = chatConfig?.is_enabled === false;
 
   // Keep the active recipient in sync with the chat mode so sendMessage always
   // uses the right value regardless of which layout renders this composer.
@@ -40,7 +41,7 @@ export function ChatComposer() {
     >
       <OfferChatBubble />
       <ChatControl />
-      <ChatInput isLocked={isLocked} />
+      <ChatInput isLocked={isLocked} isDisabled={isDisabled} />
     </div>
   );
 }

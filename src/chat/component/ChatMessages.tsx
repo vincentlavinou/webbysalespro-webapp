@@ -50,16 +50,22 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
         </div>
       ) : (
         <div className="px-1 py-2 space-y-1">
-          {filteredMessages.map((msg: ChatMessage) => (
-            <div key={msg.id} className="text-sm text-foreground">
+          {filteredMessages.map((msg: ChatMessage, idx: number) => {
+            const isBlocked = msg.attributes?.local_status === 'blocked';
+            const blockedReason = msg.attributes?.blocked_reasons;
+
+            return (
+            <div key={msg.id ?? `${msg.sender.userId}-${idx}`} className="text-sm text-foreground">
               <ChatMessageBubble
                 name={msg.sender.attributes?.name || 'unknown'}
                 content={msg.content}
                 isSelf={msg.sender.userId === userId}
                 avatarBgColor={msg.sender.attributes?.avatar_bg_color}
+                isWarning={isBlocked}
+                warningMessage={blockedReason}
               />
             </div>
-          ))}
+          )})}
         </div>
       )}
     </>

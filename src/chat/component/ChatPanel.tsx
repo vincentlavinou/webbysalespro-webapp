@@ -10,6 +10,7 @@ import { PinnedAnnouncements } from './PinnedAnnouncements';
 
 import clsx from 'clsx';
 import { ChatComposer } from './ChatComposer';
+import { Button } from '@/components/ui/button';
 
 interface ChatPanelProps {
   /** Hide composer (Control + Input) so parent can place it in a sticky footer */
@@ -55,13 +56,15 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
               {connectionStatus === "reconnecting" && `Reconnecting to chat (attempt ${reconnectAttempt})${reconnectDelayMs ? ` in ${Math.ceil(reconnectDelayMs / 1000)}s` : "..."}`}
               {connectionStatus === "error" && "Chat connection interrupted."}
             </p>
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="secondary"
               onClick={reconnectNow}
-              className="rounded-md bg-amber-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-amber-700"
+              className="h-7 text-[11px]"
             >
               Retry now
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -85,16 +88,22 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
           <div className="p-3 text-sm text-muted-foreground">No messages yet</div>
         ) : (
           <div className="px-2 py-2 space-y-2">
-            {filteredMessages.map((msg: ChatMessage) => (
-              <div key={msg.id} className="text-sm text-foreground">
+            {filteredMessages.map((msg: ChatMessage, idx: number) => {
+              const isBlocked = msg.attributes?.local_status === 'blocked';
+              const blockedReason = msg.attributes?.blocked_reasons;
+
+              return (
+              <div key={msg.id ?? `${msg.sender.userId}-${idx}`} className="text-sm text-foreground">
                 <ChatMessageBubble
                   name={msg.sender.attributes?.name || 'unknown'}
                   content={msg.content}
                   isSelf={msg.sender.userId === userId}
                   avatarBgColor={msg.sender.attributes?.avatar_bg_color}
+                  isWarning={isBlocked}
+                  warningMessage={blockedReason}
                 />
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

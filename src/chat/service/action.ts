@@ -1,11 +1,10 @@
-import { RequestHeaders } from "next/dist/client/components/router-reducer/fetch-server-response"
 import { ChatConfigUpdate, ChatService } from "./type"
 import { chatApiUrl } from "."
 import { actionClient } from "@/lib/safe-action"
 import { getAttendeeChatSessionSchema } from "./schema"
 import { handleStatus } from "@/lib/http"
 
-export const tokenProvider = async (session: string, accessToken?: string, getRequestHeaders?: () => Promise<RequestHeaders | undefined>) : Promise<ChatService> => {
+export const tokenProvider = async (session: string, accessToken?: string, getRequestHeaders?: () => Promise<HeadersInit | undefined>) : Promise<ChatService> => {
     const response = await fetch(`${chatApiUrl}/v1/chat/token/`,{
         headers: {
             'Content-Type': 'application/json',

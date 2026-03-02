@@ -1,6 +1,8 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { LinkifiedText } from "./LinkifiedText";
+import { Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Reaction {
   emoji: string;
@@ -14,6 +16,8 @@ interface ChatMessageProps {
   reactions?: Reaction[];
   isSelf?: boolean;
   avatarBgColor?: string
+  isWarning?: boolean;
+  warningMessage?: string;
 }
 
 export function ChatMessageBubble({
@@ -22,7 +26,9 @@ export function ChatMessageBubble({
   content,
   reactions = [],
   isSelf = false,
-  avatarBgColor
+  avatarBgColor,
+  isWarning = false,
+  warningMessage,
 }: ChatMessageProps) {
   return (
     <div className="flex items-center px-4 py-1 text-sx">
@@ -54,16 +60,32 @@ export function ChatMessageBubble({
 
       {/* Message Content */}
       <div className="flex-1">
-        <div className="w-full min-w-0 text-sm leading-snug text-foreground">
+        <div className={cn("w-full min-w-0 text-sm leading-snug", isWarning ? "rounded-md bg-amber-100/70 px-2 py-1 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200" : "text-foreground")}>
           <span
             className={cn(
-              "font-semibold whitespace-nowrap mr-1",
-              isSelf ? "text-primary" : "text-foreground"
+              "font-semibold whitespace-nowrap mr-1 inline-flex items-center gap-1",
+              isWarning ? "text-amber-700 dark:text-amber-200" : isSelf ? "text-primary" : "text-foreground"
             )}
           >
             {isSelf ? "You" : name}
+            {isWarning && warningMessage && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    aria-label="Why this message was blocked"
+                    type="button"
+                    className="inline-flex items-center text-amber-700 hover:text-amber-900 dark:text-amber-200 dark:hover:text-amber-100"
+                  >
+                    <Info className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6} className="max-w-64">
+                  {warningMessage}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </span>
-          <LinkifiedText className="break-all" text={content} />
+          <LinkifiedText className={cn("break-all", isWarning && "underline decoration-dotted")} text={content} />
         </div>
 
         {/* Reactions */}

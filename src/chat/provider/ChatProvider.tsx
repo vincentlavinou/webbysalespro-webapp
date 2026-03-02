@@ -14,6 +14,8 @@ import { moderateText } from "../service/moderation";
 
 const RECONNECT_START_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 10000;
+const RECONNECT_MAX_ATTEMPTS = 10;
+const MAX_CHAT_ITEMS = 100;
 
 export type ChatProviderProps = {
     children: React.ReactNode,
@@ -44,6 +46,7 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
     const connectInFlightRef = useRef(false);
     const manualDisconnectRef = useRef(false);
     const connectRef = useRef<(() => Promise<() => void>) | null>(null);
+    const nextLocalMessageIdRef = useRef(0);
 
     useEffect(() => {
         tokenProviderRef.current = tokenProvider;
@@ -88,11 +91,18 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
         if (reconnectTimerRef.current) return;
 
         const currentAttempt = reconnectAttemptRef.current;
+        if (currentAttempt >= RECONNECT_MAX_ATTEMPTS) {
+            setConnectionStatus("error");
+            setReconnectDelayMs(null);
+            return;
+        }
         const nextAttempt = currentAttempt + 1;
-        const delay = Math.min(
+        const baseDelay = Math.min(
             RECONNECT_START_DELAY_MS * Math.pow(2, Math.max(0, currentAttempt)),
             RECONNECT_MAX_DELAY_MS
         );
+        const jitter = Math.floor(Math.random() * 300);
+        const delay = baseDelay + jitter;
 
         reconnectAttemptRef.current = nextAttempt;
         setReconnectAttempt(nextAttempt);
@@ -137,7 +147,8 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
         connectInFlightRef.current = true;
         manualDisconnectRef.current = false;
         setConnectionStatus(reconnectAttemptRef.current > 0 ? "reconnecting" : "connecting");
-        listenerUnsubs.current.forEach((unsubsribe) => unsubsribe())
+        listenerUnsubs.current.forEach((unsubscribe) => unsubscribe());
+        listenerUnsubs.current = [];
         clearReconnectTimer();
 
         listenerUnsubs.current.push(
@@ -161,10 +172,10 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
                 scheduleReconnect();
             }),
             room.addListener('message', (message: ChatMessage) => {
-                setMessages((prev) => [...prev, message]);
+                setMessages((prev) => [...prev, message].slice(-MAX_CHAT_ITEMS));
             }),
             room.addListener('event', (event: ChatEvent) => {
-                setEvents((prev) => [...prev, event]);
+                setEvents((prev) => [...prev, event].slice(-MAX_CHAT_ITEMS));
             }),
             room.addListener('messageDelete', (event: DeleteMessageEvent) => {
                 setMessages((prev) => prev.filter((message) => message.id !== event.messageId));
@@ -215,15 +226,19 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
         });
 
         if (!validation.ok) {
+            nextLocalMessageIdRef.current += 1;
             setMessages((prev) => [...prev, {
+                id: `local-blocked-${nextLocalMessageIdRef.current}`,
                 sender: {
                     userId
                 },
                 content: content,
                 attributes: {
-                    "name": "You"
+                    "name": "You",
+                    "local_status": "blocked",
+                    "blocked_reasons": validation.reasons?.map((reason) => reason.message).join(" ") ?? ""
                 } as Record<string, string>
-            } as ChatMessage]);
+            } as ChatMessage].slice(-MAX_CHAT_ITEMS));
             return
         }
 
@@ -253,6 +268,8 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
 
     const reconnectNow = useCallback(() => {
         manualDisconnectRef.current = false;
+        reconnectAttemptRef.current = 0;
+        setReconnectAttempt(0);
         clearReconnectTimer();
         connectRef.current?.().catch(() => {
             scheduleReconnect();
@@ -262,6 +279,8 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
     // Cleanup on unmount
     useEffect(() => {
         return () => {
+            listenerUnsubs.current.forEach((unsubscribe) => unsubscribe());
+            listenerUnsubs.current = [];
             clearReconnectTimer();
             disconnect();
         };

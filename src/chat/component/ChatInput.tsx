@@ -5,16 +5,27 @@ import { useRef, useState } from "react";
 import { useChat } from "../hooks";
 import { useChatControl } from "../hooks/use-chat-control";
 import { Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface ChatInputProps {
   isLocked?: boolean;
+  isDisabled?: boolean;
 }
 
-export function ChatInput({ isLocked = false }: ChatInputProps) {
+export function ChatInput({ isLocked = false, isDisabled = false }: ChatInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputValue, setInputValue] = useState<string>('');
   const { recipient } = useChatControl();
   const { connected, sendMessage } = useChat();
+
+  if (isDisabled) {
+    return (
+      <div className="mt-2 flex items-center justify-center rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">
+        Chat is currently unavailable
+      </div>
+    );
+  }
 
   if (isLocked) {
     return (
@@ -41,11 +52,11 @@ export function ChatInput({ isLocked = false }: ChatInputProps) {
     }
   };
 
-  const disabled = !connected || !inputValue.trim();
+  const disabled = isDisabled || !connected || !inputValue.trim();
 
   return (
     <div className="mt-2 flex gap-2 items-center">
-      <input
+      <Input
         ref={inputRef}
         type="text"
         value={inputValue}
@@ -58,41 +69,19 @@ export function ChatInput({ isLocked = false }: ChatInputProps) {
         autoComplete="off"
         autoCorrect="on"
         aria-label="Chat message"
-        className={[
-          "text-base", 
-          "w-full rounded-lg border px-3 py-3 outline-none transition-colors",
-          // light mode
-          "bg-white text-neutral-900 border-neutral-300 placeholder:text-neutral-400",
-          "focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366]",
-          // dark mode
-          "dark:bg-neutral-800 dark:text-neutral-50 dark:border-neutral-700 dark:placeholder:text-neutral-500",
-          "dark:focus:border-[#25D366] dark:focus:ring-[#25D366]",
-          // disabled state
-          "!disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed",
-          "dark:disabled:bg-neutral-900 dark:disabled:text-neutral-600",
-        ].join(" ")}
+        className="h-12 rounded-lg border-neutral-300 bg-white px-3 py-3 text-base text-neutral-900 placeholder:text-neutral-400 focus-visible:border-[#25D366] focus-visible:ring-[#25D366]/30 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50 dark:placeholder:text-neutral-500 dark:focus-visible:border-[#25D366] md:text-base"
       />
 
-      <button
+      <Button
         type="button"
         onClick={handleSend}
         disabled={disabled}
         aria-label="Send message"
         title="Send"
-        className={[
-          "shrink-0 inline-flex items-center justify-center gap-1 rounded-lg px-4 py-3 text-sm font-medium",
-          // brand background
-          "bg-[#25D366] hover:bg-[#1fa653]",
-          // text/icon color (same in light + dark)
-          "text-white",
-          // disabled
-          "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-[#25D366]",
-          // subtle shadow
-          "shadow-sm",
-        ].join(" ")}
+        className="h-12 rounded-lg bg-[#25D366] px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-[#1fa653] disabled:hover:bg-[#25D366]"
       >
         <Send className="size-4" />
-      </button>
+      </Button>
     </div>
   );
 }
