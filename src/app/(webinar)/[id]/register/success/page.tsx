@@ -14,7 +14,7 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
   const webinarId = (await props.params).id;
   const sessionId = (await props.searchParams).session_id;
 
-  const webinar = await getWebinar(webinarId);
+  const webinar = await getWebinar(webinarId, { fresh: true });
   if (!isWebinarPayload(webinar) || !sessionId) {
     notFound();
   }

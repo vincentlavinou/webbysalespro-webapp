@@ -59,15 +59,11 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   const { execute, isPending } = useAction(registerForWebinarAction, {
     onSuccess: async ({data, input}) => {
       setIsNavigating(true);
-      const selectedSession = sessions.find((s) => s.id === input.session_id);
-      if(!selectedSession)  {
-        router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
-        return
-      }
+      const registeredSessionId =  input.session_id
 
       // get latest session once registration is completed
       try {
-        const session = await getSessionAction({id: selectedSession.id, token: data.access_token})
+        const session = await getSessionAction({id: registeredSessionId, token: data.access_token})
         if (session.data?.status === WebinarSessionStatus.IN_PROGRESS && data.access_token) {
           router.push(`/${session.data.id}/live?token=${data.access_token}`);
           return
@@ -76,7 +72,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         toast.error("Registration succeeded, but we couldn't fetch the latest session status.");
       }
 
-        router.push(`/${webinar.id}/register/success?session_id=${input.session_id}`);
+        router.push(`/${webinar.id}/register/success?session_id=${registeredSessionId}`);
     },
     onError: ({error, input}) => {
       submitLockRef.current = false;

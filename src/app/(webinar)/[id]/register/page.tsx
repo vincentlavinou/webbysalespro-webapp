@@ -17,7 +17,7 @@ interface DefaultRegistrationPageProps {
 
 export async function generateMetadata({ params }: DefaultRegistrationPageProps): Promise<Metadata> {
     const webinarId = (await params).id
-    const webinar = await getWebinar(webinarId)
+    const webinar = await getWebinar(webinarId, { fresh: true })
     if (!isWebinarPayload(webinar)) {
       return {
         title: 'Webinar Registration',
@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: DefaultRegistrationPageProps)
 export default async function DefaultRegistrationPage(props: DefaultRegistrationPageProps) {
     
     const webinarId = (await props.params).id
-    const webinar = await getWebinar(webinarId)
+    const webinar = await getWebinar(webinarId, { fresh: true })
     if (!isWebinarPayload(webinar)) {
       notFound()
     }

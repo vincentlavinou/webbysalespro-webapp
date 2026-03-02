@@ -7,6 +7,7 @@ import { AlreadyRegisteredError } from "./error";
 import { handleStatus } from "@/lib/http";
 import { z } from "zod";
 import { registerForWebinarInput } from "./schema";
+import { cache } from "react";
 
 export async function getWebinars(query?: QueryWebinar) {
     // Fetch all webinars without search query
@@ -41,14 +42,29 @@ export async function getWebinars(query?: QueryWebinar) {
     return data ? data : emptyPage<Webinar[]>([]);
 }
 
-export async function getWebinar(id: string): Promise<Webinar> {
-    const response = await fetch(`${webinarApiUrl}/v1/webinars/${id}/public/`, {
-        next: {
-            revalidate: 60,
-            tags: [`webinar-${id}`],
-        },
-    })
+type GetWebinarOptions = {
+    fresh?: boolean
+}
+
+const getWebinarCached = cache(async (id: string, fresh: boolean): Promise<Webinar> => {
+    const response = await fetch(
+        `${webinarApiUrl}/v1/webinars/${id}/public/`,
+        fresh
+            ? {
+                cache: "no-store",
+            }
+            : {
+                next: {
+                    revalidate: 60,
+                    tags: [`webinar-${id}`],
+                },
+            }
+    )
     return await response.json()
+})
+
+export async function getWebinar(id: string, options?: GetWebinarOptions): Promise<Webinar> {
+    return getWebinarCached(id, Boolean(options?.fresh))
 }
 
 export async function registerForWebinar(formData: FormData): Promise<void> {
