@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
 import { notifyErrorUiMessage } from "@/lib/notify";
 
@@ -187,24 +188,31 @@ export function SelectedOffer() {
 
         {/* Scarcity widget */}
         {selectedOffer.scarcity_mode !== "none" && selectedOffer.display_type != null && (
-          <div className="w-full">
-            {selectedOffer.display_type === "count" && selectedOffer.display_available_count != null ? (
-              <p className="mt-1 text-[11px] text-muted-foreground text-center font-medium">
-                {selectedOffer.display_available_count} spot{selectedOffer.display_available_count !== 1 ? "s" : ""} left
-              </p>
-            ) : selectedOffer.display_type === "percentage" && selectedOffer.display_percent_sold != null ? (
-              <>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-                    style={{ width: `${Math.min(selectedOffer.display_percent_sold, 100)}%` }}
-                  />
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground text-center">
-                  {Math.round(selectedOffer.display_percent_sold)}% claimed
-                </p>
-              </>
-            ) : null}
+          <div className="mt-1 space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              {selectedOffer.display_type === "count" ? (
+                <span className="font-medium">
+                  {selectedOffer.display_available_count != null
+                    ? `${selectedOffer.display_available_count} spot${selectedOffer.display_available_count !== 1 ? "s" : ""} left`
+                    : "Spots filling up"}
+                </span>
+              ) : (
+                <>
+                  <span>
+                    {selectedOffer.quantity_total != null
+                      ? `${Math.round(selectedOffer.quantity_total * (1 - (selectedOffer.display_percent_sold ?? 0) / 100))} spots`
+                      : "Spots filling up"}
+                  </span>
+                  {selectedOffer.display_percent_sold !== null && (
+                    <span className="font-medium">{Math.round(selectedOffer.display_percent_sold)}% claimed</span>
+                  )}
+                </>
+              )}
+            </div>
+            <Progress
+              value={Math.max(0, Math.min(100, selectedOffer.display_percent_sold ?? 0))}
+              className="h-1.5"
+            />
           </div>
         )}
 

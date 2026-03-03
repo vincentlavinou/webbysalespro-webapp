@@ -79,6 +79,16 @@ export function OfferSessionClientProvider({
         }
     }, [offers]);
 
+    // Also clear if the specific selected offer becomes invisible.
+    useEffect(() => {
+        if (!selectedOffer) return;
+        const updated = offers.find((os) => os.id === selectedOffer.id);
+        if (!updated || ["closed", "scheduled"].includes(updated.status)) {
+            setSelectedOffer(undefined);
+            setIsCheckingOut(false);
+        }
+    }, [offers, selectedOffer]);
+
     useEffect(() => {
 
         const calculateView = () => {
