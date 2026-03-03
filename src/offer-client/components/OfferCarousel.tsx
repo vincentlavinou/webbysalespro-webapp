@@ -159,7 +159,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
                 ) : (
                   <>
                     <span>
-                      {totalSlots != null ? `${totalSlots} spots` : "Spots filling up"}
+                      {totalSlots != null ? `${Math.round(totalSlots*(percentSold ?? 0/100))} spots` : "Spots filling up"}
                     </span>
                     {percentSold !== null && (
                       <span className="font-medium">{Math.round(percentSold)}% claimed</span>
