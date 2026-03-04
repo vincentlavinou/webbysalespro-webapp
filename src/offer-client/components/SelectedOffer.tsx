@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from "react";
 import Image from "next/image";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,50 @@ function toNumber(v: unknown): number | null {
   if (v == null) return null;
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function getCurrencySymbol(code: string): string {
+  if (!code) return "";
+  try {
+    const parts = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "narrowSymbol",
+    }).formatToParts(0);
+    return parts.find((p) => p.type === "currency")?.value ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function formatAmount(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  if (clean.length < 6) return `rgba(0,0,0,${alpha})`;
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function getContrastColor(hex: string): string {
+  const clean = hex.replace("#", "");
+  if (clean.length < 6) return "#000000";
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#000000" : "#ffffff";
+}
+
+function isHexColor(value: string): boolean {
+  return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value.trim());
 }
 
 function discountPercent(compareAt: number | null, effective: number | null) {
@@ -78,6 +123,19 @@ export function SelectedOffer() {
   const ctaLabel = display?.cta_label || "Buy now";
   const isExternalLinkOffer = offer?.offer_type === "external_link";
 
+  const accentColor = display?.accent_color?.trim() ?? null;
+  const hasAccentHex = accentColor ? isHexColor(accentColor) : false;
+
+  const accentStyle: React.CSSProperties | undefined = hasAccentHex && accentColor
+    ? { backgroundColor: accentColor, color: getContrastColor(accentColor) }
+    : undefined;
+  const progressIndicatorStyle: React.CSSProperties | undefined = hasAccentHex && accentColor
+    ? { backgroundColor: accentColor }
+    : undefined;
+  const progressTrackStyle: React.CSSProperties | undefined = hasAccentHex && accentColor
+    ? { backgroundColor: hexToRgba(accentColor, 0.2) }
+    : undefined;
+
   if (!selectedOffer || !offer) return null;
 
   return (
@@ -94,13 +152,13 @@ export function SelectedOffer() {
         {/* Header row: thumbnail + title/badge/subheading */}
         <div className="flex gap-3">
           {thumbnail?.file_url ? (
-            <div className="hidden md:block shrink-0">
-              <div className="relative h-24 w-24 overflow-hidden rounded-md border border-border bg-muted">
+            <div className="shrink-0">
+              <div className="relative h-20 w-20 overflow-hidden rounded-md border border-border bg-muted">
                 <Image
                   src={thumbnail.file_url}
                   alt={offer.name}
                   fill
-                  sizes="96px"
+                  sizes="80px"
                   className="object-cover"
                 />
               </div>
@@ -114,7 +172,10 @@ export function SelectedOffer() {
               </h3>
 
               {display?.badge_text ? (
-                <Badge className="text-[10px]">
+                <Badge
+                  className="text-[10px]"
+                  style={accentStyle}
+                >
                   {display.badge_text}
                 </Badge>
               ) : null}
@@ -135,92 +196,77 @@ export function SelectedOffer() {
           </p>
         ) : null}
 
-        {/* Price row + offer type */}
-        <div className="flex items-center justify-between gap-2">
+        {/* Price + scarcity — vertically stacked */}
+        <div className="space-y-1.5">
           {effectivePrice != null ? (
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-center gap-2 text-xs">
               <span className="text-sm font-semibold text-primary">
-                {currency} {effectivePrice.toFixed(2)}
+                {getCurrencySymbol(currency)}{formatAmount(effectivePrice)}
               </span>
 
               {compareAt != null && compareAt > effectivePrice ? (
                 <span className="text-xs text-muted-foreground line-through">
-                  {compareAt.toFixed(2)}
+                  {getCurrencySymbol(currency)}{formatAmount(compareAt)}
                 </span>
               ) : null}
 
               {savePct !== null ? (
                 <Badge
                   variant="outline"
-                  className="border-emerald-500/40 bg-emerald-500/5 text-[10px] text-emerald-600 dark:text-emerald-400"
+                  className="border-emerald-500/40 bg-emerald-500/5 text-[10px] text-emerald-500"
                 >
                   Save {savePct}%
                 </Badge>
               ) : null}
             </div>
-          ) : (
-            <div />
-          )}
+          ) : null}
 
-          <div className="flex gap-1">
-            {offer.offer_type === "purchase" && (
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                Purchase offer
-              </span>
-            )}
-            {offer.offer_type === "schedule_call" && (
-              <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-600 dark:text-sky-400">
-                Schedule a call
-              </span>
-            )}
-            {offer.offer_type === "complete_form" && (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                Complete a form
-              </span>
-            )}
-            {offer.offer_type === "external_link" && (
-              <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-400">
-                External link
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Scarcity widget */}
-        {selectedOffer.scarcity_mode !== "none" && selectedOffer.display_type != null && (
-          <div className="mt-1 space-y-1">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-              {selectedOffer.display_type === "count" ? (
-                <span className="font-medium">
-                  {selectedOffer.display_available_count != null
-                    ? `${selectedOffer.display_available_count} spot${selectedOffer.display_available_count !== 1 ? "s" : ""} left`
-                    : "Spots filling up"}
-                </span>
-              ) : (
-                <>
-                  <span>
-                    {selectedOffer.quantity_total != null
-                      ? `${Math.round(selectedOffer.quantity_total * (1 - (selectedOffer.display_percent_sold ?? 0) / 100))} spots`
+          {selectedOffer.scarcity_mode !== "none" && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                {(selectedOffer.display_type ?? "percentage") === "count" ? (
+                  <span className="font-medium">
+                    {selectedOffer.display_available_count != null
+                      ? `${selectedOffer.display_available_count} spot${selectedOffer.display_available_count !== 1 ? "s" : ""} left`
                       : "Spots filling up"}
                   </span>
-                  {selectedOffer.display_percent_sold !== null && (
-                    <span className="font-medium">{Math.round(selectedOffer.display_percent_sold)}% claimed</span>
-                  )}
-                </>
-              )}
+                ) : (
+                  <>
+                    <span>
+                      {selectedOffer.quantity_total != null
+                        ? `${selectedOffer.quantity_total} spots`
+                        : "Spots filling up"}
+                    </span>
+                    {selectedOffer.display_percent_sold !== null && (
+                      <span className="font-medium">
+                        {Math.round(selectedOffer.display_percent_sold)}% claimed
+                        {selectedOffer.quantity_total != null && ` • ${Math.max(0, Math.round(selectedOffer.quantity_total * (1 - selectedOffer.display_percent_sold / 100)))} left`}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              <Progress
+                value={Math.max(0, Math.min(100, selectedOffer.display_percent_sold ?? 0))}
+                className="h-1.5"
+                style={progressTrackStyle}
+                indicatorStyle={progressIndicatorStyle}
+              />
             </div>
-            <Progress
-              value={Math.max(0, Math.min(100, selectedOffer.display_percent_sold ?? 0))}
-              className="h-1.5"
-            />
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Offer type pill */}
+        <div className="flex gap-1">
+
+        </div>
 
         {/* CTA */}
         <Button
           className="w-full"
           type="button"
           disabled={selectedOffer.status === "sold_out"}
+          style={accentStyle}
           onClick={() => {
             if (isExternalLinkOffer) {
               const externalUrl = getExternalUrl(offer.action_payload);

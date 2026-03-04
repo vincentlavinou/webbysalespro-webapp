@@ -2,11 +2,55 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { Percent } from 'lucide-react';
 import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import type { OfferSessionDto } from '../service/type';
+
+function getCurrencySymbol(code: string): string {
+  if (!code) return "";
+  try {
+    const parts = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "narrowSymbol",
+    }).formatToParts(0);
+    return parts.find((p) => p.type === "currency")?.value ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function formatAmount(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  if (clean.length < 6) return `rgba(0,0,0,${alpha})`;
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function getContrastColor(hex: string): string {
+  const clean = hex.replace("#", "");
+  if (clean.length < 6) return "#000000";
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#000000" : "#ffffff";
+}
+
+function isHexColor(value: string): boolean {
+  return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value.trim());
+}
 
 interface VisibleOfferProps {
   offer: OfferSessionDto;
@@ -38,23 +82,21 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
 
   const display = offer.offer.display ?? null;
   const badgeText = display?.badge_text ?? null;
-  const accentColor = display?.accent_color ?? null;
+  const accentColor = display?.accent_color?.trim() ?? null;
+  const hasAccentHex = accentColor ? isHexColor(accentColor) : false;
 
-  const accentClass =
-    accentColor === "featured"
-      ? "ring-primary/20"
-      : accentColor === "warning"
-      ? "ring-amber-500/20"
-      : accentColor === "success"
-      ? "ring-emerald-500/20"
-      : "ring-border/70";
-
-  const badgeClass =
-    accentColor === "warning"
-      ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-500/20"
-      : accentColor === "success"
-      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/20"
-      : "bg-primary/10 text-primary ring-primary/15";
+  const accentStyle: React.CSSProperties | undefined = hasAccentHex && accentColor
+    ? { backgroundColor: accentColor, color: getContrastColor(accentColor) }
+    : undefined;
+  const accentRingStyle: React.CSSProperties | undefined = hasAccentHex && accentColor
+    ? { boxShadow: `0 0 0 1px ${hexToRgba(accentColor, 0.35)}` }
+    : undefined;
+  const progressTrackStyle: React.CSSProperties | undefined = accentColor
+        ? { backgroundColor: hexToRgba(accentColor, 0.2) }
+        : undefined;
+  const progressIndicatorStyle: React.CSSProperties | undefined = accentColor
+        ? { backgroundColor: accentColor }
+        : undefined;
 
   const hasScarcity = offer.scarcity_mode !== "none";
   const scarcityDisplayType = offer.display_type ?? "percentage";
@@ -66,89 +108,86 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
     <button
       type="button"
       onClick={() => onClick(offer)}
+      style={accentRingStyle}
       className={[
         "group w-full text-left rounded-xl px-3 py-2",
         "bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/75",
-        "ring-1 shadow-sm hover:shadow-md transition",
-        accentClass,
+        "shadow-sm hover:shadow-md transition",
+        !accentRingStyle ? "ring-1 ring-border/70" : "",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       ].join(" ")}
     >
-      <div className="flex items-center gap-3">
-        {/* Thumbnail */}
-        {thumbnail ? (
-          <div className="shrink-0">
-            <Image
-              src={thumbnail.file_url}
-              alt={offer.offer.name}
-              height={80}
-              width={80}
-              className="h-20 w-20 rounded-md border border-border object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-            />
-          </div>
-        ) : (
-          <div className="h-20 w-20 shrink-0 rounded-md bg-muted ring-1 ring-border/70" />
-        )}
+      <div className="space-y-2">
+        {/* Row 1: image + title/subtitle/description */}
+        <div className="flex items-start gap-3">
+          {thumbnail ? (
+            <div className="shrink-0">
+              <Image
+                src={thumbnail.file_url}
+                alt={offer.offer.name}
+                height={80}
+                width={80}
+                className="h-20 w-20 rounded-md border border-border object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+            </div>
+          ) : null}
 
-        {/* Main content */}
-        <div className="min-w-0 flex-1">
-          {/* Title + badge */}
-          <div className="flex items-center gap-2 min-w-0">
-            <h4 className="truncate text-sm font-semibold text-foreground">
-              {offer.offer.name}
-            </h4>
-            {badgeText ? (
-              <span
-                className={[
-                  "shrink-0 inline-flex items-center rounded-full px-2 py-0.5",
-                  "text-[11px] font-semibold ring-1",
-                  badgeClass,
-                ].join(" ")}
-              >
-                {badgeText}
-              </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <h4 className="truncate text-sm font-semibold text-foreground">
+                {offer.offer.name}
+              </h4>
+              {badgeText ? (
+                <span
+                  className="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                  style={accentStyle ?? { backgroundColor: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))", boxShadow: "0 0 0 1px hsl(var(--primary) / 0.15)" }}
+                >
+                  {badgeText}
+                </span>
+              ) : null}
+            </div>
+
+            {offer.offer.subheading ? (
+              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                {offer.offer.subheading}
+              </p>
+            ) : null}
+
+            {offer.offer.description ? (
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/80">
+                {offer.offer.description}
+              </p>
             ) : null}
           </div>
+        </div>
 
-          {/* Subheading */}
-          {offer.offer.subheading ? (
-            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-              {offer.offer.subheading}
-            </p>
-          ) : null}
-
-          {/* Description */}
-          {offer.offer.description ? (
-            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/80">
-              {offer.offer.description}
-            </p>
-          ) : null}
-
-          {/* Price row */}
+        {/* Row 2: price, Row 3: progress — stacked in same column */}
+        <div className="space-y-1.5">
           {effective != null ? (
-            <div className="mt-2 flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-1.5 text-xs">
               <span className="font-semibold text-primary">
-                {currency} {Number(effective).toFixed(2)}
+                {getCurrencySymbol(currency)}{formatAmount(Number(effective))}
               </span>
               {showCompareAt && compareAt != null && (
                 <>
                   <span className="text-[11px] text-muted-foreground line-through">
-                    {Number(compareAt).toFixed(2)}
+                    {getCurrencySymbol(currency)}{formatAmount(Number(compareAt))}
                   </span>
                   {discountPct !== null && (
-                    <span className="flex items-center gap-1 text-[11px] text-emerald-500">
-                      <Percent className="h-3 w-3" />
-                      -{discountPct}%
-                    </span>
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/40 bg-emerald-500/5 text-[10px] text-emerald-500"
+                    >
+                      Save {discountPct}%
+                    </Badge>
                   )}
                 </>
               )}
             </div>
           ) : null}
 
-          {/* Scarcity */}
           {hasScarcity && (
-            <div className="mt-1 space-y-1">
+            <div className="space-y-1">
               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                 {scarcityDisplayType === "count" ? (
                   <span className="font-medium">
@@ -159,10 +198,13 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
                 ) : (
                   <>
                     <span>
-                      {totalSlots != null ? `${Math.round(totalSlots * (1 - (percentSold ?? 0) / 100))} spots` : "Spots filling up"}
+                      {totalSlots != null ? `${totalSlots} spots` : "Spots filling up"}
                     </span>
                     {percentSold !== null && (
-                      <span className="font-medium">{Math.round(percentSold)}% claimed</span>
+                      <span className="font-medium">
+                        {Math.round(percentSold)}% claimed
+                        {totalSlots != null && ` • ${Math.max(0, Math.round(totalSlots * (1 - percentSold / 100)))} left`}
+                      </span>
                     )}
                   </>
                 )}
@@ -170,6 +212,8 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
               <Progress
                 value={Math.max(0, Math.min(100, percentSold ?? 0))}
                 className="h-1.5"
+                style={progressTrackStyle}
+                indicatorStyle={progressIndicatorStyle}
               />
             </div>
           )}
