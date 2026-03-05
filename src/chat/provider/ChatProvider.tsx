@@ -7,10 +7,11 @@ import { DefaultChatRecipient } from "../service/enum";
 import { useChatConfiguration } from "../hooks/use-chat-configuration";
 import { useBroadcastUser } from "@/broadcast/hooks/use-broadcast-user";
 import { useWebinar } from "@/webinar/hooks";
-import { usePlaybackMetadataEvent } from "@/emitter/playback";
+import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback";
 import { chatConfigUpdateSchema } from "../service/schema";
 import { useBroadcastConfiguration } from "@/broadcast/hooks";
 import { moderateText } from "../service/moderation";
+import { getAttendeeChatSession } from "../service/action";
 
 const RECONNECT_START_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 10000;
@@ -40,6 +41,7 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
     const [reconnectAttempt, setReconnectAttempt] = useState(0);
     const [reconnectDelayMs, setReconnectDelayMs] = useState<number | null>(null);
     const [chatConfig, setChatConfig] = useState<ChatConfigUpdate | null>(initialChatConfig ?? null);
+    const hasFetchedOnPlayRef = useRef(false);
     const listenerUnsubs = useRef<(() => void)[]>([]);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const reconnectAttemptRef = useRef(0);
@@ -296,6 +298,17 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
             setChatConfig(initialChatConfig);
         }
     }, [initialChatConfig])
+
+    useEffect(() => {
+        if (!token) return;
+        return onPlaybackPlaying(() => {
+            if (hasFetchedOnPlayRef.current) return;
+            hasFetchedOnPlayRef.current = true;
+            getAttendeeChatSession({ sessionId, token }).then((result) => {
+                if (result?.data) setChatConfig(result.data);
+            });
+        });
+    }, [sessionId, token]);
 
     usePlaybackMetadataEvent({
         eventType: "chat:config:update",
