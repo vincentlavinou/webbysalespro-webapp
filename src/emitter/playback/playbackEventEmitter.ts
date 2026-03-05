@@ -3,6 +3,7 @@ export const playbackEventEmitter = new EventTarget();
 export const PLAYBACK_EVENTS = {
   METADATA: "playback:metadata",
   ENDED: "playback:ended",
+  PLAYING: "playback:playing",
 } as const;
 
 export function emitPlaybackMetadata(detail: string) {
@@ -24,4 +25,13 @@ export function emitPlaybackEnded() {
 export function onPlaybackEnded(handler: () => void) {
   playbackEventEmitter.addEventListener(PLAYBACK_EVENTS.ENDED, handler);
   return () => playbackEventEmitter.removeEventListener(PLAYBACK_EVENTS.ENDED, handler);
+}
+
+export function emitPlaybackPlaying() {
+  playbackEventEmitter.dispatchEvent(new CustomEvent(PLAYBACK_EVENTS.PLAYING));
+}
+
+export function onPlaybackPlaying(handler: () => void) {
+  playbackEventEmitter.addEventListener(PLAYBACK_EVENTS.PLAYING, handler);
+  return () => playbackEventEmitter.removeEventListener(PLAYBACK_EVENTS.PLAYING, handler);
 }

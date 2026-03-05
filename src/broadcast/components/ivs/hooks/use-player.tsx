@@ -22,6 +22,7 @@ type Options = {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onTextMetadata?: (text: string) => void;
   onEnded?: () => void;
+  onPlaying?: () => void;
   onError?: (e: PlayerError) => void;
   /** Keep the player muted and re-play if the browser pauses it, so timed metadata cues keep firing while something else (e.g. video injection) is in the foreground. */
   keepAlive?: boolean;
@@ -41,6 +42,7 @@ export function usePlayer({
   videoRef,
   onTextMetadata,
   onEnded,
+  onPlaying,
   onError,
   keepAlive = false,
 }: Options) {
@@ -254,11 +256,12 @@ export function usePlayer({
       p.setRebufferToLive(true);
 
       const onReady = () => updateStats();
-      const onPlaying = () => {
+      const onPlayingInternal = () => {
         backoffRef.current = START_BACKOFF;
         setAutoplayFailed(false);
         updateStats();
         hasPlayedRef.current = true;
+        onPlaying?.();
 
         // best-effort unmute (will succeed if user gesture exists)
         if (!mutedProp) {
@@ -290,7 +293,7 @@ export function usePlayer({
       };
 
       p.addEventListener(ivs.PlayerState.READY, onReady);
-      p.addEventListener(ivs.PlayerState.PLAYING, onPlaying);
+      p.addEventListener(ivs.PlayerState.PLAYING, onPlayingInternal);
       p.addEventListener(ivs.PlayerState.BUFFERING, updateStats);
       p.addEventListener(ivs.PlayerState.IDLE, updateStats);
       p.addEventListener(ivs.PlayerState.ENDED, onEndedInternal);
@@ -314,7 +317,7 @@ export function usePlayer({
 
       cleanup = () => {
         p.removeEventListener(ivs.PlayerState.READY, onReady);
-        p.removeEventListener(ivs.PlayerState.PLAYING, onPlaying);
+        p.removeEventListener(ivs.PlayerState.PLAYING, onPlayingInternal);
         p.removeEventListener(ivs.PlayerState.BUFFERING, updateStats);
         p.removeEventListener(ivs.PlayerState.IDLE, updateStats);
         p.removeEventListener(ivs.PlayerState.ENDED, onEndedInternal);
@@ -333,7 +336,7 @@ export function usePlayer({
       playerRef.current = null;
       cleanup?.();
     };
-  }, [src, autoPlay, mutedProp, videoRef, onEnded, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
+  }, [src, autoPlay, mutedProp, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
 
   return {
     playerRef,

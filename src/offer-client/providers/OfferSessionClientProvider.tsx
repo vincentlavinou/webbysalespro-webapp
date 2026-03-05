@@ -1,9 +1,10 @@
 'use client'
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { OfferSessionClientContext } from "../contexts/OfferSessionClientContext"
 import { OfferSessionDto, OfferView } from "../service/type";
-import { usePlaybackMetadataEvent } from "@/emitter/playback";
+import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback";
 import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "../service/schema";
+import { getOfferSessionsForAttendee } from "../service/action";
 
 interface OfferSessionClientProviderProps {
     children: React.ReactNode
@@ -27,6 +28,7 @@ export function OfferSessionClientProvider({
     const [selectedOffer, setSelectedOffer] = useState<OfferSessionDto | undefined>(undefined);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [view, setView] = useState<OfferView>("offers-hidden")
+    const hasFetchedOnPlayRef = useRef(false);
     // new: success state
     const [purchasedOffer, setPurchasedOffer] = useState<{
         offer: OfferSessionDto;
@@ -66,6 +68,19 @@ export function OfferSessionClientProvider({
         },
         getSignature: (evt) => `${evt.payload.offer_session_id}-${evt.payload.mode}-${evt.payload.display_type}-${evt.payload.display_percent_sold}-${evt.payload.display_available_count}`,
     })
+
+    // Eager-refresh offer state as soon as playback actually starts.
+    // This ensures the client reflects the latest server state after the stream
+    // begins (e.g. an offer that was opened before the attendee connected).
+    useEffect(() => {
+        return onPlaybackPlaying(() => {
+            if (hasFetchedOnPlayRef.current) return;
+            hasFetchedOnPlayRef.current = true;
+            getOfferSessionsForAttendee({ sessionId, token }).then((result) => {
+                if (result?.data) setOffers(result.data);
+            });
+        });
+    }, [sessionId, token]);
 
     // When the host closes all offers, clear any in-progress selection / checkout
     // so the attendee isn't stuck on a view for an offer that no longer exists.

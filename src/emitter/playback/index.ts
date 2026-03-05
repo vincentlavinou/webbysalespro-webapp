@@ -1,7 +1,9 @@
 export {
     emitPlaybackMetadata,
     emitPlaybackEnded,
-    onPlaybackEnded
+    onPlaybackEnded,
+    emitPlaybackPlaying,
+    onPlaybackPlaying,
 } from './playbackEventEmitter'
 
 export {

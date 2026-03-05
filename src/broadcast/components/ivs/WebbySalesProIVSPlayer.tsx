@@ -3,7 +3,7 @@
 
 import React, { useRef } from "react";
 import { PlayerState } from "amazon-ivs-player";
-import { emitPlaybackMetadata, emitPlaybackEnded } from "@/emitter/playback/";
+import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
 import { usePlayer } from "./hooks/use-player";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
@@ -45,6 +45,7 @@ export default function WebbySalesProIVSPlayer({
     videoRef,
     onTextMetadata: emitPlaybackMetadata,
     onEnded: emitPlaybackEnded,
+    onPlaying: emitPlaybackPlaying,
     keepAlive,
   });
 
