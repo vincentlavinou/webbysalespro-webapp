@@ -24,7 +24,6 @@ export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: Attende
                                 src={broadcast.stream.config.playback_url}
                                 poster="/poster.jpg"
                                 autoPlay
-                                showStats
                                 ariaLabel="Live Webinar Player"
                                 title={broadcast.webinar.title}
                                 artwork={broadcast.webinar.media
