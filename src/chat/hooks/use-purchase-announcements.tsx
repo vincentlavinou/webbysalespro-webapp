@@ -12,9 +12,32 @@ export interface PurchaseAnnouncement {
   receivedAt: number;
 }
 
+let audioCtx: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  try {
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+      // iOS/Safari requires audio context to be resumed from a user gesture.
+      // We listen for the first interaction so the context is ready when needed.
+      const resume = () => {
+        audioCtx?.resume();
+        document.removeEventListener('click', resume);
+        document.removeEventListener('touchstart', resume);
+      };
+      document.addEventListener('click', resume);
+      document.addEventListener('touchstart', resume);
+    }
+    return audioCtx;
+  } catch {
+    return null;
+  }
+}
+
 function playChingSound() {
   try {
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
+    if (!ctx || ctx.state === 'suspended') return;
 
     const playTone = (freq: number, startTime: number, duration: number, gain: number) => {
       const osc = ctx.createOscillator();
@@ -34,8 +57,6 @@ function playChingSound() {
     // "ching" — higher sustained ring
     playTone(1760, ctx.currentTime + 0.06, 0.5, 0.3);
     playTone(2200, ctx.currentTime + 0.06, 0.4, 0.15);
-
-    setTimeout(() => ctx.close(), 800);
   } catch {
     // silently fail if audio not available
   }
