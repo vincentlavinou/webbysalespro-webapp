@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePlaybackMetadataEvent } from '@/emitter/playback';
 import { purchaseAnnouncementMetadataSchema } from '@/offer-client/service/schema';
 
-export interface PurchaseAnnouncement {
+export interface CtaAnnouncement {
   id: string;
   content: string;
   source: 'preset' | 'real';
@@ -196,10 +196,10 @@ function playChingSound() {
   }
 }
 
-let announcementCounter = 0;
+let ctaCounter = 0;
 
-export function usePurchaseAnnouncements(sessionId?: string) {
-  const [announcements, setAnnouncements] = useState<PurchaseAnnouncement[]>([]);
+export function useCtaAnnouncements(sessionId?: string) {
+  const [announcements, setAnnouncements] = useState<CtaAnnouncement[]>([]);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
@@ -215,7 +215,7 @@ export function usePurchaseAnnouncements(sessionId?: string) {
     sessionId,
     onEvent: (event) => {
       const { content, source, ttl_seconds } = event.payload;
-      const id = `purchase-announcement-${++announcementCounter}`;
+      const id = `cta-announcement-${++ctaCounter}`;
 
       playChingSound();
 

@@ -6,14 +6,14 @@ import { useChat } from '@chat/hooks';
 import type { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
-import { PurchaseAnnouncementBubble } from './PurchaseAnnouncementBubble';
+import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 import { useBroadcastConfiguration } from '@/broadcast/hooks';
-import { usePurchaseAnnouncements, type PurchaseAnnouncement } from '@chat/hooks/use-purchase-announcements';
+import { useCtaAnnouncements, type CtaAnnouncement } from '@chat/hooks/use-cta-announcements';
 
 type ChatItem =
   | { kind: 'message'; data: ChatMessage; time: number }
-  | { kind: 'purchase_announcement'; data: PurchaseAnnouncement; time: number };
+  | { kind: 'cta_announcement'; data: CtaAnnouncement; time: number };
 
 interface ChatMessagesProps {
   scrollRef: RefObject<HTMLDivElement | null>
@@ -24,7 +24,7 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
   const { connect, filteredMessages, connected, chatConfig } = useChat();
   const { userId } = useBroadcastUser();
   const { sessionId } = useBroadcastConfiguration();
-  const { announcements } = usePurchaseAnnouncements(sessionId);
+  const { announcements } = useCtaAnnouncements(sessionId);
 
   // Connect once
   useEffect(() => {
@@ -39,7 +39,7 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
         time: msg.sendTime?.getTime() ?? 0,
       })),
       ...announcements.map((ann) => ({
-        kind: 'purchase_announcement' as const,
+        kind: 'cta_announcement' as const,
         data: ann,
         time: ann.receivedAt,
       })),
@@ -76,9 +76,9 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
       ) : (
         <div className="px-1 py-2 space-y-1">
           {chatItems.map((item, idx) => {
-            if (item.kind === 'purchase_announcement') {
+            if (item.kind === 'cta_announcement') {
               return (
-                <PurchaseAnnouncementBubble key={item.data.id} announcement={item.data} />
+                <CtaAnnouncementBubble key={item.data.id} announcement={item.data} />
               );
             }
 

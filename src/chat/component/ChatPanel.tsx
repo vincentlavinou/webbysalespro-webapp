@@ -8,8 +8,8 @@ import { ChatMessageBubble } from './ChatMessageBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 import { useBroadcastConfiguration } from '@/broadcast/hooks';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
-import { usePurchaseAnnouncements, type PurchaseAnnouncement } from '@chat/hooks/use-purchase-announcements';
-import { PurchaseAnnouncementBubble } from './PurchaseAnnouncementBubble';
+import { useCtaAnnouncements, type CtaAnnouncement } from '@chat/hooks/use-cta-announcements';
+import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
 
 import clsx from 'clsx';
 import { ChatComposer } from './ChatComposer';
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 
 type ChatItem =
   | { kind: 'message'; data: ChatMessage; time: number }
-  | { kind: 'purchase_announcement'; data: PurchaseAnnouncement; time: number };
+  | { kind: 'cta_announcement'; data: CtaAnnouncement; time: number };
 
 interface ChatPanelProps {
   /** Hide composer (Control + Input) so parent can place it in a sticky footer */
@@ -29,7 +29,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
   const { connect, filteredMessages, connected, chatConfig, connectionStatus, reconnectAttempt, reconnectDelayMs, reconnectNow } = useChat();
   const { userId } = useBroadcastUser();
   const { sessionId } = useBroadcastConfiguration();
-  const { announcements } = usePurchaseAnnouncements(sessionId);
+  const { announcements } = useCtaAnnouncements(sessionId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoStick, setAutoStick] = useState(true);
@@ -43,7 +43,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
         time: msg.sendTime?.getTime() ?? 0,
       })),
       ...announcements.map((ann) => ({
-        kind: 'purchase_announcement' as const,
+        kind: 'cta_announcement' as const,
         data: ann,
         time: ann.receivedAt,
       })),
@@ -115,7 +115,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
             {chatItems.map((item, idx) => {
               if (item.kind === 'purchase_announcement') {
                 return (
-                  <PurchaseAnnouncementBubble key={item.data.id} announcement={item.data} />
+                  <CtaAnnouncementBubble key={item.data.id} announcement={item.data} />
                 );
               }
 
