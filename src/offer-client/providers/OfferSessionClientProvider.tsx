@@ -142,6 +142,7 @@ export function OfferSessionClientProvider({
         if (selectedOffer && selectedOffer.offer.price) {
             setPurchasedOffer({ offer: selectedOffer, ref: ref });
             await recordEvent("purchase_succeeded", token, {
+                "offer_id": selectedOffer.offer.id,
                 "amount_cents": selectedOffer.offer.price.value * 100 // cents
             })
             setView("offer-purchased")

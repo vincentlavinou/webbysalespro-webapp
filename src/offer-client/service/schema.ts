@@ -34,3 +34,17 @@ export const offerScarcityUpdateMetadataSchema = z.object({
     display_available_count: z.number().int().nullable(),
   }),
 });
+
+export const purchaseAnnouncementMetadataSchema = z.object({
+  type: z.literal("session:offer:purchase_announcement"),
+  payload: z.object({
+    session_id: z.string(),
+    offer_session_id: z.string(),
+    purchaser_id: z.string(),
+    first_name: z.string(),
+    location: z.string(),
+    source: z.enum(["preset", "real"]),
+    content: z.string(),
+    ttl_seconds: z.number().nullable(),
+  }),
+});

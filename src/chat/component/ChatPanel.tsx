@@ -1,16 +1,22 @@
 // ChatPanel.tsx
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useChat } from '@chat/hooks';
 import { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
+import { useBroadcastConfiguration } from '@/broadcast/hooks';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
+import { usePurchaseAnnouncements, type PurchaseAnnouncement } from '@chat/hooks/use-purchase-announcements';
 
 import clsx from 'clsx';
 import { ChatComposer } from './ChatComposer';
 import { Button } from '@/components/ui/button';
+
+type ChatItem =
+  | { kind: 'message'; data: ChatMessage; time: number }
+  | { kind: 'purchase_announcement'; data: PurchaseAnnouncement; time: number };
 
 interface ChatPanelProps {
   /** Hide composer (Control + Input) so parent can place it in a sticky footer */
@@ -21,21 +27,38 @@ interface ChatPanelProps {
 export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
   const { connect, filteredMessages, connected, chatConfig, connectionStatus, reconnectAttempt, reconnectDelayMs, reconnectNow } = useChat();
   const { userId } = useBroadcastUser();
+  const { sessionId } = useBroadcastConfiguration();
+  const { announcements } = usePurchaseAnnouncements(sessionId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [autoStick, setAutoStick] = useState(true); // only autoscroll if user is near bottom
+  const [autoStick, setAutoStick] = useState(true);
 
+  // Merge messages and announcements into a single time-ordered list
+  const chatItems = useMemo<ChatItem[]>(() => {
+    const items: ChatItem[] = [
+      ...filteredMessages.map((msg) => ({
+        kind: 'message' as const,
+        data: msg,
+        time: msg.sendTime?.getTime() ?? 0,
+      })),
+      ...announcements.map((ann) => ({
+        kind: 'purchase_announcement' as const,
+        data: ann,
+        time: ann.receivedAt,
+      })),
+    ];
+    return items.sort((a, b) => a.time - b.time);
+  }, [filteredMessages, announcements]);
 
   useEffect(() => {
     if (!connected) connect();
   }, [connected, connect]);
 
-  // Track whether user is near the bottom; if so, we auto-scroll on new messages
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
-    setAutoStick(distanceFromBottom < 75); // ~4.5rem tolerance
+    setAutoStick(distanceFromBottom < 75);
   }, []);
 
   useEffect(() => {
@@ -44,7 +67,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
     if (autoStick) {
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
-  }, [filteredMessages, autoStick]);
+  }, [chatItems, autoStick]);
 
   return (
     <div className={clsx("flex flex-col h-full rounded-md border shadow bg-background", className)}>
@@ -82,28 +105,38 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
       >
         {chatConfig && chatConfig.is_enabled === false ? (
           <div className={clsx("flex flex-col items-center justify-center h-full rounded-md border shadow bg-background text-center px-6 py-8", className)}>
-          <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
-        </div>
-        ) : filteredMessages.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
+          </div>
+        ) : chatItems.length === 0 ? (
           <div className="p-3 text-sm text-muted-foreground">No messages yet</div>
         ) : (
           <div className="px-2 py-2 space-y-2">
-            {filteredMessages.map((msg: ChatMessage, idx: number) => {
+            {chatItems.map((item, idx) => {
+              if (item.kind === 'purchase_announcement') {
+                const ann = item.data;
+                return (
+                  <div key={ann.id} className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-200">
+                    <span className="leading-snug">{ann.content}</span>
+                  </div>
+                );
+              }
+
+              const msg = item.data;
               const isBlocked = msg.attributes?.local_status === 'blocked';
               const blockedReason = msg.attributes?.blocked_reasons;
-
               return (
-              <div key={msg.id ?? `${msg.sender.userId}-${idx}`} className="text-sm text-foreground">
-                <ChatMessageBubble
-                  name={msg.sender.attributes?.name || 'unknown'}
-                  content={msg.content}
-                  isSelf={msg.sender.userId === userId}
-                  avatarBgColor={msg.sender.attributes?.avatar_bg_color}
-                  isWarning={isBlocked}
-                  warningMessage={blockedReason}
-                />
-              </div>
-            )})}
+                <div key={msg.id ?? `${msg.sender.userId}-${idx}`} className="text-sm text-foreground">
+                  <ChatMessageBubble
+                    name={msg.sender.attributes?.name || 'unknown'}
+                    content={msg.content}
+                    isSelf={msg.sender.userId === userId}
+                    avatarBgColor={msg.sender.attributes?.avatar_bg_color}
+                    isWarning={isBlocked}
+                    warningMessage={blockedReason}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
