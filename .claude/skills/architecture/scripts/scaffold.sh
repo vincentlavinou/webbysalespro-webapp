@@ -110,7 +110,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAction } from "next-safe-action/hooks";
-import { toast } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { notifyErrorUiMessage } from "@/lib/notify";
 PROVEOF
 
 cat >> "$BASE/provider/${PASCAL}Provider.tsx" <<EOF
@@ -142,7 +143,7 @@ export function ${PASCAL}Provider({ webinar, initialItems, children }: ${PASCAL}
             form.reset(formDefault);
         },
         onError({ error: { serverError } }) {
-            toast.error(serverError ?? "Something went wrong.");
+            notifyErrorUiMessage(serverError, "Something went wrong.");
         },
     });
 

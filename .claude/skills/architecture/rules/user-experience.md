@@ -1,9 +1,6 @@
----
-name: user-experience
-description: How webbysalespro user experience should always be setup to make sure all components and pages behave consistently
----
-
 # User Experience Rules
+
+> Reference document for the `architecture` skill. These rules apply to all components and pages.
 
 ## Loading States on Actions (CRITICAL)
 

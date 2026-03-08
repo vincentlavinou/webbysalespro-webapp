@@ -39,6 +39,11 @@ export const [Module]Context = createContext<[Module]ContextType | undefined>(un
 
 Manages all state, integrates server actions via `useAction`, provides methods.
 
+> **Error notifications**: Always use `notifyErrorUiMessage` from `@/lib/notify` — never call `toast.error` directly.
+> ```tsx
+> import { notifyErrorUiMessage } from "@/lib/notify";
+> ```
+
 ```tsx
 export function [Module]Provider({ webinar, initialItems, children }) {
     const [items, setItems] = useState<[Item]Dto[]>(initialItems ?? []);
@@ -56,7 +61,7 @@ export function [Module]Provider({ webinar, initialItems, children }) {
             form.reset(formDefault);
         },
         onError({ error: { serverError } }) {
-            toast.error(serverError ?? "Something went wrong.");
+            notifyErrorUiMessage(serverError, "Something went wrong.");
         },
     });
 
@@ -221,23 +226,35 @@ Key rules for Select:
 
 ### Form Builder composes fields
 
+When the Provider owns the `useForm` instance, use a thin **Form Wrapper** component so that all children can use `useFormContext`, `FormField`, and `Controller` without prop drilling:
+
 ```tsx
-export function [Module]FormBuilder() {
-    const { form, onSubmit, isLoading } = use[Module]();
-    return (
-        <Card>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <[Module]FormBasicInfoFields />
-                        <[Module]FormCardFooter />
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
-    );
+// [Module]Form.tsx — must render inside the Provider tree
+'use client'
+import { Form } from "@/components/ui/form";
+import { use[Module] } from "../hooks/use-[module]";
+
+export function [Module]Form({ children }: { children: React.ReactNode }) {
+    const { form } = use[Module]();
+    return <Form {...form}>{children}</Form>;
 }
 ```
+
+```tsx
+// [Module]Manager.tsx — Provider wraps Form wrapper
+<[Module]Provider webinar={webinar} initialItems={initialItems}>
+    <[Module]Form>
+        <[Module]FormBasicInfoFields />
+        <[Module]FormCardFooter />
+    </[Module]Form>
+</[Module]Provider>
+```
+
+If `useForm` lives directly in a leaf component (not shared via Provider), you can spread `<Form {...form}>` inline in that component without a wrapper.
+
+> **`useFormContext()` vs passing `form` as a prop:**
+> - Use `useFormContext<FormValues>()` when the component is always rendered inside the Form Wrapper tree — it avoids prop drilling and keeps components clean.
+> - Pass `form` as a prop only when the component must work outside any Provider/Form context (e.g., a reusable standalone component).
 
 ## 8. Page Integration
 
@@ -259,7 +276,33 @@ import { IfCan } from "@/iam/policy-context";
 <IfCan action="webinar:create"><Button>Create</Button></IfCan>
 ```
 
-## 10. Barrel Exports
+## 10. Scaffold Script
+
+Run this to generate a complete module skeleton from the terminal:
+
+```bash
+bash .claude/skills/architecture/scripts/scaffold.sh <module-name>
+# Example:
+bash .claude/skills/architecture/scripts/scaffold.sh discount
+```
+
+The script generates all 8 required files under `src/<module-name>/`:
+
+| File | What it contains |
+|---|---|
+| `service/type.d.ts` | `Dto`, `CreateDto`, `UpdateDto` stubs |
+| `service/schemas.ts` | Zod schema, `FormValues` type, `formDefault` |
+| `service/action.ts` | `create[Module]Action` with `actionClient` |
+| `context/[Module]Context.tsx` | Context type + `createContext` |
+| `provider/[Module]Provider.tsx` | Full Provider with `useForm`, `useAction`, state |
+| `hooks/use-[module].tsx` | Consumer hook with guard |
+| `[Module]Manager.tsx` | Entry point Manager |
+| `index.tsx` + `components/**` | Barrel exports |
+
+After scaffolding, fill in the TODOs in each file (DTOs, API endpoint, field mappings, form components).
+
+
+## 11. Barrel Exports
 
 Every component subdirectory has `index.tsx`:
 
