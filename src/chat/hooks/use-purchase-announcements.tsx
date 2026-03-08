@@ -14,22 +14,27 @@ export interface PurchaseAnnouncement {
 
 let audioCtx: AudioContext | null = null;
 
-// iOS/Safari requires AudioContext to be created/resumed from a user gesture.
-// We register these listeners at module load time so they fire on the very first
-// interaction, before any purchase announcement event could arrive.
-if (typeof window !== 'undefined') {
-  const unlockAudio = () => {
-    try {
-      if (!audioCtx) audioCtx = new AudioContext();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch {
-      // not available
+/**
+ * Called by the IVS player once its <video> element starts playing.
+ * Using createMediaElementSource links the video's AVFoundation audio session
+ * to the Web Audio graph, which prevents iOS from suspending the AudioContext
+ * while video is playing. The source node is connected straight to destination
+ * so the video audio still comes through normally.
+ */
+export function setSharedAudioContext(videoEl: HTMLVideoElement) {
+  try {
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
     }
-    document.removeEventListener('click', unlockAudio);
-    document.removeEventListener('touchstart', unlockAudio);
-  };
-  document.addEventListener('click', unlockAudio);
-  document.addEventListener('touchstart', unlockAudio);
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    // createMediaElementSource can only be called once per element; guard against that.
+    const source = audioCtx.createMediaElementSource(videoEl);
+    source.connect(audioCtx.destination);
+  } catch {
+    // not available or already attached
+  }
 }
 
 function playChingSound() {

@@ -9,6 +9,7 @@ import type {
   TextMetadataCue,
 } from "amazon-ivs-player";
 import { PlayerEventType, PlayerState as IvsPlayerState } from "amazon-ivs-player";
+import { setSharedAudioContext } from "@/chat/hooks/use-purchase-announcements";
 
 const START_BACKOFF = 800;
 const MAX_BACKOFF = 8000;
@@ -262,6 +263,10 @@ export function usePlayer({
         updateStats();
         hasPlayedRef.current = true;
         onPlaying?.();
+
+        // Link this video element's audio session to the shared Web Audio context
+        // so the purchase-announcement ching sound plays on iOS without being suspended.
+        if (v) setSharedAudioContext(v);
 
         // best-effort unmute (will succeed if user gesture exists)
         if (!mutedProp) {
