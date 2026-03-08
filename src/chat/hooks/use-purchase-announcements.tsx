@@ -43,7 +43,7 @@ export function setSharedAudioContext(videoEl: HTMLVideoElement) {
 //   2 = Level-Up Achievement
 //   3 = Stadium Fanfare + Crowd
 //   4 = Cash Register + Applause
-const SOUND_VARIANT: 1 | 2 | 3 | 4 = 1;
+const SOUND_VARIANT: 1 | 2 | 3 | 4 = 4;
 
 function playTone(
   ctx: AudioContext,
