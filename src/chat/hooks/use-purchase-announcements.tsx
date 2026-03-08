@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePlaybackMetadataEvent } from '@/emitter/playback';
 import { purchaseAnnouncementMetadataSchema } from '@/offer-client/service/schema';
 
@@ -47,15 +47,6 @@ export function usePurchaseAnnouncements(sessionId?: string) {
   const [announcements, setAnnouncements] = useState<PurchaseAnnouncement[]>([]);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const dismiss = useCallback((id: string) => {
-    const timer = timersRef.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      timersRef.current.delete(id);
-    }
-    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
-  }, []);
-
   useEffect(() => {
     return () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,5 +76,5 @@ export function usePurchaseAnnouncements(sessionId?: string) {
     },
   });
 
-  return { announcements, dismiss };
+  return { announcements };
 }

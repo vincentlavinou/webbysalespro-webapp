@@ -9,6 +9,7 @@ import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 import { useBroadcastConfiguration } from '@/broadcast/hooks';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
 import { usePurchaseAnnouncements, type PurchaseAnnouncement } from '@chat/hooks/use-purchase-announcements';
+import { PurchaseAnnouncementBubble } from './PurchaseAnnouncementBubble';
 
 import clsx from 'clsx';
 import { ChatComposer } from './ChatComposer';
@@ -113,11 +114,8 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
           <div className="px-2 py-2 space-y-2">
             {chatItems.map((item, idx) => {
               if (item.kind === 'purchase_announcement') {
-                const ann = item.data;
                 return (
-                  <div key={ann.id} className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-200">
-                    <span className="leading-snug">{ann.content}</span>
-                  </div>
+                  <PurchaseAnnouncementBubble key={item.data.id} announcement={item.data} />
                 );
               }
 
