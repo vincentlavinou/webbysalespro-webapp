@@ -113,7 +113,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
         ) : (
           <div className="px-2 py-2 space-y-2">
             {chatItems.map((item, idx) => {
-              if (item.kind === 'purchase_announcement') {
+              if (item.kind === 'cta_announcement') {
                 return (
                   <CtaAnnouncementBubble key={item.data.id} announcement={item.data} />
                 );
