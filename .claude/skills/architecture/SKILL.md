@@ -1,7 +1,6 @@
 ---
 name: architecture
-description: >
-  Architecture standards for the WebbySalesPro webapp. Use this skill whenever you're creating a new feature module, adding a new component, writing server actions, defining DTOs or Zod schemas, wiring up a Provider/Context/Hook, building form fields, making REST API calls, or generally following the Manager → Provider → Hook → Components pattern. Also invoke when scaffolding a new module, adding IAM authorization, handling loading states on buttons, or any time the user asks how something should be structured in this codebase.
+description: Architecture standards for the WebbySalesPro webapp. Use this skill whenever you're creating a new feature module, adding a new component, writing server actions, defining DTOs or Zod schemas, wiring up a Provider/Context/Hook, building form fields, making REST API calls, or generally following the Manager → Provider → Hook → Components pattern. Also invoke when scaffolding a new module, adding IAM authorization, handling loading states on buttons, or any time the user asks how something should be structured in this codebase.
 ---
 
 # Architecture Skill

@@ -210,7 +210,7 @@ export function usePurchaseAnnouncements(sessionId?: string) {
   }, []);
 
   usePlaybackMetadataEvent({
-    eventType: 'session:offer:purchase_announcement',
+    eventType: 'session:offer:cta_announcement',
     schema: purchaseAnnouncementMetadataSchema,
     sessionId,
     onEvent: (event) => {
