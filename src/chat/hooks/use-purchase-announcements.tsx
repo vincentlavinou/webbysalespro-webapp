@@ -14,29 +14,27 @@ export interface PurchaseAnnouncement {
 
 let audioCtx: AudioContext | null = null;
 
-function getAudioContext(): AudioContext | null {
-  try {
-    if (!audioCtx) {
-      audioCtx = new AudioContext();
-      // iOS/Safari requires audio context to be resumed from a user gesture.
-      // We listen for the first interaction so the context is ready when needed.
-      const resume = () => {
-        audioCtx?.resume();
-        document.removeEventListener('click', resume);
-        document.removeEventListener('touchstart', resume);
-      };
-      document.addEventListener('click', resume);
-      document.addEventListener('touchstart', resume);
+// iOS/Safari requires AudioContext to be created/resumed from a user gesture.
+// We register these listeners at module load time so they fire on the very first
+// interaction, before any purchase announcement event could arrive.
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    try {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch {
+      // not available
     }
-    return audioCtx;
-  } catch {
-    return null;
-  }
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+  };
+  document.addEventListener('click', unlockAudio);
+  document.addEventListener('touchstart', unlockAudio);
 }
 
 function playChingSound() {
   try {
-    const ctx = getAudioContext();
+    const ctx = audioCtx;
     if (!ctx || ctx.state === 'suspended') return;
 
     const playTone = (freq: number, startTime: number, duration: number, gain: number) => {
