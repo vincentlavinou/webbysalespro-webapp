@@ -183,8 +183,6 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
                 setMessages((prev) => prev.filter((message) => message.id !== event.messageId));
             }),
             room.addListener('userDisconnect', (event: DisconnectUserEvent) => {
-                console.log('[IVS Chat] User disconnected', event);
-                setMessages((prev) => prev.filter((message) => message.sender.userId !== event.userId));
                 if(userId === event.userId) {
                     manualDisconnectRef.current = true;
                     roomRef.current?.disconnect();
