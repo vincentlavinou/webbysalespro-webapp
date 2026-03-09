@@ -7,6 +7,7 @@ import { ChatMessages } from "@/chat/component/ChatMessages";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import WebbySalesProIVSPlayer from "./ivs/WebbySalesProIVSPlayer";
+import { AttendeeCountBadge } from "../attendee-count/components";
 
 interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -90,16 +91,19 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
             <header ref={headerRef} className="bg-black">
                 <div className="w-full aspect-video grid place-items-center text-sm text-white/80 relative">
                     {broadcast.stream ? (
-                        <WebbySalesProIVSPlayer
-                            src={broadcast.stream.config.playback_url}
-                            poster="/poster.jpg"
-                            autoPlay
-                            ariaLabel="Live Webinar Player"
-                            title={broadcast.webinar.title}
-                            artwork={broadcast.webinar.media
-                                .filter((m: WebinarMedia) => m.field_type === WebinarMediaFieldType.THUMBNAIL)
-                                .map((m: WebinarMedia) => ({ src: m.file_url }))}
-                        />
+                        <>
+                            <WebbySalesProIVSPlayer
+                                src={broadcast.stream.config.playback_url}
+                                poster="/poster.jpg"
+                                autoPlay
+                                ariaLabel="Live Webinar Player"
+                                title={broadcast.webinar.title}
+                                artwork={broadcast.webinar.media
+                                    .filter((m: WebinarMedia) => m.field_type === WebinarMediaFieldType.THUMBNAIL)
+                                    .map((m: WebinarMedia) => ({ src: m.file_url }))}
+                            />
+                            <AttendeeCountBadge />
+                        </>
                     ) : (
                         <div className="w-full h-full bg-black/80 grid place-items-center text-white">
                             Waiting for {title} to start...

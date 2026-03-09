@@ -8,7 +8,6 @@ import { usePlayer } from "./hooks/use-player";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
-// import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
 
 type Props = {
   src: string;
@@ -52,20 +51,11 @@ export default function WebbySalesProIVSPlayer({
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
-  // Background audio fallback (Option 1)
-//   const bgAudio = useBackgroundAudioPlayback(videoRef, {
-//     enabled: backgroundAudioEnabled,
-//     hlsUrl: src,
-//     onRestoreVideo: ivs.restoreToLive,
-//   });
-
   // Visibility resilience: prefer audio fallback when hidden
   const vis = useVisibilityResilience({
     enabled: true,
     hasPlayedRef: ivs.hasPlayedRef,
     restoreToLive: ivs.restoreToLive,
-    // onHiddenAudio: () => void bgAudio.toAudio(),
-    // onVisibleAudio: () => void bgAudio.toVideo(),
   });
 
   // Lock screen metadata once we’re playing

@@ -5,6 +5,7 @@ import { AttendeeBroadcastServiceToken } from "../service/type";
 import { WebinarLoadingView } from "./views/WebinarLoadingView";
 import AttendeeMobileLayout from "./AttendeeMobileLayout";
 import { AttendeeDesktopLayout } from "./AttendeeDesktopLayout";
+import { AttendeeCountProvider } from "../attendee-count/provider/AttendeeCountProvider";
 
 interface BroadcastUIProps {
   broadcast: AttendeeBroadcastServiceToken;
@@ -31,16 +32,20 @@ export const AttendeePlayerLayout = ({ accessToken, broadcast, title }: Broadcas
   if (!hasStream) return <WebinarLoadingView />;
 
   return (
-    <>
-      {isMobile ? <AttendeeMobileLayout 
-        broadcast={broadcast} 
+    <AttendeeCountProvider
+      sessionId={broadcast.session.id}
+      initialCount={broadcast.session.attendee_count}
+      initialVisible={broadcast.session.is_attendee_count_visible}
+    >
+      {isMobile ? <AttendeeMobileLayout
+        broadcast={broadcast}
         accessToken={accessToken}
-        title={title} 
-      /> : <AttendeeDesktopLayout 
-        broadcast={broadcast} 
+        title={title}
+      /> : <AttendeeDesktopLayout
+        broadcast={broadcast}
         accessToken={accessToken}
-        title={title} 
-        />}
-    </>
+        title={title}
+      />}
+    </AttendeeCountProvider>
   );
 };

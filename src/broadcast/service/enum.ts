@@ -21,5 +21,6 @@ export enum PlaybackMetadataEventType {
     OFFER = "webinar:offer:visibility",
     OFFER_SCARCITY = "session:offer:scarcity:update",
     SESSION = "webinar:session:update",
-    VIDEO_INJECTION = "webinar:video-injection:update"
+    VIDEO_INJECTION = "webinar:video-injection:update",
+    ATTENDEE_COUNT = "webinar:attendee_count:update"
 }
