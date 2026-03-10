@@ -273,8 +273,10 @@ export function usePlayer({
           try {
             p.setMuted(false);
             v.muted = false;
-            setIsMuted(false);
           } catch {}
+          // Always sync with actual element state — browser autoplay policy
+          // may silently keep the video muted even if no exception is thrown.
+          setIsMuted(v.muted);
         }
       };
 
