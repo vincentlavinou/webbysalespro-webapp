@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "webisalespro-bucket.s3.amazonaws.com",
       },
+      {
+        protocol: "https",
+        hostname: "media.webbysalespro.com",
+      },
     ],
   },
 };
