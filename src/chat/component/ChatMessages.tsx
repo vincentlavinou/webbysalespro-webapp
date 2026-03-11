@@ -70,11 +70,11 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
           <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
         </div>
       ) : chatItems.length === 0 ? (
-        <div className="p-3 text-sm text-muted-foreground">
+        <div className="px-3 py-3 text-sm text-muted-foreground">
           No messages yet
         </div>
       ) : (
-        <div className="px-1 py-2 space-y-1">
+        <div className="px-3 py-2 space-y-1">
           {chatItems.map((item, idx) => {
             if (item.kind === 'cta_announcement') {
               return (

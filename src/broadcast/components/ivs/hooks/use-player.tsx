@@ -16,6 +16,15 @@ const MAX_BACKOFF = 8000;
 const JITTER = 0.25;
 const RESTORE_COOLDOWN_MS = 3000;
 
+// iOS Safari requires a user gesture before any media plays with audio.
+// Attempting autoplay and catching the error causes timing issues where audio
+// never starts even after the user taps. Detect iOS and skip the attempt.
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 type Options = {
   src: string;
   autoPlay: boolean;
@@ -160,22 +169,28 @@ export function usePlayer({
     const p = playerRef.current;
     const v = videoRef.current;
     if (!p || !v) return;
-    
-    restoreToLive()
+
+    // Reload from live edge — IVS setRebufferToLive(true) ensures we land at the
+    // live edge on load. Do this before play() so the gesture covers the play call.
+    clearRetry();
+    backoffRef.current = START_BACKOFF;
+    p.load(src);
+
+    // Set desired mute state BEFORE play() within the user gesture context.
+    // Do NOT mute first then unmute — iOS may consume the gesture on the muted play.
+    const wantMuted = mutedProp;
+    p.setMuted(wantMuted);
+    v.muted = wantMuted;
+    setIsMuted(wantMuted);
 
     try {
-
-      v.muted = true;
-      // user gesture context -> safe to try unmute
-      if (!mutedProp) {
-        v.muted = false;
-        p.setMuted(false);
-        setIsMuted(false);
-      }
+      await v.play();
+      setAutoplayFailed(false);
     } catch {
-        
+      // Still blocked — keep the overlay up so user can try again
+      setAutoplayFailed(true);
     }
-  }, [videoRef, mutedProp, restoreToLive]);
+  }, [videoRef, mutedProp, src, clearRetry]);
 
   const tapToUnmute = useCallback(() => {
     const p = playerRef.current;
@@ -314,11 +329,18 @@ export function usePlayer({
       }
 
       if (autoPlay) {
-        try {
-          await v.play();
-          setAutoplayFailed(false);
-        } catch {
+        // On iOS, skip the autoplay attempt entirely — it will either play muted
+        // (no audio) or throw. Show the play gate immediately so the user's tap
+        // happens within a clean gesture context that iOS will honour with audio.
+        if (isIOS()) {
           setAutoplayFailed(true);
+        } else {
+          try {
+            await v.play();
+            setAutoplayFailed(false);
+          } catch {
+            setAutoplayFailed(true);
+          }
         }
       }
 
