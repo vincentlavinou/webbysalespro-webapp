@@ -342,6 +342,9 @@ export function usePlayer({
             setAutoplayFailed(true);
           }
         }
+      } else {
+        // No autoplay requested — always show the play gate so user initiates.
+        setAutoplayFailed(true);
       }
 
       cleanup = () => {

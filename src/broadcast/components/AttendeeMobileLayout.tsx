@@ -25,9 +25,7 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
     const [footerH, setFooterH] = useState(0);
 
     // Freeze a baseline viewport height that does NOT shrink with keyboard.
-    // Use a ref alongside state so updateHeights never reads a stale closure value.
     const [vhBase, setVhBase] = useState<number>(() => 500);
-    const vhBaseRef = useRef(500);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     // measure header/footer
@@ -54,18 +52,13 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
     // visualViewport handling:
     // - keep vhBase as the LARGEST height seen (ignores keyboard shrink)
     // - compute keyboardHeight as (vhBase - current visual height)
-    // vhBaseRef mirrors vhBase state so updateHeights never reads a stale closure.
     useEffect(() => {
         const vv = window.visualViewport;
 
         const updateHeights = () => {
             const currentVH = (vv?.height ?? window.innerHeight) - (vv?.offsetTop ?? 0);
-            const newBase = Math.max(vhBaseRef.current, currentVH);
-            if (newBase !== vhBaseRef.current) {
-                vhBaseRef.current = newBase;
-                setVhBase(newBase);
-            }
-            setKeyboardHeight(Math.max(0, vhBaseRef.current - currentVH));
+            setVhBase(prev => Math.max(prev, currentVH)); // freeze to largest
+            setKeyboardHeight(Math.max(0, (vhBase || currentVH) - currentVH));
         };
 
         updateHeights();
@@ -78,10 +71,10 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
             vv?.removeEventListener("scroll", updateHeights);
             window.removeEventListener("resize", updateHeights);
         };
-    }, []);
+    }, [vhBase]);
 
-    // Height between header and footer, accounting for keyboard lift.
-    const betweenHF = Math.max(0, vhBase - headerH - footerH - keyboardHeight);
+    // constant height between header and footer (doesn't shrink with keyboard)
+    const betweenHF = Math.max(0, vhBase - headerH - footerH);
 
     // scroll helpers
     const scrollToBottom = () => {
@@ -102,7 +95,6 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                             <WebbySalesProIVSPlayer
                                 src={broadcast.stream.config.playback_url}
                                 poster="/poster.jpg"
-                                autoPlay
                                 ariaLabel="Live Webinar Player"
                                 title={broadcast.webinar.title}
                                 artwork={broadcast.webinar.media
@@ -127,7 +119,7 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                     render={() => {
                         return (<>
 
-                            {/* MAIN: fixed height shrinks with keyboard; no horizontal padding so pinned banners reach edge */}
+                            {/* MAIN: fixed height that DOES NOT change with keyboard; no horizontal padding so pinned banners reach edge */}
                             <main
                                 ref={scrollRef}
                                 className="
@@ -144,11 +136,10 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                                 <ChatMessages scrollRef={scrollRef} autoStick={true} />
                             </main>
 
-                            {/* FOOTER: lifted above keyboard via bottom offset */}
+                            {/* FOOTER: fixed at bottom */}
                             <footer
                                 ref={footerRef}
-                                className="fixed inset-x-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur"
-                                style={{ bottom: keyboardHeight }}
+                                className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur"
                             >
                                 <ChatComposer/>
                             </footer>
