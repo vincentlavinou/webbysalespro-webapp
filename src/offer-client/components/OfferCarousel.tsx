@@ -6,6 +6,7 @@ import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { usePulseOnChange } from '@/hooks/use-pulse-on-change';
 import type { OfferSessionDto } from '../service/type';
 
 function getCurrencySymbol(code: string): string {
@@ -58,6 +59,11 @@ interface VisibleOfferProps {
 }
 
 function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
+  const scarcityControls = usePulseOnChange([
+    offer.display_percent_sold,
+    offer.display_available_count,
+  ]);
+
   const thumbnail = useMemo(
     () =>
       offer.offer.media.find(
@@ -187,10 +193,10 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
           ) : null}
 
           {hasScarcity && (
-            <div className="space-y-1">
+            <motion.div className="space-y-1" animate={scarcityControls}>
               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                 {scarcityDisplayType === "count" ? (
-                  <span className="font-medium">
+                  <span className="font-bold">
                     {availableCount !== null
                       ? `${availableCount} spot${availableCount !== 1 ? "s" : ""} left`
                       : "Spots filling up"}
@@ -201,7 +207,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
                       {totalSlots != null ? `${totalSlots} spots` : "Spots filling up"}
                     </span>
                     {percentSold !== null && (
-                      <span className="font-medium">
+                      <span className="font-bold">
                         {Math.round(percentSold)}% claimed
                         {totalSlots != null && ` • ${Math.max(0, Math.round(totalSlots * (1 - percentSold / 100)))} left`}
                       </span>
@@ -215,7 +221,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
                 style={progressTrackStyle}
                 indicatorStyle={progressIndicatorStyle}
               />
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

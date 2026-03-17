@@ -3,6 +3,8 @@
 import * as React from "react";
 import Image from "next/image";
 import { useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
+import { usePulseOnChange } from "@/hooks/use-pulse-on-change";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -136,6 +138,11 @@ export function SelectedOffer() {
     ? { backgroundColor: hexToRgba(accentColor, 0.2) }
     : undefined;
 
+  const scarcityControls = usePulseOnChange([
+    selectedOffer?.display_percent_sold,
+    selectedOffer?.display_available_count,
+  ]);
+
   if (!selectedOffer || !offer) return null;
 
   return (
@@ -222,10 +229,10 @@ export function SelectedOffer() {
           ) : null}
 
           {selectedOffer.scarcity_mode !== "none" && (
-            <div className="space-y-1">
+            <motion.div className="space-y-1" animate={scarcityControls}>
               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                 {(selectedOffer.display_type ?? "percentage") === "count" ? (
-                  <span className="font-medium">
+                  <span className="font-bold">
                     {selectedOffer.display_available_count != null
                       ? `${selectedOffer.display_available_count} spot${selectedOffer.display_available_count !== 1 ? "s" : ""} left`
                       : "Spots filling up"}
@@ -238,7 +245,7 @@ export function SelectedOffer() {
                         : "Spots filling up"}
                     </span>
                     {selectedOffer.display_percent_sold !== null && (
-                      <span className="font-medium">
+                      <span className="font-bold">
                         {Math.round(selectedOffer.display_percent_sold)}% claimed
                         {selectedOffer.quantity_total != null && ` • ${Math.max(0, Math.round(selectedOffer.quantity_total * (1 - selectedOffer.display_percent_sold / 100)))} left`}
                       </span>
@@ -252,7 +259,7 @@ export function SelectedOffer() {
                 style={progressTrackStyle}
                 indicatorStyle={progressIndicatorStyle}
               />
-            </div>
+            </motion.div>
           )}
         </div>
 

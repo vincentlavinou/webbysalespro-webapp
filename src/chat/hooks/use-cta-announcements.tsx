@@ -173,13 +173,6 @@ function playCashRegisterApplause(ctx: AudioContext) {
   playTone(ctx, 'sine', 1760, t + 0.08, 0.7, 0.35);
   playTone(ctx, 'sine', 2200, t + 0.08, 0.5, 0.18);
   playTone(ctx, 'sine', 3520, t + 0.08, 0.3, 0.08);
-  // Applause — rhythmic noise bursts simulating clapping
-  const clapOffsets = [1.0, 1.08, 1.16, 1.24, 1.35, 1.43, 1.51, 1.6, 1.7, 1.78];
-  clapOffsets.forEach((offset) => {
-    playNoise(ctx, t + offset, 0.07, 0.3, 800, 8000);
-  });
-  // Sustained applause wash underneath
-  playNoise(ctx, t + 1.0, 1.2, 0.2, 400, 4000);
 }
 
 function playChingSound() {
