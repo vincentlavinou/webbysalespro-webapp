@@ -6,6 +6,22 @@ import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback"
 import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "../service/schema";
 import { getOfferSessionsForAttendee } from "../service/action";
 
+function getExternalUrl(actionPayload: Record<string, unknown> | undefined): string | null {
+    if (!actionPayload) return null;
+    const keys = ["external_link", "external_url", "url", "link", "href", "cta_url"];
+    for (const key of keys) {
+        const value = actionPayload[key];
+        if (typeof value !== "string") continue;
+        const trimmed = value.trim();
+        if (!trimmed) continue;
+        try {
+            const url = new URL(trimmed);
+            if (url.protocol === "http:" || url.protocol === "https:") return url.toString();
+        } catch { /* ignore */ }
+    }
+    return null;
+}
+
 interface OfferSessionClientProviderProps {
     children: React.ReactNode
     sessionId: string,
@@ -127,6 +143,29 @@ export function OfferSessionClientProvider({
     }, [offers, selectedOffer, purchasedOffer, isCheckingOut, setView])
 
 
+    const handleOfferClick = useCallback(async (offer: OfferSessionDto) => {
+        const offerType = offer.offer.offer_type;
+
+        if (offerType === "purchase") {
+            setSelectedOffer(offer);
+            setIsCheckingOut(true);
+            await recordEvent("offer_shown", token, { offer_id: offer.offer.id });
+            return;
+        }
+
+        if (offerType === "external_link") {
+            const externalUrl = getExternalUrl(offer.offer.action_payload);
+            if (externalUrl) {
+                await recordEvent("offer_shown", token, { offer_id: offer.offer.id });
+                window.open(externalUrl, "_blank", "noopener,noreferrer");
+            }
+            return;
+        }
+
+        // schedule_call, complete_form — fall through to SelectedOffer view
+        setSelectedOffer(offer);
+    }, [token, recordEvent]);
+
     const resetView = () => {
         setIsCheckingOut(false);
         setSelectedOffer(undefined);
@@ -165,7 +204,8 @@ export function OfferSessionClientProvider({
             handleCheckoutSuccess,
             recordEvent,
             setIsCheckingOut,
-            closeSheetAfterPurchase
+            closeSheetAfterPurchase,
+            handleOfferClick
         }}>
             {children}
         </OfferSessionClientContext.Provider>

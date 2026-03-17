@@ -18,6 +18,7 @@ interface OfferSessionClientContextType {
     handleCheckoutSuccess: (ref: string) => void
     setIsCheckingOut: (value: boolean) => void
     closeSheetAfterPurchase: () => void
+    handleOfferClick: (offer: OfferSessionDto) => void
 }
 
 export const OfferSessionClientContext = createContext<OfferSessionClientContextType>({
@@ -32,5 +33,6 @@ export const OfferSessionClientContext = createContext<OfferSessionClientContext
     recordEvent: async () => { },
     handleCheckoutSuccess: () => {},
     setIsCheckingOut: () => {},
-    closeSheetAfterPurchase: () => {}
+    closeSheetAfterPurchase: () => {},
+    handleOfferClick: () => {}
 })

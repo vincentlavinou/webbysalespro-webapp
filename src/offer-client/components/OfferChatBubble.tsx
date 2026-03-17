@@ -11,7 +11,7 @@ export function OfferChatBubble() {
     const {
         view,
         offers,
-        setSelectedOffer
+        handleOfferClick
     } = useOfferSessionClient()
 
     const visibleOffers = offers.filter(
@@ -31,7 +31,7 @@ export function OfferChatBubble() {
                 if (visibleOffers.length === 0) return null;
                 return <OfferCarousel
                     offers={visibleOffers}
-                    onOfferClick={setSelectedOffer}
+                    onOfferClick={handleOfferClick}
                     />
             case "offer-selected":
                 return <SelectedOffer />
