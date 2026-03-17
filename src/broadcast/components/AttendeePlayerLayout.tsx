@@ -15,7 +15,10 @@ interface BroadcastUIProps {
 
 export const AttendeePlayerLayout = ({ accessToken, broadcast, title }: BroadcastUIProps) => {
 
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 1024;
+  });
 
   // --- Detect mobile vs desktop (lg breakpoint-ish) ---
   useEffect(() => {
