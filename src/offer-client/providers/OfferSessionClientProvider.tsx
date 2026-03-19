@@ -156,8 +156,8 @@ export function OfferSessionClientProvider({
         if (offerType === "external_link") {
             const externalUrl = getExternalUrl(offer.offer.action_payload);
             if (externalUrl) {
-                await recordEvent("offer_shown", token, { offer_id: offer.offer.id });
                 window.open(externalUrl, "_blank", "noopener,noreferrer");
+                recordEvent("offer_shown", token, { offer_id: offer.offer.id });
             }
             return;
         }
