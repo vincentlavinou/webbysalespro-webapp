@@ -60,7 +60,7 @@ export default function EarlyAccessRoomPage() {
     if (session.status === WebinarSessionStatus.IN_PROGRESS && broadcastServiceToken?.stream) {
       hasRedirectedRef.current = true
       setIsRedirecting(true)
-      router.replace(`/${session.id}/live?token=${token}`)
+      router.replace(`/${session.id}/live?token=${token}&ready=1`)
     }
   }, [session, token, router, broadcastServiceToken])
 

@@ -125,15 +125,9 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
 
         setSession(session);
 
-        switch (session.status) {
-            case WebinarSessionStatus.IN_PROGRESS:
-                setIsRedirecting(true);
-                router.replace(`/${sessionId}/live?token=${token}`);
-                break;
-            case WebinarSessionStatus.COMPLETED:
-                setIsRedirecting(true);
-                router.replace(`/${sessionId}/completed?token=${token}`);
-                break;
+        if (session.status === WebinarSessionStatus.COMPLETED) {
+            setIsRedirecting(true);
+            router.replace(`/${sessionId}/completed?token=${token}`);
         }
 
     }, [setSession, router, setIsRedirecting, sessionId])

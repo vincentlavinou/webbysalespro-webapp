@@ -15,47 +15,55 @@ interface Props {
     }>
     searchParams: Promise<{
         token: string
+        ready?: string
     }>
 }
 
 export default async function AttendeeLivePage({ params, searchParams }: Props) {
 
-    const token = (await searchParams).token
+    const resolvedSearch = await searchParams
+    const token = resolvedSearch.token
     if (!token) {
         notFound()
     }
 
     const sessionId = (await params).id
-    const session = await  getSessionAction({id: sessionId, token})
-    if(!isSessionPayload(session.data)) {
+
+    const [session, webinar] = await Promise.all([
+        getSessionAction({ id: sessionId, token }),
+        getWebinarFromSession({ id: sessionId, token }),
+    ])
+
+    if (!isSessionPayload(session.data)) {
         notFound()
     }
 
-    const webinar = await getWebinarFromSession({id: sessionId, token})
-
-    if(!isWebinarPayload(webinar.data)) {
+    if (!isWebinarPayload(webinar.data)) {
         notFound()
     }
 
-    if(session.data.status === WebinarSessionStatus.CANCELED) {
+    if (session.data.status === WebinarSessionStatus.CANCELED) {
         notFound()
     }
 
-    if(session.data.status === WebinarSessionStatus.COMPLETED) {
+    if (session.data.status === WebinarSessionStatus.COMPLETED) {
         redirect(`/${sessionId}/completed`)
     }
 
-    const waitingRoomOpensAt = DateTime.fromISO(session.data.scheduled_start, { zone: session.data.timezone })
+    // When the client navigates here after confirming the session is live (ready=1),
+    // skip the redirect-back-to-waiting-room to avoid a race between SSE and server state.
+    if (resolvedSearch.ready !== '1') {
+        const waitingRoomOpensAt = DateTime.fromISO(session.data.scheduled_start, { zone: session.data.timezone })
             .minus({ minutes: webinar.data.settings?.waiting_room_start_time || 15 });
 
+        if (session.data.status === WebinarSessionStatus.SCHEDULED &&
+            waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
+            redirect(`/${sessionId}/early-access-room?token=${token}`);
+        }
 
-    if (session.data.status === WebinarSessionStatus.SCHEDULED &&
-        waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
-        redirect(`/${sessionId}/early-access-room?token=${token}`);
-    }
-
-    if (session.data.status === WebinarSessionStatus.SCHEDULED) {
-        redirect(`/${sessionId}/waiting-room?token=${token}`);
+        if (session.data.status === WebinarSessionStatus.SCHEDULED) {
+            redirect(`/${sessionId}/waiting-room?token=${token}`);
+        }
     }
 
     const offers = await getOfferSessionsForAttendee({
