@@ -1,9 +1,14 @@
 import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "./schema";
+import { PaymentProviderType } from "@/paymentprovider/service/enum";
 
 export type StripeCheckout = {
   email: string;
   public_key: string;
   client_secret: string
+}
+
+export type FanbasisCheckoutDto = {
+  checkout_url: string;
 }
 
 export type OfferMediaDto = {
@@ -57,6 +62,7 @@ export type OfferMiniDto = {
   subheading: string;
   description: string;
   offer_type: "purchase" | "schedule_call" | "complete_form" | "external_link";
+  payment_provider: PaymentProviderType | null;
   action_payload: Record<string, unknown>;
   hide_after_conversion: boolean;
   price?: OfferPriceDto;

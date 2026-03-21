@@ -2,8 +2,10 @@
 import { OfferCarousel } from "./OfferCarousel";
 import { SelectedOffer } from "./SelectedOffer";
 import { StripeCheckout } from "../checkout/stripe";
+import { FanBasisCheckout } from "../checkout/fanbasis";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
 import { OfferView } from "../service/type";
+import { PaymentProviderType } from "@/paymentprovider/service/enum";
 import OfferPurchaseSuccess from "./OfferPurchaseSuccess";
 
 export function OfferChatBubble() {
@@ -11,6 +13,7 @@ export function OfferChatBubble() {
     const {
         view,
         offers,
+        selectedOffer,
         handleOfferClick
     } = useOfferSessionClient()
 
@@ -36,7 +39,9 @@ export function OfferChatBubble() {
             case "offer-selected":
                 return <SelectedOffer />
             case "offer-checkingout":
-                return <StripeCheckout />
+                return selectedOffer?.offer.payment_provider === PaymentProviderType.FAN_BASIS
+                    ? <FanBasisCheckout />
+                    : <StripeCheckout />
             case "offer-purchased":
                 return <OfferPurchaseSuccess />
             default:
