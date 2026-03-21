@@ -28,7 +28,6 @@ export type WebinarPresenter = {
     id: string
     name: string
     email: string
-    access_token?: string
     media?: WebinarMedia[]
     created_at: string
     updated_at: string
@@ -99,6 +98,10 @@ export type ConvertWebinarSeriesRequest = {
     type: Webinar
 }
 
+export type WebinarRegistrationSettings = {
+    registration_success_url?: string | null
+}
+
 export type Webinar = {
     id: string
     owner: number
@@ -110,6 +113,7 @@ export type Webinar = {
     broadcast: Broadcast
     media: WebinarMedia[]
     settings: WebinarSetting
+    registration_settings?: WebinarRegistrationSettings
     presenters: WebinarPresenter[]
     series?: WebinarSeries
     offers: WebinarOffer[]

@@ -73,7 +73,27 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         toast.error("Registration succeeded, but we couldn't fetch the latest session status.");
       }
 
-        router.push(`/${webinar.id}/register/success?session_id=${registeredSessionId}`);
+      const successUrl = webinar.registration_settings?.registration_success_url;
+      if (successUrl) {
+        const registeredSession = webinar.series?.sessions.find(s => s.id === registeredSessionId);
+        const params = new URLSearchParams();
+        params.set('wsp_lead_first_name', input.first_name);
+        params.set('wsp_lead_last_name', input.last_name);
+        if (input.phone) params.set('wsp_lead_phone', input.phone);
+        if (registeredSession) {
+          const dt = DateTime.fromISO(registeredSession.scheduled_start, { zone: registeredSession.timezone || 'utc' });
+          params.set('wsp_event_ts', String(Math.floor(dt.toMillis() / 1000)));
+          params.set('wsp_event_tz', registeredSession.timezone || 'utc');
+          params.set('wsp_next_event_date', dt.toFormat("cccc, d LLLL yyyy"));
+          params.set('wsp_next_event_time', dt.toFormat("h:mm a"));
+          params.set('wsp_next_event_timezone', `(GMT${dt.toFormat("ZZ")}) ${dt.toFormat("ZZZZZ")}`);
+        }
+        const separator = successUrl.includes('?') ? '&' : '?';
+        router.push(`${successUrl}${separator}email=${input.email}&${params.toString()}`);
+        return;
+      }
+
+      router.push(`/${webinar.id}/register/success?session_id=${registeredSessionId}`);
     },
     onError: ({error, input}) => {
       submitLockRef.current = false;
