@@ -7,6 +7,7 @@ export enum WebinarMediaFileType {
 
 export enum WebinarMediaFieldType {
     THUMBNAIL = 'thumbnail',
+    PROFILE = 'profile',
     HEADER = 'header',
     ICON = 'icon',
     VIDEO_INJECT = 'video_inject',

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, useAnimation } from "framer-motion";
 import { DateTime } from "luxon";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -138,8 +139,34 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
 
   const isBusy = isPending || isNavigating;
 
+  const pulseControls = useAnimation();
+  const isFieldFocusedRef = useRef(false);
+
+  useEffect(() => {
+    const pulse = () => {
+      if (isFieldFocusedRef.current) return;
+      pulseControls.start({
+        opacity: [1, 0.25, 1, 0.25, 1],
+        scale: [1, 1.03, 1, 1.03, 1],
+        transition: { duration: 0.75, ease: "easeInOut" },
+      });
+    };
+
+    const timers = [
+      setTimeout(pulse, 7000),
+      setTimeout(pulse, 32000),
+      setTimeout(pulse, 57000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [pulseControls]);
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      onFocus={() => { isFieldFocusedRef.current = true }}
+      onBlur={() => { isFieldFocusedRef.current = false }}
+      className="space-y-4"
+    >
       {/* Session picker */}
       <div className="flex flex-col gap-2">
         <Label className="text-gray-700">Select a Session</Label>
@@ -244,15 +271,17 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       </div>
 
       {/* Submit */}
-      <Button
-        type="submit"
-        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 text-base rounded-xl transition-colors mt-2"
-        disabled={isBusy || sessions.length === 0}
-        aria-busy={isBusy}
-      >
-        {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {isPending ? "Registering..." : isNavigating ? "Redirecting..." : "Reserve My Spot →"}
-      </Button>
+      <motion.div animate={pulseControls}>
+        <Button
+          type="submit"
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 text-base rounded-xl transition-colors mt-2"
+          disabled={isBusy || sessions.length === 0}
+          aria-busy={isBusy}
+        >
+          {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isPending ? "Registering..." : isNavigating ? "Redirecting..." : "Reserve My Spot →"}
+        </Button>
+      </motion.div>
 
     </form>
   );
