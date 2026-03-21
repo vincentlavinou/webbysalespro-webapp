@@ -3,7 +3,6 @@
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
 import type { FanbasisCheckoutDto } from '@/offer-client/service/type';
 import { AutoCheckout, CheckoutProvider } from '@fanbasis/checkout-react';
-import type { CheckoutSuccessData } from '@fanbasis/checkout-react';
 import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -49,7 +48,7 @@ export function FanBasisCheckout() {
     setCardError(null);
   };
 
-  const handleCardSuccess = (data: CheckoutSuccessData) => {
+  const handleCardSuccess = (data: {transactionId: string}) => {
     handleCheckoutSuccess(data.transactionId);
   };
 
@@ -123,10 +122,9 @@ export function FanBasisCheckout() {
           )}
           <CheckoutProvider config={checkoutConfig}>
             <AutoCheckout
-              autoOpen
               onSuccess={handleCardSuccess}
               onError={handleCardError}
-              containerOptions={{ width: '100%', height: '480px' }}
+              style={{ width: '100%', height: '480px' }}
             />
           </CheckoutProvider>
         </div>
