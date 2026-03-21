@@ -4,19 +4,26 @@
 
 ```tsx
 import { CheckoutProvider, AutoCheckout } from '@fanbasis/checkout-react';
+import { useTheme } from 'next-themes';
 
 function InlineCardCheckout({ payload, onSuccess, onError }) {
+  const { resolvedTheme } = useTheme();
+
   const config = {
-    merchantId: payload.merchantId,
-    productId: payload.productId,
-    checkoutSessionSecret: payload.checkoutSessionSecret,
+    creatorId: payload.fanbasis_creator_id,
+    productId: payload.fanbasis_product_id,
+    checkoutSessionSecret: payload.checkout_session_secret,
     environment: payload.environment ?? 'sandbox',
+    containerOptions: { width: '100%', height: '480px' },
+    theme: {
+      theme: (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark',
+      show_product_info: false,
+    },
   };
 
   return (
     <CheckoutProvider config={config}>
       <AutoCheckout
-        autoOpen={true}
         onSuccess={onSuccess}
         onError={onError}
       />
@@ -61,11 +68,18 @@ function FanbasisCheckout() {
     setMode(null); // let user retry
   };
 
+  const { resolvedTheme } = useTheme();
+
   const config = {
-    merchantId: payload?.merchantId ?? '',
-    productId: payload?.productId ?? '',
-    checkoutSessionSecret: payload?.checkoutSessionSecret ?? '',
+    creatorId: payload?.fanbasis_creator_id ?? '',
+    productId: payload?.fanbasis_product_id ?? '',
+    checkoutSessionSecret: payload?.checkout_session_secret ?? '',
     environment: payload?.environment ?? 'sandbox',
+    containerOptions: { width: '100%', height: '480px' },
+    theme: {
+      theme: (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark',
+      show_product_info: false,
+    },
   };
 
   return (
@@ -79,10 +93,9 @@ function FanbasisCheckout() {
       )}
 
       {/* Inline card checkout */}
-      {mode === 'card' && payload?.merchantId && (
+      {mode === 'card' && payload?.fanbasis_creator_id && (
         <CheckoutProvider config={config}>
           <AutoCheckout
-            autoOpen={true}
             onSuccess={handleSuccess}
             onError={handleError}
           />
@@ -158,21 +171,19 @@ function EventHandlingCheckout() {
 
 ```ts
 import { CheckoutConfig } from '@fanbasis/checkout-react';
+import type { FanbasisCheckoutDto } from '@/offer-client/service/type';
 
-type FanBasisPayload = {
-  merchantId: string;
-  productId: string;
-  checkoutSessionSecret: string;
-  environment?: 'sandbox' | 'production';
-  url?: string; // for financing options link
-};
-
-function buildCheckoutConfig(payload: FanBasisPayload): CheckoutConfig {
+function buildCheckoutConfig(payload: FanbasisCheckoutDto, isDark: boolean): CheckoutConfig {
   return {
-    merchantId: payload.merchantId,
-    productId: payload.productId,
-    checkoutSessionSecret: payload.checkoutSessionSecret,
+    creatorId: payload.fanbasis_creator_id,
+    productId: payload.fanbasis_product_id,
+    checkoutSessionSecret: payload.checkout_session_secret,
     environment: payload.environment ?? 'sandbox',
+    containerOptions: { width: '100%', height: '480px' },
+    theme: {
+      theme: isDark ? 'dark' : 'light',
+      show_product_info: false,
+    },
   };
 }
 ```

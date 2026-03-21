@@ -50,15 +50,14 @@ import { AutoCheckout } from '@fanbasis/checkout-react';
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `autoOpen` | `boolean` | Open checkout immediately on mount |
 | `onSuccess` | `(data: CheckoutSuccessData) => void` | Called on successful payment |
 | `onError` | `(error: Error) => void` | Called on payment failure |
 | `onOpen` | `() => void` | Called when checkout opens |
-| `containerOptions` | `ContainerOptions` | Width/height of the checkout container |
 | `loadingComponent` | `ReactNode` | Custom loading UI |
 | `errorComponent` | `ReactNode` | Custom error UI |
 | `className` | `string` | CSS class for container |
-| `style` | `CSSProperties` | Inline styles for container |
+
+> **Note:** `autoOpen` and `style` are **not** valid props. Sizing is controlled via `containerOptions` in `CheckoutConfig`. Use `className` for CSS-based sizing if needed.
 
 ---
 
@@ -70,7 +69,6 @@ Lower-level component — gives more control over display and behavior.
 import { Checkout } from '@fanbasis/checkout-react';
 
 <Checkout
-  containerOptions={{ width: '100%', height: '600px' }}
   onSuccess={(data) => {}}
   onError={(error) => {}}
 />
@@ -82,7 +80,6 @@ import { Checkout } from '@fanbasis/checkout-react';
 |------|------|-------------|
 | `onSuccess` | `(data: CheckoutSuccessData) => void` | Called on successful payment |
 | `onError` | `(error: Error) => void` | Called on payment failure |
-| `containerOptions` | `ContainerOptions` | Width/height of the checkout container |
 | `className` | `string` | CSS class for container |
 
 ---
@@ -119,19 +116,51 @@ const { open, close, isOpen, init, on, off } = useCheckout();
 ### `CheckoutConfig`
 
 ```ts
-import { CheckoutConfig } from '@fanbasis/checkout-react';
+interface CustomizationParams {
+  theme: 'light' | 'dark';
+  show_product_info: boolean;
+  product_layout: 'left' | 'above';
+  show_coupon_row: boolean;
+  accent_color: string;
+  background_color?: string;
+  label_color?: string;
+  input_background_color?: string;
+  product_text_color?: string;
+  heading_color?: string;
+  secondary_color?: string;
+  border_color?: string;
+  surface_color?: string;
+  billing_display_fields?: string;
+  billing_form_placement?: 'above' | 'left';
+  show_headings?: boolean;
+  show_powered_by?: boolean;
+}
 
-type CheckoutConfig = {
-  merchantId: string;
+interface RedirectSettings {
+  success_redirect_url?: string;
+  failure_redirect_url?: string;
+  always_redirect?: boolean;
+}
+
+interface CheckoutConfig {
+  creatorId: string;
   productId: string;
+  bumpProductIds?: string[];
+  couponCode?: string;
+  affiliateCode?: string;
   checkoutSessionSecret: string;
   environment: 'sandbox' | 'production';
-  theme?: {
-    theme?: 'light' | 'dark';
-    accent_color?: string;       // hex color
-    show_product_info?: boolean;
+  overrideBaseUrl?: string;
+  showAllAddons?: boolean;
+  metadata?: Record<string, string>;
+  theme?: CustomizationParams;
+  containerOptions?: {
+    width?: string;
+    height?: string;
   };
-};
+  redirectSettings?: RedirectSettings;
+  showSubmitButton?: boolean;
+}
 ```
 
 ### `CheckoutSuccessData`
@@ -141,15 +170,6 @@ type CheckoutSuccessData = {
   transactionId: string;
   amount: number;
   // additional fields may be present
-};
-```
-
-### `ContainerOptions`
-
-```ts
-type ContainerOptions = {
-  width?: string;   // e.g. '100%', '400px'
-  height?: string;  // e.g. '600px'
 };
 ```
 

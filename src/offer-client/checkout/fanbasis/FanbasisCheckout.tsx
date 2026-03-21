@@ -2,15 +2,17 @@
 
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
 import type { FanbasisCheckoutDto } from '@/offer-client/service/type';
-import { AutoCheckout, CheckoutProvider } from '@fanbasis/checkout-react';
+import { AutoCheckout, CheckoutConfig, CheckoutProvider } from '@fanbasis/checkout-react';
 import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 
 export function FanBasisCheckout() {
   const { token, selectedOffer, setIsCheckingOut, recordEvent, handleCheckoutSuccess } =
     useOfferSessionClient();
 
+  const { resolvedTheme } = useTheme();
   const [financing, setFinancing] = useState(false);
   const [cardMode, setCardMode] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -29,7 +31,20 @@ export function FanBasisCheckout() {
         productId: payload.fanbasis_product_id!,
         checkoutSessionSecret: payload.checkout_session_secret!,
         environment: isProduction ? ('production' as const) : ('sandbox' as const),
-      }
+        containerOptions: {
+          width: '100%',
+          height: '480px',
+        },
+        theme: {
+          theme: (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark',
+          show_product_info: false,
+          product_layout: 'above' as const,
+          show_coupon_row: false,
+          ...(selectedOffer?.offer.display?.accent_color?.trim()
+            ? { accent_color: selectedOffer.offer.display.accent_color.trim() }
+            : {}),
+        },
+      } as CheckoutConfig
     : null;
 
   const handleClose = async () => {
@@ -124,7 +139,6 @@ export function FanBasisCheckout() {
             <AutoCheckout
               onSuccess={handleCardSuccess}
               onError={handleCardError}
-              style={{ width: '100%', height: '480px' }}
             />
           </CheckoutProvider>
         </div>
