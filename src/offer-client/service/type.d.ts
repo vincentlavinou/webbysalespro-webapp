@@ -8,7 +8,10 @@ export type StripeCheckout = {
 }
 
 export type FanbasisCheckoutDto = {
-  checkout_url: string;
+  url?: string;                        // financing / external checkout link
+  fanbasis_product_id?: string;        // maps to productId in SDK
+  fanbasis_creator_id?: string;        // backend to add — maps to creatorId in SDK
+  checkout_session_secret?: string;    // backend to add — maps to checkoutSessionSecret in SDK
 }
 
 export type OfferMediaDto = {
@@ -64,6 +67,7 @@ export type OfferMiniDto = {
   offer_type: "purchase" | "schedule_call" | "complete_form" | "external_link";
   payment_provider: PaymentProviderType | null;
   action_payload: Record<string, unknown>;
+  is_production: boolean;
   hide_after_conversion: boolean;
   price?: OfferPriceDto;
   quantity?: OfferQuantityDto;

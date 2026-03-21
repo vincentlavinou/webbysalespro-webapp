@@ -1,28 +1,70 @@
 'use client';
 
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
-import { CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
+import type { FanbasisCheckoutDto } from '@/offer-client/service/type';
+import { AutoCheckout, CheckoutProvider } from '@fanbasis/checkout-react';
+import type { CheckoutSuccessData } from '@fanbasis/checkout-react';
+import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 
 export function FanBasisCheckout() {
-  const { token, selectedOffer, setIsCheckingOut, recordEvent } =
+  const { token, selectedOffer, setIsCheckingOut, recordEvent, handleCheckoutSuccess } =
     useOfferSessionClient();
+
   const [financing, setFinancing] = useState(false);
+  const [cardMode, setCardMode] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+
+  const payload = (selectedOffer?.offer.action_payload ?? {}) as FanbasisCheckoutDto;
+  const isProduction = selectedOffer?.offer.is_production ?? false;
+
+  const canUseCardCheckout =
+    !!payload.fanbasis_creator_id &&
+    !!payload.fanbasis_product_id &&
+    !!payload.checkout_session_secret;
+
+  const checkoutConfig = canUseCardCheckout
+    ? {
+        creatorId: payload.fanbasis_creator_id!,
+        productId: payload.fanbasis_product_id!,
+        checkoutSessionSecret: payload.checkout_session_secret!,
+        environment: isProduction ? ('production' as const) : ('sandbox' as const),
+      }
+    : null;
 
   const handleClose = async () => {
     await recordEvent('checkout_canceled', token);
     setIsCheckingOut(false);
   };
 
+  const handleCardClick = () => {
+    setCardError(null);
+    setCardMode(true);
+    recordEvent('checkout_started', token);
+  };
+
+  const handleCardBack = () => {
+    setCardMode(false);
+    setCardError(null);
+  };
+
+  const handleCardSuccess = (data: CheckoutSuccessData) => {
+    handleCheckoutSuccess(data.transactionId);
+  };
+
+  const handleCardError = (error: Error) => {
+    console.error('FanBasis card checkout error:', error);
+    setCardError('Payment failed. Please try again.');
+  };
+
   const handleFinancingClick = () => {
     if (!selectedOffer || financing) return;
-    const url = (selectedOffer.offer.action_payload as { url?: string })?.url;
+    const url = payload.url;
     if (!url) return;
     setFinancing(true);
     window.open(url, '_blank', 'noopener,noreferrer');
     recordEvent('checkout_started', token);
-    // Reset after a few seconds so the button recovers if they stay on the page
     setTimeout(() => setFinancing(false), 4000);
   };
 
@@ -37,10 +79,23 @@ export function FanBasisCheckout() {
       {/* Header */}
       <div className="flex items-start justify-between px-3 pt-3 pb-2">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Payment</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Secure checkout powered by FanBasis.
-          </p>
+          {cardMode ? (
+            <button
+              type="button"
+              onClick={handleCardBack}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back
+            </button>
+          ) : (
+            <>
+              <h3 className="text-sm font-semibold text-foreground">Payment</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Secure checkout powered by FanBasis.
+              </p>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           <Image src="/fanbasis_logo.png" alt="" width={16} height={16} />
@@ -60,36 +115,56 @@ export function FanBasisCheckout() {
         </div>
       </div>
 
-      {/* Options */}
-      <div className="px-3 pb-3 space-y-2">
-        <button
-          type="button"
-          disabled
-          className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 text-left cursor-not-allowed"
-        >
-          <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="flex-1 text-sm font-medium text-foreground">Credit/Debit Card</span>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            Coming soon
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleFinancingClick}
-          disabled={financing}
-          className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
-        >
-          {financing ? (
-            <Loader2 className="h-4 w-4 shrink-0 text-muted-foreground animate-spin" />
-          ) : (
-            <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+      {/* Inline card checkout */}
+      {cardMode && checkoutConfig ? (
+        <div className="px-3 pb-3">
+          {cardError && (
+            <p className="mb-2 text-xs text-destructive">{cardError}</p>
           )}
-          <span className="flex-1 text-sm font-medium text-foreground">
-            {financing ? 'Opening…' : 'More Financing Options'}
-          </span>
-        </button>
-      </div>
+          <CheckoutProvider config={checkoutConfig}>
+            <AutoCheckout
+              autoOpen
+              onSuccess={handleCardSuccess}
+              onError={handleCardError}
+              containerOptions={{ width: '100%', height: '480px' }}
+            />
+          </CheckoutProvider>
+        </div>
+      ) : (
+        /* Payment options */
+        <div className="px-3 pb-3 space-y-2">
+          <button
+            type="button"
+            onClick={handleCardClick}
+            disabled={!canUseCardCheckout}
+            className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+          >
+            <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="flex-1 text-sm font-medium text-foreground">Credit/Debit Card</span>
+            {!canUseCardCheckout && (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                Coming soon
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleFinancingClick}
+            disabled={financing}
+            className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+          >
+            {financing ? (
+              <Loader2 className="h-4 w-4 shrink-0 text-muted-foreground animate-spin" />
+            ) : (
+              <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+            <span className="flex-1 text-sm font-medium text-foreground">
+              {financing ? 'Opening…' : 'More Financing Options'}
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
