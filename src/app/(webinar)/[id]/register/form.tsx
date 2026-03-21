@@ -27,7 +27,7 @@ const attendeeSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Enter a valid email"),
-  phone: z.string().optional(),
+  phone: z.string().min(1, "Phone number is required"),
   session_id: z.string().uuid({ message: "Please select a session" }),
 });
 
@@ -139,109 +139,121 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   const isBusy = isPending || isNavigating;
 
   return (
-    <div>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className='flex flex-col gap-2'>
-            <Label>Select a Session</Label>
-            <Controller
-              name="session_id"
-              control={control}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a session" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sessions?.map((session) => {
-                      const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
-                      return (
-                        <SelectItem key={session.id} value={session.id}>
-                          <span className="flex items-center gap-2">
-                            {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
-                            {isLive && (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
-                                </span>
-                                LIVE
-                              </span>
-                            )}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Session picker */}
+      <div className="flex flex-col gap-2">
+        <Label className="text-gray-700">Select a Session</Label>
+        <Controller
+          name="session_id"
+          control={control}
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger className="w-full bg-white border-gray-200">
+                <SelectValue placeholder="Select a session" />
+              </SelectTrigger>
+              <SelectContent>
+                {sessions?.map((session) => {
+                  const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
+                  return (
+                    <SelectItem key={session.id} value={session.id}>
+                      <span className="flex items-center gap-2">
+                        {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
+                        {isLive && (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+                            </span>
+                            LIVE
                           </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.session_id && <p className="text-red-500 text-sm">{errors.session_id.message}</p>}
-        </div>
+                        )}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {errors.session_id && <p className="text-red-500 text-sm">{errors.session_id.message}</p>}
+      </div>
 
-        {/* First name */}
+      {/* First & Last name side-by-side */}
+      <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <Label htmlFor="first_name">First Name</Label>
+          <Label htmlFor="first_name" className="text-gray-700">First Name</Label>
           <Input
             id="first_name"
+            placeholder="Jane"
             {...register("first_name")}
             disabled={isBusy}
             autoComplete="given-name"
+            className="bg-white border-gray-200"
           />
           {errors.first_name && (
-            <p className="text-red-500 text-sm">{errors.first_name.message}</p>
+            <p className="text-red-500 text-xs">{errors.first_name.message}</p>
           )}
         </div>
-
-        {/* Last name */}
         <div className="flex flex-col gap-1">
-          <Label htmlFor="last_name">Last Name</Label>
+          <Label htmlFor="last_name" className="text-gray-700">Last Name</Label>
           <Input
             id="last_name"
+            placeholder="Doe"
             {...register("last_name")}
             disabled={isBusy}
             autoComplete="family-name"
+            className="bg-white border-gray-200"
           />
           {errors.last_name && (
-            <p className="text-red-500 text-sm">{errors.last_name.message}</p>
+            <p className="text-red-500 text-xs">{errors.last_name.message}</p>
           )}
         </div>
+      </div>
 
-        {/* Email */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            {...register("email")}
-            disabled={isBusy}
-            autoComplete="email"
-          />
-          {errors.email && (
-            <p className="text-red-500 text-sm">{errors.email.message}</p>
-          )}
-        </div>
+      {/* Email */}
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="email" className="text-gray-700">Email Address</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="jane@example.com"
+          {...register("email")}
+          disabled={isBusy}
+          autoComplete="email"
+          className="bg-white border-gray-200"
+        />
+        {errors.email && (
+          <p className="text-red-500 text-xs">{errors.email.message}</p>
+        )}
+      </div>
 
-        {/* Phone */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="phone">Phone (optional)</Label>
-          <Input
-            id="phone"
-            {...register("phone")}
-            disabled={isBusy}
-            autoComplete="tel"
-          />
-        </div>
+      {/* Phone */}
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="phone" className="text-gray-700">Phone</Label>
+        <Input
+          id="phone"
+          placeholder="+1 (555) 000-0000"
+          {...register("phone")}
+          disabled={isBusy}
+          autoComplete="tel"
+          className="bg-white border-gray-200"
+        />
+        {errors.phone && (
+          <p className="text-red-500 text-xs">{errors.phone.message}</p>
+        )}
+      </div>
 
-        <Button
-          type="submit"
-          className="bg-emerald-600"
-          disabled={isBusy || sessions.length === 0}
-          aria-busy={isBusy}
-        >
-          {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
-          {isPending ? "Registering..." : isNavigating ? "Redirecting..." : "Register"}
-        </Button>
-      </form>
-    </div>
+      {/* Submit */}
+      <Button
+        type="submit"
+        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 text-base rounded-xl transition-colors mt-2"
+        disabled={isBusy || sessions.length === 0}
+        aria-busy={isBusy}
+      >
+        {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isPending ? "Registering..." : isNavigating ? "Redirecting..." : "Reserve My Spot →"}
+      </Button>
+
+    </form>
   );
 };

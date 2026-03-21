@@ -39,7 +39,10 @@ export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) =
       <div className="flex justify-between items-center max-w-5xl mx-auto">
         <div>
           <p className="font-semibold px-1">
-            Upcoming Session: {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLL d @ t ZZZZ")}
+            Upcoming Session: {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d yyyy, h:mm a")}
+          </p>
+          <p className="text-xs md:text-sm px-1 opacity-90">
+            {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).offsetNameLong}
           </p>
         </div>
         <div className="font-mono  text-xs md:text-sm text-white bg-emerald-700  px-3 py-1 rounded-md">

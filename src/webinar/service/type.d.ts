@@ -29,6 +29,7 @@ export type WebinarPresenter = {
     name: string
     email: string
     access_token?: string
+    media?: WebinarMedia[]
     created_at: string
     updated_at: string
 }
