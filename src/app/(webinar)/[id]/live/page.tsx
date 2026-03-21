@@ -1,6 +1,6 @@
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getSessionAction, getWebinarFromSession } from "@/webinar/service/action";
 import { LiveContainer } from "@/broadcast/components/LiveContainer";
 import { getOfferSessionsForAttendee } from "@/offer-client/service/action";
@@ -46,37 +46,38 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
         notFound()
     }
 
-    if (session.data.status === WebinarSessionStatus.COMPLETED) {
-        redirect(`/${sessionId}/completed`)
-    }
-
-    // When the client navigates here after confirming the session is live (ready=1),
-    // skip the redirect-back-to-waiting-room to avoid a race between SSE and server state.
+    // Determine client-side redirect target (avoids mid-stream server redirect which breaks hydration)
+    // When ready=1 the client already confirmed the session is live — skip waiting-room redirect.
+    let clientRedirectTo: string | undefined
     if (resolvedSearch.ready !== '1') {
         const waitingRoomOpensAt = DateTime.fromISO(session.data.scheduled_start, { zone: session.data.timezone })
             .minus({ minutes: webinar.data.settings?.waiting_room_start_time || 15 });
 
-        if (session.data.status === WebinarSessionStatus.SCHEDULED &&
+        if (session.data.status === WebinarSessionStatus.COMPLETED) {
+            clientRedirectTo = `/${sessionId}/completed?token=${token}`
+        } else if (session.data.status === WebinarSessionStatus.SCHEDULED &&
             waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
-            redirect(`/${sessionId}/early-access-room?token=${token}`);
-        }
-
-        if (session.data.status === WebinarSessionStatus.SCHEDULED) {
-            redirect(`/${sessionId}/waiting-room?token=${token}`);
+            clientRedirectTo = `/${sessionId}/early-access-room?token=${token}`
+        } else if (session.data.status === WebinarSessionStatus.SCHEDULED) {
+            clientRedirectTo = `/${sessionId}/waiting-room?token=${token}`
         }
     }
 
-    const offers = await getOfferSessionsForAttendee({
-        sessionId: sessionId,
-        token: token
-    })
+    let offersData: import("@/offer-client/service/type").OfferSessionDto[] = []
+    try {
+        const offers = await getOfferSessionsForAttendee({ sessionId, token })
+        offersData = offers?.data ?? []
+    } catch {
+        // payment provider unavailable — render live without offers
+    }
 
     return (
     <LiveContainer
       sessionId={sessionId}
       accessToken={token}
       webinarTitle={webinar.data.title}
-      offers={offers.data || []}
+      offers={offersData}
+      clientRedirectTo={clientRedirectTo}
     />
   );
 }

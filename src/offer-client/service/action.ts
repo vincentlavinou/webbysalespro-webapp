@@ -28,7 +28,7 @@ export const getOfferSessionsForAttendee = actionClient
   .action(async ({ parsedInput: { token, sessionId } }) => {
     const response = await fetch(
       `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/?token=${token}`,
-      { method: "GET", headers: { "Content-Type": "application/json" } }
+      { method: "GET", headers: { "Content-Type": "application/json" }, cache: "no-store" }
     );
 
     const checkedResponse = await handleStatus(response);

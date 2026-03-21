@@ -34,6 +34,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     const [isRedirecting, setIsRedirecting] = useState(false);
 
     const searchParams = useSearchParams();
+    const attendeeToken = searchParams.get("token") || undefined;
     const router = useRouter();
     const { execute: getSession } = useAction(getSessionAction, {
         onSuccess: async ({ data, input }) => {
@@ -49,7 +50,6 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     // ---- Bootstrap service token + initial data ----
     useEffect(() => {
         mountedRef.current = true;
-        const attendeeToken = searchParams.get("token") || undefined;
 
         (async () => {
             if (!attendeeToken) return;
@@ -76,7 +76,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
             mountedRef.current = false;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, searchParams]);
+    }, [sessionId, attendeeToken]);
 
     // ---- Public event recorder ----
     const recordSessionEvent = useCallback(

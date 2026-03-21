@@ -1,16 +1,22 @@
 import Image from "next/image";
 import { CheckCircle2 } from "lucide-react";
-import { getWebinar } from "@/webinar/service";
+import { getWebinarFromSession } from "@/webinar/service/action";
 import { isWebinarPayload } from "@/webinar/service/guards";
 
 interface CompletedPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ token?: string }>;
 }
 
 export default async function CompletedPage(props: CompletedPageProps) {
-  const webinarId = (await props.params).id;
-  const webinar = await getWebinar(webinarId, { fresh: true });
-  const hasWebinar = isWebinarPayload(webinar);
+  const sessionId = (await props.params).id;
+  const token = (await props.searchParams).token;
+
+  const webinarResult = token
+    ? await getWebinarFromSession({ id: sessionId, token })
+    : null;
+  const webinar = webinarResult && isWebinarPayload(webinarResult.data) ? webinarResult.data : null;
+  const hasWebinar = webinar !== null;
 
   const thumbnail = hasWebinar
     ? webinar.media?.find((m) => m.file_type === "image" && m.field_type === "thumbnail")

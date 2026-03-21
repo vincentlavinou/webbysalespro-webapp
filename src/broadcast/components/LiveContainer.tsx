@@ -12,20 +12,29 @@ import { OfferSessionClientProvider } from "@/offer-client/providers/OfferSessio
 import { OfferSessionDto } from "@/offer-client/service/type";
 import { VideoInjectionPlayerProvider } from "@/video-injection";
 import { notifyErrorUiMessage } from "@/lib/notify";
+import { useRouter } from "next/navigation";
 
 type Props = {
   sessionId: string;
   accessToken: string;
   webinarTitle: string;
-  offers: OfferSessionDto[]
+  offers: OfferSessionDto[];
+  clientRedirectTo?: string;
 };
 
-export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: Props) {
+export function LiveContainer({ sessionId, accessToken, webinarTitle, offers, clientRedirectTo }: Props) {
   const [broadcastToken, setBroadcastToken] = useState<BroadcastServiceToken | null>(null);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const { recordEvent } = useWebinar()
   const { markRoom } = useSessionPresence(accessToken);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (clientRedirectTo) {
+      router.replace(clientRedirectTo);
+    }
+  }, [clientRedirectTo, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +62,10 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers }: 
       cancelled = true;
     };
   }, [sessionId, accessToken, retryCount, markRoom]);
+
+  if (clientRedirectTo) {
+    return <WaitingRoomShimmer title="Redirecting…" />;
+  }
 
   if (bootstrapError) {
     return (
