@@ -1,24 +1,29 @@
 'use client';
 
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
-import { CreditCard, ExternalLink, X } from 'lucide-react';
+import { CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
+import { useState } from 'react';
 
 export function FanBasisCheckout() {
   const { token, selectedOffer, setIsCheckingOut, recordEvent } =
     useOfferSessionClient();
+  const [financing, setFinancing] = useState(false);
 
   const handleClose = async () => {
     await recordEvent('checkout_canceled', token);
     setIsCheckingOut(false);
   };
 
-  const handleFinancingClick = async () => {
-    if (!selectedOffer) return;
+  const handleFinancingClick = () => {
+    if (!selectedOffer || financing) return;
     const url = (selectedOffer.offer.action_payload as { url?: string })?.url;
     if (!url) return;
-    await recordEvent('checkout_started', token);
+    setFinancing(true);
     window.open(url, '_blank', 'noopener,noreferrer');
+    recordEvent('checkout_started', token);
+    // Reset after a few seconds so the button recovers if they stay on the page
+    setTimeout(() => setFinancing(false), 4000);
   };
 
   return (
@@ -72,10 +77,17 @@ export function FanBasisCheckout() {
         <button
           type="button"
           onClick={handleFinancingClick}
-          className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors"
+          disabled={financing}
+          className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
         >
-          <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="flex-1 text-sm font-medium text-foreground">More Financing Options</span>
+          {financing ? (
+            <Loader2 className="h-4 w-4 shrink-0 text-muted-foreground animate-spin" />
+          ) : (
+            <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          <span className="flex-1 text-sm font-medium text-foreground">
+            {financing ? 'Opening…' : 'More Financing Options'}
+          </span>
         </button>
       </div>
     </div>
