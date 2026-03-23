@@ -91,18 +91,6 @@ export default function WebbySalesProIVSPlayer({
     externalModeRef: bgAudioModeRef,
   });
 
-  // Prime the audio element once the video is playing for the first time.
-  // By this point iOS has already unlocked the page for media playback (via the
-  // tap-to-play gesture on the video), so audio.play() works without another
-  // gesture. Delaying until here avoids loading two HLS streams on the first tap.
-  const hasPrimedRef = useRef(false);
-  useEffect(() => {
-    if (isPlaying && audioFallbackEnabled && !hasPrimedRef.current) {
-      hasPrimedRef.current = true;
-      void bgAudio.prime();
-    }
-  }, [isPlaying, audioFallbackEnabled, bgAudio]);
-
   // Visibility resilience: prefer audio fallback when hidden
   useVisibilityResilience({
     enabled: true,
@@ -125,6 +113,18 @@ export default function WebbySalesProIVSPlayer({
   const isPlaying = effectiveState === PlayerState.PLAYING;
   const isEnded = effectiveState === PlayerState.ENDED;
   const showStartGate = ivs.isPlayerReady && ivs.autoplayFailed && !isPlaying && !isEnded;
+
+  // Prime the audio element once the video is playing for the first time.
+  // By this point iOS has unlocked the page for media playback via the tap-to-play
+  // gesture, so audio.play() works without another gesture. Delaying until here
+  // avoids loading two HLS streams simultaneously on the first tap.
+  const hasPrimedRef = useRef(false);
+  useEffect(() => {
+    if (isPlaying && audioFallbackEnabled && !hasPrimedRef.current) {
+      hasPrimedRef.current = true;
+      void bgAudio.prime();
+    }
+  }, [isPlaying, audioFallbackEnabled, bgAudio]);
   const isLoading =
     !showStartGate &&
     (!ivs.isPlayerReady ||
