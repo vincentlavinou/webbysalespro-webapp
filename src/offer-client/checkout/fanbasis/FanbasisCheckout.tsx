@@ -8,6 +8,21 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { memo, useCallback, useMemo, useState } from 'react';
 
+const FANBASIS_ERROR_PATTERNS: Array<{ keywords: string[]; event: string }> = [
+  { keywords: ['insufficient funds'],       event: 'insufficient_funds' },
+  { keywords: ['contact your card issuer'], event: 'stolen_card' },
+  { keywords: ['repeated attempts'],        event: 'card_velocity_exceeded' },
+  { keywords: ['declined'],                 event: 'generic_decline' },
+];
+
+function parseFanbasisErrorEvent(message: string): string {
+  const lower = message.toLowerCase();
+  for (const { keywords, event } of FANBASIS_ERROR_PATTERNS) {
+    if (keywords.every(kw => lower.includes(kw))) return event;
+  }
+  return 'generic_decline';
+}
+
 interface FanbasisCardCheckoutProps {
   cardError: string | null;
   checkoutConfig: CheckoutConfig;
@@ -34,7 +49,7 @@ const FanbasisCardCheckout = memo(function FanbasisCardCheckout({
 });
 
 export function FanBasisCheckout() {
-  const { token, selectedOffer, setIsCheckingOut, recordEvent, handleCheckoutSuccess } =
+  const { token, selectedOffer, setIsCheckingOut, recordEvent, handleCheckoutSuccess, cancelCheckout } =
     useOfferSessionClient();
 
   const { resolvedTheme } = useTheme();
@@ -81,10 +96,7 @@ export function FanBasisCheckout() {
     resolvedTheme,
   ]);
 
-  const handleClose = useCallback(async () => {
-    await recordEvent('checkout_canceled', token);
-    setIsCheckingOut(false);
-  }, [recordEvent, setIsCheckingOut, token]);
+  const handleClose = cancelCheckout;
 
   const handleCardClick = useCallback(() => {
     setCardError(null);
@@ -101,10 +113,12 @@ export function FanBasisCheckout() {
     handleCheckoutSuccess(data.transactionId);
   }, [handleCheckoutSuccess]);
 
-  const handleCardError = useCallback((error: Error) => {
+  const handleCardError = useCallback(async (error: Error) => {
     console.error('FanBasis card checkout error:', error);
     setCardError('Payment failed. Please try again.');
-  }, []);
+    const eventName = parseFanbasisErrorEvent(error.message);
+    await recordEvent(eventName, token);
+  }, [recordEvent, token]);
 
   const handleFinancingClick = useCallback(() => {
     if (!selectedOffer || financing) return;
@@ -122,10 +136,11 @@ export function FanBasisCheckout() {
         'rounded-xl',
         'bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/75',
         'ring-1 ring-border/70 shadow-sm',
+        'flex flex-col',
       ].join(' ')}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between px-3 pt-3 pb-2">
+      {/* Header — sticky, never scrolls away */}
+      <div className="flex-none flex items-start justify-between px-3 pt-3 pb-2">
         <div>
           {cardMode ? (
             <button
@@ -163,6 +178,8 @@ export function FanBasisCheckout() {
         </div>
       </div>
 
+      {/* Scrollable body */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
       {/* Inline card checkout */}
       {cardMode && checkoutConfig ? (
         <FanbasisCardCheckout
@@ -206,6 +223,7 @@ export function FanBasisCheckout() {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }

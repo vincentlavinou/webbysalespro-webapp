@@ -20,7 +20,7 @@ function Spinner() {
 }
 
 export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFormProps) {
-  const { recordEvent, setIsCheckingOut } = useOfferSessionClient();
+  const { recordEvent, cancelCheckout } = useOfferSessionClient();
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -73,10 +73,7 @@ export function StripeCheckoutForm({ email, token, onSuccess }: StripeCheckoutFo
             disabled={loading}
             onClick={() => {
               setLoading(true);
-              recordEvent("checkout_canceled", token).then(() => {
-                setIsCheckingOut(false)
-                setLoading(false);
-              })
+              cancelCheckout().then(() => setLoading(false));
             }}
             className="
               absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md

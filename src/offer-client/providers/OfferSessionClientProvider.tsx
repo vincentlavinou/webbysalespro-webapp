@@ -177,6 +177,11 @@ export function OfferSessionClientProvider({
         setView("offers-hidden")
     },[setView])
 
+    const cancelCheckout = useCallback(async () => {
+        await recordEvent('checkout_canceled', token);
+        setIsCheckingOut(false);
+    }, [recordEvent, token]);
+
     const handleCheckoutSuccess = useCallback(async (ref: string) => {
         if (selectedOffer && selectedOffer.offer.price) {
             setPurchasedOffer({ offer: selectedOffer, ref: ref });
@@ -204,6 +209,7 @@ export function OfferSessionClientProvider({
             handleCheckoutSuccess,
             recordEvent,
             setIsCheckingOut,
+            cancelCheckout,
             closeSheetAfterPurchase,
             handleOfferClick
         }}>
