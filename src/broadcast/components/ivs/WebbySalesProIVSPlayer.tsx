@@ -60,9 +60,10 @@ export default function WebbySalesProIVSPlayer({
   const autoFullscreenRef = useRef(false);
   const fullscreenTransitionUntilRef = useRef(0);
   const mobileChromeTimerRef = useRef<number | null>(null);
-  // Only use the audio-element fallback on Safari/iOS where the video element
-  // gets suspended in the background. On other browsers the video keeps playing.
-  const audioFallbackEnabled = backgroundAudioEnabled && isSafariBrowser();
+  // Background audio fallback is temporarily disabled.
+  // Code is intact — restore to `backgroundAudioEnabled && isSafariBrowser()` to re-enable.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const audioFallbackEnabled = false;
   // Kept in sync synchronously by useBackgroundAudioPlayback so shouldPreventPause
   // always reads the correct mode even before React re-renders.
   const bgAudioModeRef = useRef<"video" | "audio">("video");
