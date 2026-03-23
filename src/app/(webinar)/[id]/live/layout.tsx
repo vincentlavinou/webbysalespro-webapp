@@ -1,4 +1,12 @@
+import type { Viewport } from "next";
 import { WebinarProvider } from "@/webinar/providers";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 interface LiveLayoutProps {
   children: React.ReactNode

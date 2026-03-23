@@ -15,6 +15,7 @@ const START_BACKOFF = 800;
 const MAX_BACKOFF = 8000;
 const JITTER = 0.25;
 const RESTORE_COOLDOWN_MS = 3000;
+const FORCE_RELOAD_COOLDOWN_MS = 1500;
 
 // iOS Safari requires a user gesture before any media plays with audio.
 // Attempting autoplay and catching the error causes timing issues where audio
@@ -65,6 +66,7 @@ export function usePlayer({
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffRef = useRef<number>(START_BACKOFF);
   const lastRestoreRef = useRef<number>(0);
+  const lastForcedReloadRef = useRef<number>(0);
 
   const hasPlayedRef = useRef(false);
 
@@ -128,12 +130,36 @@ export function usePlayer({
     } catch {}
   }, []);
 
-  const restoreToLive = useCallback(async () => {
+  const restoreToLive = useCallback(async (options?: { forceReload?: boolean }) => {
     const p = playerRef.current;
     const v = videoRef.current;
     if (!p || !v || disposedRef.current) return;
 
     const now = Date.now();
+    const forceReload = options?.forceReload ?? false;
+
+    if (forceReload) {
+      if (now - lastForcedReloadRef.current < FORCE_RELOAD_COOLDOWN_MS) return;
+      lastForcedReloadRef.current = now;
+
+      clearRetry();
+      backoffRef.current = START_BACKOFF;
+
+      try {
+        p.load(src);
+      } catch {
+        scheduleRetry();
+      }
+
+      try {
+        await v.play();
+        setAutoplayFailed(false);
+      } catch {
+        setAutoplayFailed(true);
+      }
+      return;
+    }
+
     if (now - lastRestoreRef.current < RESTORE_COOLDOWN_MS) return;
     lastRestoreRef.current = now;
 
@@ -168,7 +194,7 @@ export function usePlayer({
     } catch {
       setAutoplayFailed(true);
     }
-  }, [src, videoRef, clearRetry]);
+  }, [src, videoRef, clearRetry, scheduleRetry]);
 
   const handleManualPlay = useCallback(async () => {
     const p = playerRef.current;

@@ -74,7 +74,7 @@ export default function WebbySalesProIVSPlayer({
   }, [bgAudio.mode]);
 
   // Visibility resilience: prefer audio fallback when hidden
-  const vis = useVisibilityResilience({
+  useVisibilityResilience({
     enabled: true,
     hasPlayedRef: ivs.hasPlayedRef,
     shouldIgnoreVisibilityChange: () => Date.now() < fullscreenTransitionUntilRef.current,
@@ -310,6 +310,7 @@ export default function WebbySalesProIVSPlayer({
         onPointerUp={() => {
           revealMobileChrome();
         }}
+        style={{ touchAction: "manipulation" }}
       >
         <div className="aspect-video">
           <video
@@ -321,7 +322,7 @@ export default function WebbySalesProIVSPlayer({
             preload="auto"
             aria-label={ariaLabel}
             className={`h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
-            style={{ userSelect: "none" }}
+            style={{ userSelect: "none", touchAction: "manipulation" }}
           />
         </div>
 
@@ -352,18 +353,6 @@ export default function WebbySalesProIVSPlayer({
               <Expand className="h-3 w-3" />
               Rotate for fullscreen
             </span>
-          </div>
-        )}
-
-        {/* Return banner */}
-        {vis.showReturnBanner && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-            <div className="flex items-center gap-2 rounded-full bg-emerald-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-sm whitespace-nowrap">
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="currentColor" aria-hidden="true">
-                <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z" />
-              </svg>
-              Audio was playing while you were away
-            </div>
           </div>
         )}
 

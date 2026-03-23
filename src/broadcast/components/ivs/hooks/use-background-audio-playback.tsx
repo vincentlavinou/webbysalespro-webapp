@@ -1,15 +1,18 @@
 // components/ivs/hooks/use-background-audio-playback.tsx
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const LIVE_EDGE_SAFETY_GAP_SEC = 0.5;
+const LIVE_EDGE_DRIFT_TOLERANCE_SEC = 1.5;
+const LIVE_EDGE_CATCHUP_RATE = 1.03;
+const LIVE_EDGE_SYNC_INTERVAL_MS = 3000;
 
 type Options = {
   enabled?: boolean;
   hlsUrl: string | null;
   /** called when we return to visible and should restore live video */
-  onRestoreVideo?: () => Promise<void> | void;
+  onRestoreVideo?: (options?: { forceReload?: boolean }) => Promise<void> | void;
 };
 
 export function useBackgroundAudioPlayback(
@@ -27,6 +30,31 @@ export function useBackgroundAudioPlayback(
       audioRef.current = a;
     }
     return audioRef.current!;
+  }, []);
+
+  const keepAudioNearLive = useCallback((audio: HTMLAudioElement) => {
+    const ranges = audio.seekable;
+    if (ranges.length === 0) return;
+
+    const liveEdge = ranges.end(ranges.length - 1);
+    const target = Math.max(0, liveEdge - LIVE_EDGE_SAFETY_GAP_SEC);
+    const drift = target - audio.currentTime;
+
+    if (!Number.isFinite(drift)) return;
+
+    // Small drift: gently speed up instead of seeking.
+    if (drift > 0.35 && drift <= LIVE_EDGE_DRIFT_TOLERANCE_SEC) {
+      audio.playbackRate = LIVE_EDGE_CATCHUP_RATE;
+      return;
+    }
+
+    audio.playbackRate = 1;
+
+    if (drift > LIVE_EDGE_DRIFT_TOLERANCE_SEC || drift < -0.35) {
+      try {
+        audio.currentTime = target;
+      } catch {}
+    }
   }, []);
 
   const seekAudioNearLive = useCallback((
@@ -90,10 +118,12 @@ export function useBackgroundAudioPlayback(
     try {
       await a.play();
       seekAudioNearLive(a, fallbackTime);
+      keepAudioNearLive(a);
 
       if (a.seekable.length === 0) {
         const handleCanPlay = () => {
           seekAudioNearLive(a, fallbackTime);
+          keepAudioNearLive(a);
           a.removeEventListener("canplay", handleCanPlay);
           a.removeEventListener("loadedmetadata", handleCanPlay);
         };
@@ -112,7 +142,7 @@ export function useBackgroundAudioPlayback(
       // If Safari blocks, stay in video mode (it may still pause in background).
       setMode("video");
     }
-  }, [enabled, hlsUrl, ensureAudio, seekAudioNearLive, videoRef]);
+  }, [enabled, hlsUrl, ensureAudio, keepAudioNearLive, seekAudioNearLive, videoRef]);
 
   const toVideo = useCallback(async () => {
     const video = videoRef.current;
@@ -124,6 +154,7 @@ export function useBackgroundAudioPlayback(
     if (a && Number.isFinite(a.currentTime)) t = a.currentTime;
     if (a) {
       try {
+        a.playbackRate = 1;
         a.pause();
       } catch {}
     }
@@ -131,7 +162,7 @@ export function useBackgroundAudioPlayback(
     setMode("video");
 
     // Ask parent to restore video (usually reload to live edge)
-    await onRestoreVideo?.();
+    await onRestoreVideo?.({ forceReload: true });
 
     // Optional: try to nudge time close to where audio was.
     // For live, your restoreToLive() reload is typically better than seeking.
@@ -141,6 +172,29 @@ export function useBackgroundAudioPlayback(
       }
     } catch {}
   }, [videoRef, onRestoreVideo]);
+
+  useEffect(() => {
+    if (mode !== "audio") return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const syncToLive = () => keepAudioNearLive(audio);
+    syncToLive();
+
+    const interval = window.setInterval(syncToLive, LIVE_EDGE_SYNC_INTERVAL_MS);
+    audio.addEventListener("timeupdate", syncToLive);
+    audio.addEventListener("progress", syncToLive);
+    audio.addEventListener("canplay", syncToLive);
+
+    return () => {
+      window.clearInterval(interval);
+      audio.removeEventListener("timeupdate", syncToLive);
+      audio.removeEventListener("progress", syncToLive);
+      audio.removeEventListener("canplay", syncToLive);
+      audio.playbackRate = 1;
+    };
+  }, [keepAudioNearLive, mode]);
 
   return { mode, prime, toAudio, toVideo, getAudioEl: () => audioRef.current };
 }

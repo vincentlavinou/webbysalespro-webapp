@@ -1,7 +1,7 @@
 // components/ivs/hooks/use-visibility-resilience.ts
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 
 type Options = {
   enabled: boolean;
@@ -9,7 +9,7 @@ type Options = {
   isPiPRef?: React.RefObject<boolean>;
   enterPiP?: () => void;
   exitPiP?: () => void;
-  restoreToLive: () => Promise<void>;
+  restoreToLive: (options?: { forceReload?: boolean }) => Promise<void>;
   shouldIgnoreVisibilityChange?: () => boolean;
   // If provided, we’ll use audio fallback instead of PiP
   onHiddenAudio?: () => void;
@@ -27,29 +27,6 @@ export function useVisibilityResilience({
   onHiddenAudio,
   onVisibleAudio,
 }: Options) {
-  const [showReturnBanner, setShowReturnBanner] = useState(false);
-  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearBannerTimer = () => {
-    if (bannerTimerRef.current) {
-      clearTimeout(bannerTimerRef.current);
-      bannerTimerRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    clearBannerTimer();
-
-    if (!showReturnBanner) return;
-
-    bannerTimerRef.current = setTimeout(() => {
-      setShowReturnBanner(false);
-      bannerTimerRef.current = null;
-    }, 3000);
-
-    return clearBannerTimer;
-  }, [showReturnBanner]);
-
   useEffect(() => {
     if (!enabled) return;
 
@@ -68,10 +45,6 @@ export function useVisibilityResilience({
       }
 
       if (document.visibilityState === "visible") {
-        if (hasPlayedRef.current) {
-          setShowReturnBanner(true);
-        }
-
         // If in PiP, exit to inline; otherwise restore live.
         if (isPiPRef?.current) {
           exitPiP?.();
@@ -83,14 +56,13 @@ export function useVisibilityResilience({
           return;
         }
 
-        void restoreToLive();
+        void restoreToLive({ forceReload: true });
       }
     };
 
     document.addEventListener("visibilitychange", onVis);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
-      clearBannerTimer();
     };
   }, [
     enabled,
@@ -103,6 +75,4 @@ export function useVisibilityResilience({
     onHiddenAudio,
     onVisibleAudio,
   ]);
-
-  return { showReturnBanner };
 }
