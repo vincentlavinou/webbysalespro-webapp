@@ -38,6 +38,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoStick, setAutoStick] = useState(true);
+  const showOfferSheet = offerView === 'offer-checkingout' || offerView === 'offer-purchased';
 
   // Merge messages and announcements into a single time-ordered list
   const chatItems = useMemo<ChatItem[]>(() => {
@@ -76,7 +77,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
   }, [chatItems, autoStick, offerView]);
 
   return (
-    <div className={clsx("flex flex-col h-full rounded-md border shadow bg-background", className)}>
+    <div className={clsx("relative flex flex-col h-full rounded-md border shadow bg-background", className)}>
       {(connectionStatus === "connecting" || connectionStatus === "reconnecting" || connectionStatus === "error") && (
         <div className="border-b bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
           <div className="flex items-center justify-between gap-2">
@@ -148,26 +149,27 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
           )}
         </div>
 
-        <AnimatePresence>
-          {(offerView === 'offer-checkingout' || offerView === 'offer-purchased') && (
-            <motion.div
-              key="offer-sheet"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 32, stiffness: 300 }}
-              className="absolute inset-0 z-20 overflow-y-auto bg-background rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)]"
-            >
-              <OfferChatBubble />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Composer (controls + input) */}
       {!hideComposer && (
         <ChatComposer />
       )}
+
+      <AnimatePresence>
+        {showOfferSheet && (
+          <motion.div
+            key="offer-sheet"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 32, stiffness: 300 }}
+            className="absolute inset-x-0 bottom-0 z-40 min-h-[56%] max-h-[85%] overflow-y-auto rounded-t-xl bg-background shadow-[0_-4px_24px_rgba(0,0,0,0.12)]"
+          >
+            <OfferChatBubble />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

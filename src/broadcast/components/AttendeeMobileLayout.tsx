@@ -21,6 +21,7 @@ interface AttendeeMobileLayoutProps {
 export default function AttendeeMobileLayout({ accessToken, broadcast, title }: AttendeeMobileLayoutProps) {
 
     const { view: offerView } = useOfferSessionClient();
+    const showOfferSheet = offerView === 'offer-checkingout' || offerView === 'offer-purchased';
 
     const headerRef = useRef<HTMLDivElement | null>(null);
     const footerRef = useRef<HTMLDivElement | null>(null);
@@ -143,15 +144,15 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
 
                             {/* Slide-up checkout sheet — fixed between header and footer, never affects layout */}
                             <AnimatePresence>
-                                {(offerView === 'offer-checkingout' || offerView === 'offer-purchased') && (
+                                {showOfferSheet && (
                                     <motion.div
                                         key="offer-sheet-mobile"
                                         initial={{ y: '100%' }}
                                         animate={{ y: 0 }}
                                         exit={{ y: '100%' }}
                                         transition={{ type: 'spring', damping: 32, stiffness: 300 }}
-                                        className="fixed inset-x-0 z-20 overflow-y-auto bg-background rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
-                                        style={{ top: headerH, bottom: footerH }}
+                                        className="fixed inset-x-0 bottom-0 z-30 overflow-y-auto rounded-t-xl bg-background shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
+                                        style={{ top: Math.max(0, headerH - 24) }}
                                     >
                                         <OfferChatBubble />
                                     </motion.div>
