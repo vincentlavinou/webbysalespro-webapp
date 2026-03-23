@@ -3,6 +3,8 @@
 
 import { useCallback, useRef, useState } from "react";
 
+const LIVE_EDGE_SAFETY_GAP_SEC = 0.5;
+
 type Options = {
   enabled?: boolean;
   hlsUrl: string | null;
@@ -25,6 +27,27 @@ export function useBackgroundAudioPlayback(
       audioRef.current = a;
     }
     return audioRef.current!;
+  }, []);
+
+  const seekAudioNearLive = useCallback((
+    audio: HTMLAudioElement,
+    fallbackTime?: number
+  ) => {
+    const ranges = audio.seekable;
+    if (ranges.length > 0) {
+      const liveEdge = ranges.end(ranges.length - 1);
+      const target = Math.max(0, liveEdge - LIVE_EDGE_SAFETY_GAP_SEC);
+      try {
+        audio.currentTime = target;
+        return;
+      } catch {}
+    }
+
+    if (typeof fallbackTime === "number" && Number.isFinite(fallbackTime) && fallbackTime > 0) {
+      try {
+        audio.currentTime = fallbackTime;
+      } catch {}
+    }
   }, []);
 
   /**
@@ -61,14 +84,24 @@ export function useBackgroundAudioPlayback(
     if (a.src !== hlsUrl) a.src = hlsUrl;
     a.muted = false;
 
-    // Best-effort sync
-    const t = Number.isFinite(video.currentTime) ? video.currentTime : 0;
-    try {
-      a.currentTime = t;
-    } catch {}
+    const fallbackTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    seekAudioNearLive(a, fallbackTime);
 
     try {
       await a.play();
+      seekAudioNearLive(a, fallbackTime);
+
+      if (a.seekable.length === 0) {
+        const handleCanPlay = () => {
+          seekAudioNearLive(a, fallbackTime);
+          a.removeEventListener("canplay", handleCanPlay);
+          a.removeEventListener("loadedmetadata", handleCanPlay);
+        };
+
+        a.addEventListener("canplay", handleCanPlay);
+        a.addEventListener("loadedmetadata", handleCanPlay);
+      }
+
       setMode("audio");
 
       // Only pause the video element after the audio fallback is confirmed.
@@ -79,7 +112,7 @@ export function useBackgroundAudioPlayback(
       // If Safari blocks, stay in video mode (it may still pause in background).
       setMode("video");
     }
-  }, [enabled, hlsUrl, ensureAudio, videoRef]);
+  }, [enabled, hlsUrl, ensureAudio, seekAudioNearLive, videoRef]);
 
   const toVideo = useCallback(async () => {
     const video = videoRef.current;
