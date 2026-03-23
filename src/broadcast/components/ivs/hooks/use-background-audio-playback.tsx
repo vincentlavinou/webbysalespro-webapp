@@ -67,14 +67,14 @@ export function useBackgroundAudioPlayback(
       a.currentTime = t;
     } catch {}
 
-    // Pause video rendering (Safari tends to pause it anyway when hidden)
-    try {
-      video.pause();
-    } catch {}
-
     try {
       await a.play();
       setMode("audio");
+
+      // Only pause the video element after the audio fallback is confirmed.
+      try {
+        video.pause();
+      } catch {}
     } catch {
       // If Safari blocks, stay in video mode (it may still pause in background).
       setMode("video");

@@ -1,5 +1,6 @@
 "use client";
 
+import clsx from "clsx";
 import { Users } from "lucide-react";
 import { useAttendeeCount } from "../hooks/use-attendee-count";
 
@@ -18,13 +19,22 @@ function formatCount(n: number): string {
   return `${n}`
 }
 
-export function AttendeeCountBadge() {
+type AttendeeCountBadgeProps = {
+  className?: string;
+};
+
+export function AttendeeCountBadge({ className }: AttendeeCountBadgeProps) {
   const { count, visible } = useAttendeeCount();
 
   if (!visible) return null;
 
   return (
-    <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-xs font-medium text-white select-none pointer-events-none">
+    <div
+      className={clsx(
+        "absolute z-20 flex select-none items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-xs font-medium text-white pointer-events-none",
+        className ?? "top-2 left-2",
+      )}
+    >
       <Users className="size-3.5 shrink-0 text-red-400" />
       <span>{formatCount(count)}</span>
     </div>

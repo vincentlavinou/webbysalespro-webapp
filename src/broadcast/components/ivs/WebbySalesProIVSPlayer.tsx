@@ -1,7 +1,7 @@
 // components/ivs/IVSPlayer.tsx
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { PlayerState } from "amazon-ivs-player";
 import { Expand, Minimize2, PictureInPicture2 } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
@@ -42,6 +42,11 @@ export default function WebbySalesProIVSPlayer({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<HTMLDivElement | null>(null);
   const autoFullscreenRef = useRef(false);
+  const fullscreenTransitionUntilRef = useRef(0);
+  const mobileChromeTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const backgroundAudioModeRef = useRef<"video" | "audio">("video");
+  const [isTouchViewport, setIsTouchViewport] = useState(false);
+  const [showMobileChrome, setShowMobileChrome] = useState(false);
 
   const ivs = usePlayer({
     src,
@@ -52,6 +57,7 @@ export default function WebbySalesProIVSPlayer({
     onEnded: emitPlaybackEnded,
     onPlaying: emitPlaybackPlaying,
     keepAlive,
+    shouldPreventPause: () => !backgroundAudioEnabled || backgroundAudioModeRef.current !== "audio",
   });
 
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
@@ -63,10 +69,15 @@ export default function WebbySalesProIVSPlayer({
     onRestoreVideo: ivs.restoreToLive,
   });
 
+  useEffect(() => {
+    backgroundAudioModeRef.current = bgAudio.mode;
+  }, [bgAudio.mode]);
+
   // Visibility resilience: prefer audio fallback when hidden
   const vis = useVisibilityResilience({
     enabled: true,
     hasPlayedRef: ivs.hasPlayedRef,
+    shouldIgnoreVisibilityChange: () => Date.now() < fullscreenTransitionUntilRef.current,
     restoreToLive: ivs.restoreToLive,
     onHiddenAudio: backgroundAudioEnabled ? () => {
       void bgAudio.toAudio();
@@ -94,6 +105,46 @@ export default function WebbySalesProIVSPlayer({
   const shouldBlur = !isPlaying;
   const showUnmuteNudge = isPlaying && ivs.isMuted && !muted;
   const pip = usePiP(videoRef, ivs.restoreToLive);
+  const { restoreToLive, setAutoplayFailed } = ivs;
+
+  const clearMobileChromeTimer = useCallback(() => {
+    if (mobileChromeTimerRef.current) {
+      window.clearTimeout(mobileChromeTimerRef.current);
+      mobileChromeTimerRef.current = null;
+    }
+  }, []);
+
+  const revealMobileChrome = useCallback(() => {
+    if (!isTouchViewport) return;
+
+    setShowMobileChrome(true);
+    clearMobileChromeTimer();
+    mobileChromeTimerRef.current = window.setTimeout(() => {
+      setShowMobileChrome(false);
+      mobileChromeTimerRef.current = null;
+    }, 5000);
+  }, [clearMobileChromeTimer, isTouchViewport]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateViewportMode = () => {
+      const touchViewport = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
+      setIsTouchViewport(touchViewport);
+      setShowMobileChrome(current => (touchViewport ? current : true));
+      if (!touchViewport) {
+        clearMobileChromeTimer();
+      }
+    };
+
+    updateViewportMode();
+    window.addEventListener("resize", updateViewportMode);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportMode);
+      clearMobileChromeTimer();
+    };
+  }, [clearMobileChromeTimer]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -112,6 +163,22 @@ export default function WebbySalesProIVSPlayer({
 
     const isMobileViewport = () =>
       window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
+    const fullscreenVideo = videoRef.current;
+
+    const markFullscreenTransition = () => {
+      fullscreenTransitionUntilRef.current = Date.now() + 1500;
+    };
+
+    const isInFullscreen = () => {
+      const doc = document as FullscreenCapableDocument;
+      const video = videoRef.current as FullscreenCapableVideo | null;
+
+      return Boolean(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        video?.webkitDisplayingFullscreen,
+      );
+    };
 
     const enterFullscreen = async () => {
       const container = playerRef.current as FullscreenCapableElement | null;
@@ -119,7 +186,8 @@ export default function WebbySalesProIVSPlayer({
       if (!container || !video) return;
 
       try {
-        if (document.fullscreenElement) return;
+        if (isInFullscreen()) return;
+        markFullscreenTransition();
         if (container.requestFullscreen) {
           await container.requestFullscreen();
           autoFullscreenRef.current = true;
@@ -142,6 +210,7 @@ export default function WebbySalesProIVSPlayer({
       const video = videoRef.current as FullscreenCapableVideo | null;
 
       try {
+        markFullscreenTransition();
         if (doc.fullscreenElement) {
           await doc.exitFullscreen();
         } else if (doc.webkitFullscreenElement && doc.webkitExitFullscreen) {
@@ -153,6 +222,27 @@ export default function WebbySalesProIVSPlayer({
       } catch {}
     };
 
+    const resumeAfterFullscreenExit = () => {
+      if (isInFullscreen()) return;
+
+      markFullscreenTransition();
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      window.setTimeout(() => {
+        if (isInFullscreen() || !video.paused) return;
+
+        video.play()
+          .then(() => {
+            setAutoplayFailed(false);
+          })
+          .catch(() => {
+            void restoreToLive();
+          });
+      }, 150);
+    };
+
     const syncOrientationFullscreen = () => {
       if (!isMobileViewport()) return;
       const isLandscape = window.innerWidth > window.innerHeight;
@@ -162,9 +252,22 @@ export default function WebbySalesProIVSPlayer({
         return;
       }
 
-      if (autoFullscreenRef.current) {
+      if (autoFullscreenRef.current || isInFullscreen()) {
         void exitFullscreen();
         autoFullscreenRef.current = false;
+      }
+    };
+
+    const syncAutoFullscreenState = () => {
+      if (!isInFullscreen()) {
+        autoFullscreenRef.current = false;
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      syncAutoFullscreenState();
+      if (!isInFullscreen()) {
+        resumeAfterFullscreenExit();
       }
     };
 
@@ -172,12 +275,18 @@ export default function WebbySalesProIVSPlayer({
 
     window.addEventListener("resize", syncOrientationFullscreen);
     window.screen.orientation?.addEventListener?.("change", syncOrientationFullscreen);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange as EventListener);
+    fullscreenVideo?.addEventListener("webkitendfullscreen", resumeAfterFullscreenExit as EventListener);
 
     return () => {
       window.removeEventListener("resize", syncOrientationFullscreen);
       window.screen.orientation?.removeEventListener?.("change", syncOrientationFullscreen);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange as EventListener);
+      fullscreenVideo?.removeEventListener("webkitendfullscreen", resumeAfterFullscreenExit as EventListener);
     };
-  }, []);
+  }, [restoreToLive, setAutoplayFailed]);
 
   useMediaSession({
     active: isPlaying,
@@ -188,11 +297,20 @@ export default function WebbySalesProIVSPlayer({
     onPlay: () => {
       videoRef.current?.play().catch(() => {});
     },
+    onPause: () => {
+      videoRef.current?.play().catch(() => {});
+    },
   });
 
   return (
     <div className="w-full">
-      <div ref={playerRef} className="relative w-full overflow-hidden border bg-black shadow-sm">
+      <div
+        ref={playerRef}
+        className="relative w-full overflow-hidden border bg-black shadow-sm"
+        onPointerUp={() => {
+          revealMobileChrome();
+        }}
+      >
         <div className="aspect-video">
           <video
             ref={videoRef}
@@ -207,11 +325,12 @@ export default function WebbySalesProIVSPlayer({
           />
         </div>
 
-        {pip.isPiPSupported && (
+        {pip.isPiPSupported && (!isTouchViewport || showMobileChrome) && (
           <div className="absolute top-3 right-3 z-40">
             <button
               type="button"
               onClick={() => {
+                revealMobileChrome();
                 if (pip.isInPiP) {
                   pip.exitPiP();
                   return;
@@ -227,12 +346,14 @@ export default function WebbySalesProIVSPlayer({
           </div>
         )}
 
-        <div className="pointer-events-none absolute bottom-3 right-3 z-30 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white/85 backdrop-blur-sm lg:hidden">
-          <span className="inline-flex items-center gap-1.5">
-            <Expand className="h-3 w-3" />
-            Rotate for fullscreen
-          </span>
-        </div>
+        {isTouchViewport && showMobileChrome && (
+          <div className="pointer-events-none absolute bottom-3 right-3 z-30 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white/85 backdrop-blur-sm lg:hidden">
+            <span className="inline-flex items-center gap-1.5">
+              <Expand className="h-3 w-3" />
+              Rotate for fullscreen
+            </span>
+          </div>
+        )}
 
         {/* Return banner */}
         {vis.showReturnBanner && (

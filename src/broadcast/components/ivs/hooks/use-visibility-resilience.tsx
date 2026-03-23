@@ -10,6 +10,7 @@ type Options = {
   enterPiP?: () => void;
   exitPiP?: () => void;
   restoreToLive: () => Promise<void>;
+  shouldIgnoreVisibilityChange?: () => boolean;
   // If provided, we’ll use audio fallback instead of PiP
   onHiddenAudio?: () => void;
   onVisibleAudio?: () => void;
@@ -22,6 +23,7 @@ export function useVisibilityResilience({
   enterPiP,
   exitPiP,
   restoreToLive,
+  shouldIgnoreVisibilityChange,
   onHiddenAudio,
   onVisibleAudio,
 }: Options) {
@@ -36,9 +38,24 @@ export function useVisibilityResilience({
   };
 
   useEffect(() => {
+    clearBannerTimer();
+
+    if (!showReturnBanner) return;
+
+    bannerTimerRef.current = setTimeout(() => {
+      setShowReturnBanner(false);
+      bannerTimerRef.current = null;
+    }, 3000);
+
+    return clearBannerTimer;
+  }, [showReturnBanner]);
+
+  useEffect(() => {
     if (!enabled) return;
 
     const onVis = () => {
+      if (shouldIgnoreVisibilityChange?.()) return;
+
       if (document.visibilityState === "hidden") {
         // Prefer audio fallback (Option 1)
         if (hasPlayedRef.current && onHiddenAudio) {
@@ -53,8 +70,6 @@ export function useVisibilityResilience({
       if (document.visibilityState === "visible") {
         if (hasPlayedRef.current) {
           setShowReturnBanner(true);
-          clearBannerTimer();
-          bannerTimerRef.current = setTimeout(() => setShowReturnBanner(false), 4000);
         }
 
         // If in PiP, exit to inline; otherwise restore live.
@@ -77,7 +92,17 @@ export function useVisibilityResilience({
       document.removeEventListener("visibilitychange", onVis);
       clearBannerTimer();
     };
-  }, [enabled, hasPlayedRef, isPiPRef, enterPiP, exitPiP, restoreToLive, onHiddenAudio, onVisibleAudio]);
+  }, [
+    enabled,
+    hasPlayedRef,
+    isPiPRef,
+    enterPiP,
+    exitPiP,
+    restoreToLive,
+    shouldIgnoreVisibilityChange,
+    onHiddenAudio,
+    onVisibleAudio,
+  ]);
 
   return { showReturnBanner };
 }

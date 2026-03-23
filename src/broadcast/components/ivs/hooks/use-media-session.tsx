@@ -10,6 +10,7 @@ type Options = {
   poster?: string;
   artwork?: MediaImage[];
   onPlay?: () => void;
+  onPause?: () => void;
 };
 
 export function useMediaSession({
@@ -19,6 +20,7 @@ export function useMediaSession({
   poster,
   artwork,
   onPlay,
+  onPause,
 }: Options) {
   useEffect(() => {
     if (!active) return;
@@ -39,13 +41,14 @@ export function useMediaSession({
 
     navigator.mediaSession.playbackState = "playing";
     navigator.mediaSession.setActionHandler("play", () => onPlay?.());
-    navigator.mediaSession.setActionHandler("pause", null);
+    navigator.mediaSession.setActionHandler("pause", () => onPause?.());
 
     return () => {
       try {
         navigator.mediaSession.playbackState = "none";
         navigator.mediaSession.setActionHandler("play", null);
+        navigator.mediaSession.setActionHandler("pause", null);
       } catch {}
     };
-  }, [active, title, ariaLabel, poster, artwork, onPlay]);
+  }, [active, title, ariaLabel, poster, artwork, onPlay, onPause]);
 }

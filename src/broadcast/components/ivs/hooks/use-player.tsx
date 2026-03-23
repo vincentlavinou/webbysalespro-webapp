@@ -36,6 +36,8 @@ type Options = {
   onError?: (e: PlayerError) => void;
   /** Keep the player muted and re-play if the browser pauses it, so timed metadata cues keep firing while something else (e.g. video injection) is in the foreground. */
   keepAlive?: boolean;
+  /** Return false when a pause is intentional and should not be immediately reversed. */
+  shouldPreventPause?: () => boolean;
 };
 
 type StatsState = {
@@ -55,6 +57,7 @@ export function usePlayer({
   onPlaying,
   onError,
   keepAlive = false,
+  shouldPreventPause,
 }: Options) {
   const playerRef = useRef<Player | null>(null);
   const disposedRef = useRef(false);
@@ -205,9 +208,9 @@ export function usePlayer({
     } catch {}
   }, [videoRef]);
 
-  // When keepAlive is true (e.g. video injection overlay is active), force the
-  // player muted and re-play immediately if the browser suspends the video.
-  // This keeps currentTime advancing so IVS timed metadata cues keep firing.
+  // Live playback should not remain paused. Re-play on pause unless a caller
+  // explicitly marks the pause as intentional, such as a successful
+  // handoff from the video element to the background audio element.
   useEffect(() => {
     const p = playerRef.current;
     const v = videoRef.current;
@@ -217,23 +220,27 @@ export function usePlayer({
       p.setMuted(true);
       v.muted = true;
       setIsMuted(true);
-      // Resume if already paused without reloading the stream
-      if (v.paused) v.play().catch(() => {});
-
-      const onPause = () => {
-        if (disposedRef.current) return;
-        v.play().catch(() => {});
-      };
-
-      v.addEventListener("pause", onPause);
-      return () => v.removeEventListener("pause", onPause);
     }
 
-    // keepAlive turned off — restore mute state to match mutedProp
-    p.setMuted(mutedProp);
-    v.muted = mutedProp;
-    setIsMuted(mutedProp);
-  }, [keepAlive, mutedProp, videoRef]);
+    if (!keepAlive) {
+      p.setMuted(mutedProp);
+      v.muted = mutedProp;
+      setIsMuted(mutedProp);
+    }
+
+    if (v.paused && (shouldPreventPause?.() ?? true)) {
+      v.play().catch(() => {});
+    }
+
+    const onPause = () => {
+      if (disposedRef.current) return;
+      if (!(shouldPreventPause?.() ?? true)) return;
+      v.play().catch(() => {});
+    };
+
+    v.addEventListener("pause", onPause);
+    return () => v.removeEventListener("pause", onPause);
+  }, [keepAlive, mutedProp, shouldPreventPause, videoRef]);
 
   useEffect(() => {
     disposedRef.current = false;
