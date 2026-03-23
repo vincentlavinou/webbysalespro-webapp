@@ -428,8 +428,12 @@ export default function WebbySalesProIVSPlayer({
             <button
               type="button"
               onClick={async () => {
+                // Dismiss the overlay immediately — don't wait for IVS internals.
+                // On iOS, p.load() + v.play() can race and temporarily set
+                // autoplayFailed=true again, keeping the overlay visible even
+                // though playback is starting fine underneath.
+                ivs.setAutoplayFailed(false);
                 await ivs.handleManualPlay();
-                // Audio primes via useEffect once isPlaying becomes true.
               }}
               className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
