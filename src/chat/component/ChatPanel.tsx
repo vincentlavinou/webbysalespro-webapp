@@ -15,6 +15,7 @@ import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
 import clsx from 'clsx';
 import { ChatComposer } from './ChatComposer';
 import { Button } from '@/components/ui/button';
+import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
 
 type ChatItem =
   | { kind: 'message'; data: ChatMessage; time: number }
@@ -28,6 +29,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
   const { connect, filteredMessages, connected, chatConfig, connectionStatus, reconnectAttempt, reconnectDelayMs, reconnectNow } = useChat();
+  const { view: offerView } = useOfferSessionClient();
   const { userId } = useBroadcastUser();
   const { sessionId } = useBroadcastConfiguration();
   const { announcements } = useCtaAnnouncements(sessionId);
@@ -69,7 +71,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
     if (autoStick) {
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
-  }, [chatItems, autoStick]);
+  }, [chatItems, autoStick, offerView]);
 
   return (
     <div className={clsx("flex flex-col h-full rounded-md border shadow bg-background", className)}>

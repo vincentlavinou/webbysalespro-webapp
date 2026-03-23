@@ -11,6 +11,7 @@ import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 import { useBroadcastConfiguration } from '@/broadcast/hooks';
 import { useCtaAnnouncements, type CtaAnnouncement } from '@chat/hooks/use-cta-announcements';
+import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
 
 type ChatItem =
   | { kind: 'message'; data: ChatMessage; time: number }
@@ -23,6 +24,7 @@ interface ChatMessagesProps {
 
 export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
   const { connect, filteredMessages, connected, chatConfig } = useChat();
+  const { view: offerView } = useOfferSessionClient();
   const { userId } = useBroadcastUser();
   const { sessionId } = useBroadcastConfiguration();
   const { announcements } = useCtaAnnouncements(sessionId);
@@ -53,7 +55,7 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
     const el = scrollRef.current;
     if (!el || !autoStick) return;
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  }, [chatItems, autoStick, scrollRef]);
+  }, [chatItems, autoStick, scrollRef, offerView]);
 
   const pinnedAnnouncements = chatConfig?.pinned_announcements ?? [];
   const chatDisabled = chatConfig?.is_enabled === false;

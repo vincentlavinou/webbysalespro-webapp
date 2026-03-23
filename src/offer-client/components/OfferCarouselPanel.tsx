@@ -13,7 +13,7 @@ export function OfferCarouselPanel() {
     if (view === 'offers-hidden' || visibleOffers.length === 0) return null;
 
     return (
-        <div className="px-3 py-2 border-b">
+        <div className="px-3 py-2 border-b bg-muted">
             <OfferCarousel offers={visibleOffers} onOfferClick={handleOfferClick} />
         </div>
     );
