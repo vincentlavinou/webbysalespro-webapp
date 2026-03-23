@@ -49,7 +49,7 @@ const FanbasisCardCheckout = memo(function FanbasisCardCheckout({
 });
 
 export function FanBasisCheckout() {
-  const { token, selectedOffer, setIsCheckingOut, recordEvent, handleCheckoutSuccess, cancelCheckout } =
+  const { token, selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
     useOfferSessionClient();
 
   const { resolvedTheme } = useTheme();
