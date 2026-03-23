@@ -9,7 +9,7 @@ import { usePlayer } from "./hooks/use-player";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
-import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
+// import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
 import { usePiP } from "./hooks/use-pip";
 
 type Props = {
@@ -44,10 +44,10 @@ export default function WebbySalesProIVSPlayer({
   const fullscreenTransitionUntilRef = useRef(0);
   const mobileChromeTimerRef = useRef<number | null>(null);
   // Background audio fallback is temporarily disabled.
-  const audioFallbackEnabled = false;
+  // const audioFallbackEnabled = false;
   // Kept in sync synchronously by useBackgroundAudioPlayback so shouldPreventPause
   // always reads the correct mode even before React re-renders.
-  const bgAudioModeRef = useRef<"video" | "audio">("video");
+  // const bgAudioModeRef = useRef<"video" | "audio">("video");
   const [isTouchViewport, setIsTouchViewport] = useState(false);
   const [showMobileChrome, setShowMobileChrome] = useState(false);
 
@@ -60,32 +60,25 @@ export default function WebbySalesProIVSPlayer({
     onEnded: emitPlaybackEnded,
     onPlaying: emitPlaybackPlaying,
     keepAlive,
-    shouldPreventPause: () => !audioFallbackEnabled || bgAudioModeRef.current !== "audio",
+    shouldPreventPause: () => true,
   });
 
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
-  const bgAudio = useBackgroundAudioPlayback(videoRef, {
-    enabled: audioFallbackEnabled,
-    hlsUrl: src,
-    onRestoreVideo: ivs.restoreToLive,
-    externalModeRef: bgAudioModeRef,
-  });
+  // const bgAudio = useBackgroundAudioPlayback(videoRef, {
+  //   enabled: audioFallbackEnabled,
+  //   hlsUrl: src,
+  //   onRestoreVideo: ivs.restoreToLive,
+  //   externalModeRef: bgAudioModeRef,
+  // });
 
   // Visibility resilience: prefer audio fallback when hidden
   useVisibilityResilience({
     enabled: true,
     hasPlayedRef: ivs.hasPlayedRef,
     shouldIgnoreVisibilityChange: () => Date.now() < fullscreenTransitionUntilRef.current,
-    restoreToLive: ivs.restoreToLive,
-    onHiddenAudio: audioFallbackEnabled ? () => {
-      // toAudio is now synchronous — no void needed, completes before iOS suspends.
-      bgAudio.toAudio();
-    } : undefined,
-    onVisibleAudio: audioFallbackEnabled ? () => {
-      void bgAudio.toVideo();
-    } : undefined,
+    restoreToLive: ivs.restoreToLive
   });
 
   // Lock screen metadata once we’re playing
@@ -100,13 +93,13 @@ export default function WebbySalesProIVSPlayer({
   // By this point iOS has unlocked the page for media playback via the tap-to-play
   // gesture, so audio.play() works without another gesture. Delaying until here
   // avoids loading two HLS streams simultaneously on the first tap.
-  const hasPrimedRef = useRef(false);
-  useEffect(() => {
-    if (isPlaying && audioFallbackEnabled && !hasPrimedRef.current) {
-      hasPrimedRef.current = true;
-      void bgAudio.prime();
-    }
-  }, [isPlaying, audioFallbackEnabled, bgAudio]);
+  // const hasPrimedRef = useRef(false);
+  // useEffect(() => {
+  //   if (isPlaying && audioFallbackEnabled && !hasPrimedRef.current) {
+  //     hasPrimedRef.current = true;
+  //     void bgAudio.prime();
+  //   }
+  // }, [isPlaying, audioFallbackEnabled, bgAudio]);
   const isLoading =
     !showStartGate &&
     (!ivs.isPlayerReady ||
@@ -304,30 +297,32 @@ export default function WebbySalesProIVSPlayer({
   // Keep the media session active whenever audio is audible — either the video
   // element is playing, or we're in audio-fallback mode (background tab/locked screen).
   // Without this, iOS drops the Control Center widget the moment the video pauses.
-  const isAudioActive = bgAudio.mode === "audio";
+  // const isAudioActive = bgAudio.mode === "audio";
   useMediaSession({
-    active: isPlaying || isAudioActive,
+    active: isPlaying, // || isAudioActive,
     title,
     ariaLabel,
     poster,
     artwork,
     onPlay: () => {
-      if (isAudioActive) {
-        // Resume background audio from Control Center.
-        const a = bgAudio.getAudioEl();
-        if (a?.paused) a.play().catch(() => {});
-      } else {
-        videoRef.current?.play().catch(() => {});
-      }
+      // if (isAudioActive) {
+      //   // Resume background audio from Control Center.
+      //   const a = bgAudio.getAudioEl();
+      //   if (a?.paused) a.play().catch(() => {});
+      // } else {
+       
+      // }
+       videoRef.current?.play().catch(() => {});
     },
     onPause: () => {
       // Live stream — prevent pausing. Re-play whichever element is active.
-      if (isAudioActive) {
-        const a = bgAudio.getAudioEl();
-        if (a?.paused) a.play().catch(() => {});
-      } else {
-        videoRef.current?.play().catch(() => {});
-      }
+      // if (isAudioActive) {
+      //   const a = bgAudio.getAudioEl();
+      //   if (a?.paused) a.play().catch(() => {});
+      // } else {
+        
+      // }
+      videoRef.current?.play().catch(() => {});
     },
   });
 
