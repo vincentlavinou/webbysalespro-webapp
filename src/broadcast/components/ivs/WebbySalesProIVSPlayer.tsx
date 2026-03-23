@@ -43,7 +43,7 @@ export default function WebbySalesProIVSPlayer({
   const playerRef = useRef<HTMLDivElement | null>(null);
   const autoFullscreenRef = useRef(false);
   const fullscreenTransitionUntilRef = useRef(0);
-  const mobileChromeTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const mobileChromeTimerRef = useRef<number | null>(null);
   const backgroundAudioModeRef = useRef<"video" | "audio">("video");
   const [isTouchViewport, setIsTouchViewport] = useState(false);
   const [showMobileChrome, setShowMobileChrome] = useState(false);
