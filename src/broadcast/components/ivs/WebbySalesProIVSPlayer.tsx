@@ -12,6 +12,22 @@ import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
 import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
 import { usePiP } from "./hooks/use-pip";
 
+/**
+ * Returns true on iOS and macOS Safari — the only environments where the browser
+ * suspends the video element when the tab is hidden or the screen is locked.
+ * On Chrome/Firefox/Edge the video element keeps its audio track alive, so no
+ * fallback is needed.
+ */
+function isSafariBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return (
+    /iP(hone|ad|od)/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
+    (/Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua))
+  );
+}
+
 type Props = {
   src: string;
   poster?: string;
@@ -44,7 +60,12 @@ export default function WebbySalesProIVSPlayer({
   const autoFullscreenRef = useRef(false);
   const fullscreenTransitionUntilRef = useRef(0);
   const mobileChromeTimerRef = useRef<number | null>(null);
-  const backgroundAudioModeRef = useRef<"video" | "audio">("video");
+  // Only use the audio-element fallback on Safari/iOS where the video element
+  // gets suspended in the background. On other browsers the video keeps playing.
+  const audioFallbackEnabled = backgroundAudioEnabled && isSafariBrowser();
+  // Kept in sync synchronously by useBackgroundAudioPlayback so shouldPreventPause
+  // always reads the correct mode even before React re-renders.
+  const bgAudioModeRef = useRef<"video" | "audio">("video");
   const [isTouchViewport, setIsTouchViewport] = useState(false);
   const [showMobileChrome, setShowMobileChrome] = useState(false);
 
@@ -57,21 +78,18 @@ export default function WebbySalesProIVSPlayer({
     onEnded: emitPlaybackEnded,
     onPlaying: emitPlaybackPlaying,
     keepAlive,
-    shouldPreventPause: () => !backgroundAudioEnabled || backgroundAudioModeRef.current !== "audio",
+    shouldPreventPause: () => !audioFallbackEnabled || bgAudioModeRef.current !== "audio",
   });
 
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
   const bgAudio = useBackgroundAudioPlayback(videoRef, {
-    enabled: backgroundAudioEnabled,
+    enabled: audioFallbackEnabled,
     hlsUrl: src,
     onRestoreVideo: ivs.restoreToLive,
+    externalModeRef: bgAudioModeRef,
   });
-
-  useEffect(() => {
-    backgroundAudioModeRef.current = bgAudio.mode;
-  }, [bgAudio.mode]);
 
   // Visibility resilience: prefer audio fallback when hidden
   useVisibilityResilience({
@@ -79,10 +97,10 @@ export default function WebbySalesProIVSPlayer({
     hasPlayedRef: ivs.hasPlayedRef,
     shouldIgnoreVisibilityChange: () => Date.now() < fullscreenTransitionUntilRef.current,
     restoreToLive: ivs.restoreToLive,
-    onHiddenAudio: backgroundAudioEnabled ? () => {
+    onHiddenAudio: audioFallbackEnabled ? () => {
       void bgAudio.toAudio();
     } : undefined,
-    onVisibleAudio: backgroundAudioEnabled ? () => {
+    onVisibleAudio: audioFallbackEnabled ? () => {
       void bgAudio.toVideo();
     } : undefined,
   });

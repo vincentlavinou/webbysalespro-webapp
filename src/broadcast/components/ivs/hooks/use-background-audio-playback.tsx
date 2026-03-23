@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const LIVE_EDGE_SAFETY_GAP_SEC = 0.5;
+
 const LIVE_EDGE_DRIFT_TOLERANCE_SEC = 1.5;
 const LIVE_EDGE_CATCHUP_RATE = 1.03;
 const LIVE_EDGE_SYNC_INTERVAL_MS = 3000;
@@ -13,14 +14,27 @@ type Options = {
   hlsUrl: string | null;
   /** called when we return to visible and should restore live video */
   onRestoreVideo?: (options?: { forceReload?: boolean }) => Promise<void> | void;
+  /**
+   * Optional ref owned by the caller that the hook keeps in sync synchronously
+   * on every mode change. Lets sibling hooks (e.g. use-player's shouldPreventPause)
+   * read the current mode without a React re-render cycle.
+   */
+  externalModeRef?: React.MutableRefObject<"video" | "audio">;
 };
 
 export function useBackgroundAudioPlayback(
   videoRef: React.RefObject<HTMLVideoElement | null>,
-  { enabled = true, hlsUrl, onRestoreVideo }: Options
+  { enabled = true, hlsUrl, onRestoreVideo, externalModeRef }: Options
 ) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const modeRef = useRef<"video" | "audio">("video");
   const [mode, setMode] = useState<"video" | "audio">("video");
+
+  const setModeBoth = useCallback((next: "video" | "audio") => {
+    modeRef.current = next;
+    if (externalModeRef) externalModeRef.current = next;
+    setMode(next);
+  }, [externalModeRef]);
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) {
@@ -132,7 +146,9 @@ export function useBackgroundAudioPlayback(
         a.addEventListener("loadedmetadata", handleCanPlay);
       }
 
-      setMode("audio");
+      // Update modeRef synchronously before pausing so the onPause handler in
+      // use-player sees the new mode and does not fight the handoff.
+      setModeBoth("audio");
 
       // Only pause the video element after the audio fallback is confirmed.
       try {
@@ -140,18 +156,18 @@ export function useBackgroundAudioPlayback(
       } catch {}
     } catch {
       // If Safari blocks, stay in video mode (it may still pause in background).
-      setMode("video");
+      setModeBoth("video");
     }
-  }, [enabled, hlsUrl, ensureAudio, keepAudioNearLive, seekAudioNearLive, videoRef]);
+  }, [enabled, hlsUrl, ensureAudio, keepAudioNearLive, seekAudioNearLive, setModeBoth, videoRef]);
 
   const toVideo = useCallback(async () => {
     const video = videoRef.current;
     if (!video) return;
 
+    const wasInAudioMode = modeRef.current === "audio";
+
     // Stop audio
     const a = audioRef.current;
-    let t = 0;
-    if (a && Number.isFinite(a.currentTime)) t = a.currentTime;
     if (a) {
       try {
         a.playbackRate = 1;
@@ -159,19 +175,30 @@ export function useBackgroundAudioPlayback(
       } catch {}
     }
 
-    setMode("video");
+    setModeBoth("video");
 
-    // Ask parent to restore video (usually reload to live edge)
-    await onRestoreVideo?.({ forceReload: true });
+    // Only force-reload the IVS player if we actually switched to audio mode.
+    // If the tab was hidden briefly and audio never took over, the video element
+    // is still playing and a force-reload would cause unnecessary buffering.
+    if (wasInAudioMode) {
+      await onRestoreVideo?.({ forceReload: true });
+    }
+  }, [videoRef, onRestoreVideo, setModeBoth]);
 
-    // Optional: try to nudge time close to where audio was.
-    // For live, your restoreToLive() reload is typically better than seeking.
-    try {
-      if (t > 0 && Number.isFinite(video.currentTime)) {
-        // do nothing by default; restoreToLive handles live edge
+  // Cleanup: stop and discard the audio element on unmount.
+  useEffect(() => {
+    return () => {
+      const a = audioRef.current;
+      if (a) {
+        try {
+          a.pause();
+          a.src = "";
+          a.load();
+        } catch {}
+        audioRef.current = null;
       }
-    } catch {}
-  }, [videoRef, onRestoreVideo]);
+    };
+  }, []);
 
   useEffect(() => {
     if (mode !== "audio") return;
