@@ -29,6 +29,10 @@ export function useBackgroundAudioPlayback(
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const modeRef = useRef<"video" | "audio">("video");
   const [mode, setMode] = useState<"video" | "audio">("video");
+  // Tracks whether prime() successfully started the audio element playing.
+  // iOS Safari only allows background audio if the element was already playing
+  // before the app was backgrounded — priming must start (not just unlock) it.
+  const [isPrimed, setIsPrimed] = useState(false);
 
   const setModeBoth = useCallback((next: "video" | "audio") => {
     modeRef.current = next;
@@ -93,97 +97,78 @@ export function useBackgroundAudioPlayback(
   }, []);
 
   /**
-   * Call inside a user-gesture path (Join/Play click) to make Safari more likely
-   * to allow background audio later.
+   * Call inside a user-gesture path (Join/Play click).
+   *
+   * iOS Safari will only allow an audio element to keep playing after the app
+   * is backgrounded if it was **already playing** at the moment of suspension.
+   * Pausing after the gesture (the old approach) meant toAudio() had to call
+   * play() asynchronously inside visibilitychange — but iOS suspends JS before
+   * that promise resolves, so audio never actually started.
+   *
+   * Fix: start the audio element muted and keep it running. toAudio() then just
+   * unmutes it synchronously — no async work needed before iOS suspends.
    */
   const prime = useCallback(async () => {
     if (!enabled || !hlsUrl) return;
     const a = ensureAudio();
+    if (!a.paused) return; // already primed and playing
     if (a.src !== hlsUrl) a.src = hlsUrl;
     a.preload = "auto";
+    a.muted = true;
 
-    // Warm the element inside the user's gesture so Safari is willing to let
-    // us promote playback to this native audio path after the tab is hidden.
-    const previousMuted = a.muted;
     try {
-      a.muted = true;
       await a.play();
-      a.pause();
-      a.currentTime = 0;
+      seekAudioNearLive(a);
+      setIsPrimed(true);
     } catch {
-      // Best-effort only. If priming is blocked, hidden playback may still fail.
-    } finally {
-      a.muted = previousMuted;
+      // Best-effort. If blocked, background audio won't work for this session.
     }
-  }, [enabled, hlsUrl, ensureAudio]);
+  }, [enabled, hlsUrl, ensureAudio, seekAudioNearLive]);
 
-  const toAudio = useCallback(async () => {
-    if (!enabled || !hlsUrl) return;
+  /**
+   * Switch to audio mode when the app is backgrounded.
+   * Must be synchronous — iOS suspends JS almost immediately after
+   * visibilitychange fires, so any await here will not complete.
+   */
+  const toAudio = useCallback(() => {
+    if (!enabled) return;
     const video = videoRef.current;
-    if (!video) return;
+    const a = audioRef.current;
+    // If audio isn't already playing (prime not called or failed), we cannot
+    // start it now — iOS won't allow play() outside a user gesture in background.
+    if (!video || !a || a.paused) return;
 
-    const a = ensureAudio();
-    if (a.src !== hlsUrl) a.src = hlsUrl;
+    // Sync to live edge before unmuting so there's no stale position.
+    seekAudioNearLive(a, Number.isFinite(video.currentTime) ? video.currentTime : undefined);
+    keepAudioNearLive(a);
+
+    // Unmute — synchronous, completes before iOS suspends.
     a.muted = false;
 
-    const fallbackTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
-    seekAudioNearLive(a, fallbackTime);
-
-    try {
-      await a.play();
-      seekAudioNearLive(a, fallbackTime);
-      keepAudioNearLive(a);
-
-      if (a.seekable.length === 0) {
-        const handleCanPlay = () => {
-          seekAudioNearLive(a, fallbackTime);
-          keepAudioNearLive(a);
-          a.removeEventListener("canplay", handleCanPlay);
-          a.removeEventListener("loadedmetadata", handleCanPlay);
-        };
-
-        a.addEventListener("canplay", handleCanPlay);
-        a.addEventListener("loadedmetadata", handleCanPlay);
-      }
-
-      // Update modeRef synchronously before pausing so the onPause handler in
-      // use-player sees the new mode and does not fight the handoff.
-      setModeBoth("audio");
-
-      // Only pause the video element after the audio fallback is confirmed.
-      try {
-        video.pause();
-      } catch {}
-    } catch {
-      // If Safari blocks, stay in video mode (it may still pause in background).
-      setModeBoth("video");
-    }
-  }, [enabled, hlsUrl, ensureAudio, keepAudioNearLive, seekAudioNearLive, setModeBoth, videoRef]);
+    // Update mode ref synchronously so shouldPreventPause sees "audio" before
+    // the video pause event fires.
+    setModeBoth("audio");
+    try { video.pause(); } catch {}
+  }, [enabled, videoRef, seekAudioNearLive, keepAudioNearLive, setModeBoth]);
 
   const toVideo = useCallback(async () => {
-    const video = videoRef.current;
-    if (!video) return;
-
     const wasInAudioMode = modeRef.current === "audio";
-
-    // Stop audio
     const a = audioRef.current;
+
     if (a) {
-      try {
-        a.playbackRate = 1;
-        a.pause();
-      } catch {}
+      // Mute but keep playing so audio is ready for the next background.
+      a.muted = true;
+      a.playbackRate = 1;
     }
 
     setModeBoth("video");
 
-    // Only force-reload the IVS player if we actually switched to audio mode.
-    // If the tab was hidden briefly and audio never took over, the video element
-    // is still playing and a force-reload would cause unnecessary buffering.
+    // Only reload IVS if we actually were in audio mode — avoids an unnecessary
+    // buffering spinner when the tab was hidden only briefly.
     if (wasInAudioMode) {
       await onRestoreVideo?.({ forceReload: true });
     }
-  }, [videoRef, onRestoreVideo, setModeBoth]);
+  }, [onRestoreVideo, setModeBoth]);
 
   // Cleanup: stop and discard the audio element on unmount.
   useEffect(() => {
@@ -200,13 +185,17 @@ export function useBackgroundAudioPlayback(
     };
   }, []);
 
+  // Keep the audio element at the live edge at all times (muted or not).
+  // This runs as soon as prime() succeeds so the audio is already synced
+  // when toAudio() unmutes it — no seeking gap on background.
   useEffect(() => {
-    if (mode !== "audio") return;
-
+    if (!isPrimed) return;
     const audio = audioRef.current;
     if (!audio) return;
 
-    const syncToLive = () => keepAudioNearLive(audio);
+    const syncToLive = () => {
+      if (!audio.paused) keepAudioNearLive(audio);
+    };
     syncToLive();
 
     const interval = window.setInterval(syncToLive, LIVE_EDGE_SYNC_INTERVAL_MS);
@@ -219,9 +208,8 @@ export function useBackgroundAudioPlayback(
       audio.removeEventListener("timeupdate", syncToLive);
       audio.removeEventListener("progress", syncToLive);
       audio.removeEventListener("canplay", syncToLive);
-      audio.playbackRate = 1;
     };
-  }, [keepAudioNearLive, mode]);
+  }, [isPrimed, keepAudioNearLive]);
 
   return { mode, prime, toAudio, toVideo, getAudioEl: () => audioRef.current };
 }

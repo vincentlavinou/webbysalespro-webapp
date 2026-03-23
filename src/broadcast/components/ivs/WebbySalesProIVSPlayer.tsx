@@ -98,7 +98,8 @@ export default function WebbySalesProIVSPlayer({
     shouldIgnoreVisibilityChange: () => Date.now() < fullscreenTransitionUntilRef.current,
     restoreToLive: ivs.restoreToLive,
     onHiddenAudio: audioFallbackEnabled ? () => {
-      void bgAudio.toAudio();
+      // toAudio is now synchronous — no void needed, completes before iOS suspends.
+      bgAudio.toAudio();
     } : undefined,
     onVisibleAudio: audioFallbackEnabled ? () => {
       void bgAudio.toVideo();
