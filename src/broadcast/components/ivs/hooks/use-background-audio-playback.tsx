@@ -43,6 +43,10 @@ export function useBackgroundAudioPlayback(
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) {
       const a = document.createElement("audio");
+      // Set muted as an HTML attribute — iOS sometimes ignores the JS property
+      // alone when play() is called, which would cause audible double-audio.
+      a.setAttribute("muted", "");
+      a.muted = true;
       a.preload = "auto";
       a.crossOrigin = "anonymous";
       audioRef.current = a;

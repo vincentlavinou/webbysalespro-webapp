@@ -307,17 +307,33 @@ export default function WebbySalesProIVSPlayer({
     };
   }, [restoreToLive, setAutoplayFailed]);
 
+  // Keep the media session active whenever audio is audible — either the video
+  // element is playing, or we're in audio-fallback mode (background tab/locked screen).
+  // Without this, iOS drops the Control Center widget the moment the video pauses.
+  const isAudioActive = bgAudio.mode === "audio";
   useMediaSession({
-    active: isPlaying,
+    active: isPlaying || isAudioActive,
     title,
     ariaLabel,
     poster,
     artwork,
     onPlay: () => {
-      videoRef.current?.play().catch(() => {});
+      if (isAudioActive) {
+        // Resume background audio from Control Center.
+        const a = bgAudio.getAudioEl();
+        if (a?.paused) a.play().catch(() => {});
+      } else {
+        videoRef.current?.play().catch(() => {});
+      }
     },
     onPause: () => {
-      videoRef.current?.play().catch(() => {});
+      // Live stream — prevent pausing. Re-play whichever element is active.
+      if (isAudioActive) {
+        const a = bgAudio.getAudioEl();
+        if (a?.paused) a.play().catch(() => {});
+      } else {
+        videoRef.current?.play().catch(() => {});
+      }
     },
   });
 
@@ -400,8 +416,10 @@ export default function WebbySalesProIVSPlayer({
             <button
               type="button"
               onClick={async () => {
-                // Prime audio in the user gesture path so Safari will allow background audio
-                await bgAudio.prime();
+                // Both calls must be initiated synchronously inside the user gesture
+                // so iOS grants play permission to both elements.
+                // Don't await prime — video must start immediately; audio primes in parallel.
+                void bgAudio.prime();
                 await ivs.handleManualPlay();
               }}
               className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
