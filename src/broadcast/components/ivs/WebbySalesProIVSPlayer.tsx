@@ -9,7 +9,6 @@ import { usePlayer } from "./hooks/use-player";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
-// import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
 import { usePiP } from "./hooks/use-pip";
 
 type Props = {
@@ -21,8 +20,6 @@ type Props = {
   ariaLabel?: string;
   title?: string;
   artwork?: MediaImage[];
-  /** Option 1: keep audio alive when tab hidden */
-  backgroundAudioEnabled?: boolean;
   /** Keep the player muted and alive in the background so timed metadata cues keep firing (e.g. while video injection overlay is active). */
   keepAlive?: boolean;
 };
@@ -43,11 +40,6 @@ export default function WebbySalesProIVSPlayer({
   const autoFullscreenRef = useRef(false);
   const fullscreenTransitionUntilRef = useRef(0);
   const mobileChromeTimerRef = useRef<number | null>(null);
-  // Background audio fallback is temporarily disabled.
-  // const audioFallbackEnabled = false;
-  // Kept in sync synchronously by useBackgroundAudioPlayback so shouldPreventPause
-  // always reads the correct mode even before React re-renders.
-  // const bgAudioModeRef = useRef<"video" | "audio">("video");
   const [isTouchViewport, setIsTouchViewport] = useState(false);
   const [showMobileChrome, setShowMobileChrome] = useState(false);
 
@@ -66,14 +58,7 @@ export default function WebbySalesProIVSPlayer({
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
-  // const bgAudio = useBackgroundAudioPlayback(videoRef, {
-  //   enabled: audioFallbackEnabled,
-  //   hlsUrl: src,
-  //   onRestoreVideo: ivs.restoreToLive,
-  //   externalModeRef: bgAudioModeRef,
-  // });
-
-  // Visibility resilience: prefer audio fallback when hidden
+  // Visibility resilience: restore to live when tab becomes visible again
   useVisibilityResilience({
     enabled: true,
     hasPlayedRef: ivs.hasPlayedRef,
@@ -89,17 +74,6 @@ export default function WebbySalesProIVSPlayer({
   const isEnded = effectiveState === PlayerState.ENDED;
   const showStartGate = ivs.isPlayerReady && ivs.autoplayFailed && !isPlaying && !isEnded;
 
-  // Prime the audio element once the video is playing for the first time.
-  // By this point iOS has unlocked the page for media playback via the tap-to-play
-  // gesture, so audio.play() works without another gesture. Delaying until here
-  // avoids loading two HLS streams simultaneously on the first tap.
-  // const hasPrimedRef = useRef(false);
-  // useEffect(() => {
-  //   if (isPlaying && audioFallbackEnabled && !hasPrimedRef.current) {
-  //     hasPrimedRef.current = true;
-  //     void bgAudio.prime();
-  //   }
-  // }, [isPlaying, audioFallbackEnabled, bgAudio]);
   const isLoading =
     !showStartGate &&
     (!ivs.isPlayerReady ||
@@ -294,34 +268,17 @@ export default function WebbySalesProIVSPlayer({
     };
   }, [restoreToLive, setAutoplayFailed]);
 
-  // Keep the media session active whenever audio is audible — either the video
-  // element is playing, or we're in audio-fallback mode (background tab/locked screen).
-  // Without this, iOS drops the Control Center widget the moment the video pauses.
-  // const isAudioActive = bgAudio.mode === "audio";
   useMediaSession({
-    active: isPlaying, // || isAudioActive,
+    active: isPlaying,
     title,
     ariaLabel,
     poster,
     artwork,
     onPlay: () => {
-      // if (isAudioActive) {
-      //   // Resume background audio from Control Center.
-      //   const a = bgAudio.getAudioEl();
-      //   if (a?.paused) a.play().catch(() => {});
-      // } else {
-       
-      // }
-       videoRef.current?.play().catch(() => {});
+      videoRef.current?.play().catch(() => {});
     },
     onPause: () => {
-      // Live stream — prevent pausing. Re-play whichever element is active.
-      // if (isAudioActive) {
-      //   const a = bgAudio.getAudioEl();
-      //   if (a?.paused) a.play().catch(() => {});
-      // } else {
-        
-      // }
+      // Live stream — prevent pausing from Control Center.
       videoRef.current?.play().catch(() => {});
     },
   });
@@ -447,7 +404,7 @@ export default function WebbySalesProIVSPlayer({
             <div>Latency: {typeof ivs.stats.latency === "number" ? `${ivs.stats.latency.toFixed(1)}s` : "…"}</div>
             <div>Bitrate: {ivs.stats.bitrate ? `${ivs.stats.bitrate} kbps` : "…"}</div>
             <div>Res: {ivs.stats.resolution ?? "…"}</div>
-            {/* <div>Mode: {backgroundAudioEnabled ? bgAudio.mode : "video"}</div> */}
+
           </div>
         )}
       </div>
