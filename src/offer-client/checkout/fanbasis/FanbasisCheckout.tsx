@@ -6,7 +6,32 @@ import { AutoCheckout, CheckoutConfig, CheckoutProvider } from '@fanbasis/checko
 import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
-import { useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
+
+interface FanbasisCardCheckoutProps {
+  cardError: string | null;
+  checkoutConfig: CheckoutConfig;
+  onSuccess: (data: {transactionId: string}) => void;
+  onError: (error: Error) => void;
+}
+
+const FanbasisCardCheckout = memo(function FanbasisCardCheckout({
+  cardError,
+  checkoutConfig,
+  onSuccess,
+  onError,
+}: FanbasisCardCheckoutProps) {
+  return (
+    <div className="px-3 pb-3">
+      {cardError && (
+        <p className="mb-2 text-xs text-destructive">{cardError}</p>
+      )}
+      <CheckoutProvider config={checkoutConfig}>
+        <AutoCheckout onSuccess={onSuccess} onError={onError} />
+      </CheckoutProvider>
+    </div>
+  );
+});
 
 export function FanBasisCheckout() {
   const { token, selectedOffer, setIsCheckingOut, recordEvent, handleCheckoutSuccess } =
@@ -19,68 +44,77 @@ export function FanBasisCheckout() {
 
   const payload = (selectedOffer?.offer.action_payload ?? {}) as FanbasisCheckoutDto;
   const isProduction = selectedOffer?.offer.is_production ?? false;
+  const accentColor = selectedOffer?.offer.display?.accent_color?.trim() ?? '';
 
   const canUseCardCheckout =
     !!payload.fanbasis_creator_id &&
     !!payload.fanbasis_product_id &&
     !!payload.checkout_session_secret;
 
-  const checkoutConfig = canUseCardCheckout
-    ? {
-        creatorId: payload.fanbasis_creator_id!,
-        productId: payload.fanbasis_product_id!,
-        checkoutSessionSecret: payload.checkout_session_secret!,
-        environment: isProduction ? ('production' as const) : ('sandbox' as const),
-        containerOptions: {
-          width: '100%',
-          height: '480px',
-        },
-        theme: {
-          theme: (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark',
-          show_product_info: false,
-          product_layout: 'above' as const,
-          show_coupon_row: false,
-          ...(selectedOffer?.offer.display?.accent_color?.trim()
-            ? { accent_color: selectedOffer.offer.display.accent_color.trim() }
-            : {}),
-        },
-      } as CheckoutConfig
-    : null;
+  const checkoutConfig = useMemo(() => {
+    if (!canUseCardCheckout) return null;
 
-  const handleClose = async () => {
+    return {
+      creatorId: payload.fanbasis_creator_id!,
+      productId: payload.fanbasis_product_id!,
+      checkoutSessionSecret: payload.checkout_session_secret!,
+      environment: isProduction ? ('production' as const) : ('sandbox' as const),
+      containerOptions: {
+        width: '100%',
+        height: '480px',
+      },
+      theme: {
+        theme: (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark',
+        show_product_info: false,
+        product_layout: 'above' as const,
+        show_coupon_row: false,
+        ...(accentColor ? { accent_color: accentColor } : {}),
+      },
+    } as CheckoutConfig;
+  }, [
+    accentColor,
+    canUseCardCheckout,
+    isProduction,
+    payload.checkout_session_secret,
+    payload.fanbasis_creator_id,
+    payload.fanbasis_product_id,
+    resolvedTheme,
+  ]);
+
+  const handleClose = useCallback(async () => {
     await recordEvent('checkout_canceled', token);
     setIsCheckingOut(false);
-  };
+  }, [recordEvent, setIsCheckingOut, token]);
 
-  const handleCardClick = () => {
+  const handleCardClick = useCallback(() => {
     setCardError(null);
     setCardMode(true);
-    recordEvent('checkout_started', token);
-  };
+    void recordEvent('checkout_started', token);
+  }, [recordEvent, token]);
 
-  const handleCardBack = () => {
+  const handleCardBack = useCallback(() => {
     setCardMode(false);
     setCardError(null);
-  };
+  }, []);
 
-  const handleCardSuccess = (data: {transactionId: string}) => {
+  const handleCardSuccess = useCallback((data: {transactionId: string}) => {
     handleCheckoutSuccess(data.transactionId);
-  };
+  }, [handleCheckoutSuccess]);
 
-  const handleCardError = (error: Error) => {
+  const handleCardError = useCallback((error: Error) => {
     console.error('FanBasis card checkout error:', error);
     setCardError('Payment failed. Please try again.');
-  };
+  }, []);
 
-  const handleFinancingClick = () => {
+  const handleFinancingClick = useCallback(() => {
     if (!selectedOffer || financing) return;
     const url = payload.url;
     if (!url) return;
     setFinancing(true);
     window.open(url, '_blank', 'noopener,noreferrer');
-    recordEvent('checkout_started', token);
+    void recordEvent('checkout_started', token);
     setTimeout(() => setFinancing(false), 4000);
-  };
+  }, [financing, payload.url, recordEvent, selectedOffer, token]);
 
   return (
     <div
@@ -131,17 +165,12 @@ export function FanBasisCheckout() {
 
       {/* Inline card checkout */}
       {cardMode && checkoutConfig ? (
-        <div className="px-3 pb-3">
-          {cardError && (
-            <p className="mb-2 text-xs text-destructive">{cardError}</p>
-          )}
-          <CheckoutProvider config={checkoutConfig}>
-            <AutoCheckout
-              onSuccess={handleCardSuccess}
-              onError={handleCardError}
-            />
-          </CheckoutProvider>
-        </div>
+        <FanbasisCardCheckout
+          cardError={cardError}
+          checkoutConfig={checkoutConfig}
+          onSuccess={handleCardSuccess}
+          onError={handleCardError}
+        />
       ) : (
         /* Payment options */
         <div className="px-3 pb-3 space-y-2">
