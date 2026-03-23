@@ -47,7 +47,6 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
     
     const webinarId = (await props.params).id
     const webinar = await getWebinar(webinarId, { fresh: true })
-    console.log(webinar)
     if (!isWebinarPayload(webinar)) {
       notFound()
     }
@@ -98,7 +97,6 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
                     const avatar = presenter.media?.find(
                       (m) => m.file_type === 'image' && m.field_type === 'profile'
                     )
-                    console.log(avatar)
                     return (
                       <div key={presenter.id} className="flex items-center gap-3">
                         <div className="relative h-11 w-11 rounded-full overflow-hidden bg-emerald-100 flex-shrink-0 ring-2 ring-white shadow">

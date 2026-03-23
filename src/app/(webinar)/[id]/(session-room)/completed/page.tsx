@@ -27,7 +27,7 @@ export default async function CompletedPage(props: CompletedPageProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
           {/* Left — Webinar details */}
-          <div className="rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md shadow-xl border border-white/60">
+          <div className="order-last md:order-first rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md shadow-xl border border-white/60">
             {thumbnail?.file_url && (
               <div className="relative w-full h-[220px]">
                 <Image src={thumbnail.file_url} alt="Webinar thumbnail" fill className="object-cover" />
@@ -80,7 +80,7 @@ export default async function CompletedPage(props: CompletedPageProps) {
           </div>
 
           {/* Right — Completion message */}
-          <div className="rounded-2xl bg-white/80 backdrop-blur-md shadow-xl border border-white/60 p-6">
+          <div className="order-first md:order-last rounded-2xl bg-white/80 backdrop-blur-md shadow-xl border border-white/60 p-6">
             <div className="flex flex-col items-center text-center mb-6">
               <div className="flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 border-2 border-gray-200 mb-4">
                 <CheckCircle2 className="h-8 w-8 text-gray-500" />

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { DateTime } from 'luxon'
 import { Loader2, CalendarDays, Clock } from 'lucide-react'
+import CalendarButton from '@/webinar/components/CalendarButton'
+import BookmarkButton from '@/webinar/components/BookmarkButton'
 import { useWebinar } from '@/webinar/hooks'
 import { useSessionPresence } from '@/broadcast/hooks'
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer'
@@ -77,7 +79,7 @@ export default function WaitingRoomPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
           {/* Left — Webinar details */}
-          <div className="rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md shadow-xl border border-white/60">
+          <div className="order-last md:order-first rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md shadow-xl border border-white/60">
             {thumbnail?.file_url && (
               <div className="relative w-full h-[220px]">
                 <Image src={thumbnail.file_url} alt="Webinar thumbnail" fill className="object-cover" />
@@ -132,7 +134,7 @@ export default function WaitingRoomPage() {
           </div>
 
           {/* Right — Countdown & info */}
-          <div className="rounded-2xl bg-white/80 backdrop-blur-md shadow-xl border border-white/60 p-6 space-y-5">
+          <div className="order-first md:order-last rounded-2xl bg-white/80 backdrop-blur-md shadow-xl border border-white/60 p-6 space-y-5">
             {/* Countdown */}
             <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 text-center shadow-inner">
               <p className="text-xs font-semibold text-emerald-100 uppercase tracking-wide mb-2">
@@ -166,6 +168,22 @@ export default function WaitingRoomPage() {
                 </p>
               </div>
             </div>
+
+            <hr className="border-gray-100" />
+
+            {token && (
+              <CalendarButton
+                title={webinar.title}
+                description={webinar.description ?? ''}
+                startIso={session.scheduled_start}
+                timezone={session.timezone || 'utc'}
+                uid={session.id}
+                url={`/${session.id}/live?token=${token}`}
+              />
+            )}
+            {token && (
+              <BookmarkButton livePath={`/${session.id}/live?token=${token}`} />
+            )}
           </div>
 
         </div>

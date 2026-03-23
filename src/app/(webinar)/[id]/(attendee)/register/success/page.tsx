@@ -4,15 +4,18 @@ import { getWebinar } from "@/webinar/service";
 import { isWebinarPayload } from "@/webinar/service/guards";
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import CalendarButton from "@/webinar/components/CalendarButton";
+import BookmarkButton from "@/webinar/components/BookmarkButton";
+import ShareButton from "@/webinar/components/ShareButton";
 
 interface RegistrationSuccessProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ session_id: string }>;
+  searchParams: Promise<{ session_id: string; token?: string }>;
 }
 
 export default async function RegistrationSuccessPage(props: RegistrationSuccessProps) {
   const webinarId = (await props.params).id;
-  const sessionId = (await props.searchParams).session_id;
+  const { session_id: sessionId, token } = await props.searchParams;
 
   const webinar = await getWebinar(webinarId, { fresh: true });
   if (!isWebinarPayload(webinar) || !sessionId) {
@@ -38,8 +41,8 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
     <div className="px-4 pb-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-        {/* Left — Webinar details (top on mobile too) */}
-        <div className="rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md shadow-xl border border-white/60">
+        {/* Left — Webinar details */}
+        <div className="order-last md:order-first rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md shadow-xl border border-white/60">
           {thumbnail?.file_url && (
             <div className="relative w-full h-[220px]">
               <Image src={thumbnail.file_url} alt="Webinar thumbnail" fill className="object-cover" />
@@ -95,7 +98,7 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
         </div>
 
         {/* Right — Success confirmation */}
-        <div className="rounded-2xl bg-white/80 backdrop-blur-md shadow-xl border border-white/60 p-6">
+        <div className="order-first md:order-last rounded-2xl bg-white/80 backdrop-blur-md shadow-xl border border-white/60 p-6">
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-6">
             <div className="flex items-center justify-center h-16 w-16 rounded-full bg-emerald-50 border-2 border-emerald-200 mb-4">
@@ -127,6 +130,28 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
                 A reminder will be sent before the session starts.
               </p>
             </div>
+          </div>
+
+          <hr className="border-gray-100 mt-2" />
+
+          <div className="flex flex-col gap-2 pt-1">
+            {token && (
+              <CalendarButton
+                title={webinar.title}
+                description={webinar.description ?? ''}
+                startIso={session.scheduled_start}
+                timezone={session.timezone || 'utc'}
+                uid={sessionId}
+                url={`/${sessionId}/live?token=${token}`}
+              />
+            )}
+            {token && (
+              <BookmarkButton livePath={`/${sessionId}/live?token=${token}`} />
+            )}
+            <ShareButton
+              registrationPath={`/${webinarId}/register`}
+              title={webinar.title}
+            />
           </div>
         </div>
 

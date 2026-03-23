@@ -93,7 +93,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         return;
       }
 
-      router.push(`/${webinar.id}/register/success?session_id=${registeredSessionId}`);
+      router.push(`/${webinar.id}/register/success?session_id=${registeredSessionId}&token=${data.access_token}`);
     },
     onError: ({error, input}) => {
       submitLockRef.current = false;
