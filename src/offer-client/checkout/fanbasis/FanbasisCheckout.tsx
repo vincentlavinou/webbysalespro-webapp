@@ -116,8 +116,12 @@ export function FanBasisCheckout() {
   const handleCardError = useCallback(async (error: Error) => {
     console.error('FanBasis card checkout error:', error);
     setCardError('Payment failed. Please try again.');
-    const eventName = parseFanbasisErrorEvent(error.message);
-    await recordEvent(eventName, token);
+    const eventName = parseFanbasisErrorEvent(error?.message ?? '');
+    try {
+      await recordEvent(eventName, token);
+    } catch (e) {
+      console.error('Failed to record card error event:', e);
+    }
   }, [recordEvent, token]);
 
   const handleFinancingClick = useCallback(() => {
