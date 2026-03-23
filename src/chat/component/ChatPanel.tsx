@@ -8,6 +8,7 @@ import { ChatMessageBubble } from './ChatMessageBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 import { useBroadcastConfiguration } from '@/broadcast/hooks';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
+import { OfferCarouselPanel } from '@/offer-client/components/OfferCarouselPanel';
 import { useCtaAnnouncements, type CtaAnnouncement } from '@chat/hooks/use-cta-announcements';
 import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
 
@@ -92,6 +93,9 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
           </div>
         </div>
       )}
+
+      {/* Offer carousel */}
+      <OfferCarouselPanel />
 
       {/* Pinned announcements */}
       {chatConfig?.pinned_announcements && (

@@ -13,7 +13,7 @@ export function PinnedAnnouncements({ announcements }: PinnedAnnouncementsProps)
     if (announcements.length === 0) return null;
 
     return (
-        <div className="flex flex-col gap-1 px-3 py-2 border-b bg-muted/50">
+        <div className="flex flex-col gap-1 px-3 py-2 border-b bg-muted">
             {announcements.map((item) => (
                 <div key={item.id} className="flex items-start gap-2 text-sm">
                     <Pin className="mt-0.5 size-3 shrink-0 text-muted-foreground" />

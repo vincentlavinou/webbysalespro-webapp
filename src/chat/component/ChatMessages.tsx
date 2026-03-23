@@ -6,6 +6,7 @@ import { useChat } from '@chat/hooks';
 import type { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
+import { OfferCarouselPanel } from '@/offer-client/components/OfferCarouselPanel';
 import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
 import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 import { useBroadcastConfiguration } from '@/broadcast/hooks';
@@ -59,11 +60,12 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
 
   return (
     <>
-      {pinnedAnnouncements.length > 0 && (
-        <div className="sticky top-0 z-10">
+      <div className="sticky top-0 z-10">
+        <OfferCarouselPanel />
+        {pinnedAnnouncements.length > 0 && (
           <PinnedAnnouncements announcements={pinnedAnnouncements} />
-        </div>
-      )}
+        )}
+      </div>
 
       {chatDisabled ? (
         <div className="flex flex-col items-center justify-center h-full text-center px-6 py-8">
