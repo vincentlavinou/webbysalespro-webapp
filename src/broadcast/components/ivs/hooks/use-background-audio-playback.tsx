@@ -7,7 +7,7 @@ const LIVE_EDGE_SAFETY_GAP_SEC = 0.5;
 
 const LIVE_EDGE_DRIFT_TOLERANCE_SEC = 1.5;
 const LIVE_EDGE_CATCHUP_RATE = 1.03;
-const LIVE_EDGE_SYNC_INTERVAL_MS = 3000;
+const LIVE_EDGE_SYNC_INTERVAL_MS = 2000;
 
 type Options = {
   enabled?: boolean;
@@ -142,9 +142,19 @@ export function useBackgroundAudioPlayback(
     // start it now — iOS won't allow play() outside a user gesture in background.
     if (!video || !a || a.paused) return;
 
-    // Sync to live edge before unmuting so there's no stale position.
-    seekAudioNearLive(a, Number.isFinite(video.currentTime) ? video.currentTime : undefined);
-    keepAudioNearLive(a);
+    // Sync audio to the video's exact playback position. The browser's native HLS
+    // stack (used by the <audio> element) buffers independently from the IVS WASM
+    // player and can lag by several seconds. Without this the user hears already-
+    // seen content when they background.
+    const videoTime = video.currentTime;
+    if (Number.isFinite(videoTime) && videoTime > 0 && a.seekable.length > 0) {
+      const liveEdge = a.seekable.end(a.seekable.length - 1);
+      // Clamp to what the audio element has buffered; prefer video time.
+      const target = Math.min(videoTime, Math.max(0, liveEdge - LIVE_EDGE_SAFETY_GAP_SEC));
+      if (Math.abs(a.currentTime - target) > 0.3) {
+        try { a.currentTime = target; } catch {}
+      }
+    }
 
     // Unmute — synchronous, completes before iOS suspends.
     a.muted = false;
@@ -153,7 +163,7 @@ export function useBackgroundAudioPlayback(
     // the video pause event fires.
     setModeBoth("audio");
     try { video.pause(); } catch {}
-  }, [enabled, videoRef, seekAudioNearLive, keepAudioNearLive, setModeBoth]);
+  }, [enabled, videoRef, setModeBoth]);
 
   const toVideo = useCallback(async () => {
     const wasInAudioMode = modeRef.current === "audio";
