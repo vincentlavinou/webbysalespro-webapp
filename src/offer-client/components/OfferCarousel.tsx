@@ -297,6 +297,15 @@ export function OfferCarousel({ offers, onOfferClick }: OfferCarouselProps) {
   const handleNext = useCallback(() => goTo(index + 1), [goTo, index]);
 
   useEffect(() => {
+    if (offers.length === 0) {
+      setIndex(0);
+      return;
+    }
+
+    setIndex((currentIndex) => Math.min(currentIndex, offers.length - 1));
+  }, [offers.length]);
+
+  useEffect(() => {
     pausedRef.current = paused;
   }, [paused]);
 
@@ -353,7 +362,9 @@ export function OfferCarousel({ offers, onOfferClick }: OfferCarouselProps) {
   );
 
   if (offers.length === 0) return null;
-  const currentOffer = offers[index];
+
+  const safeIndex = Math.min(index, offers.length - 1);
+  const currentOffer = offers[safeIndex];
 
   return (
     <div ref={mergedRef} className="relative w-full" {...handlers}>
@@ -382,7 +393,7 @@ export function OfferCarousel({ offers, onOfferClick }: OfferCarouselProps) {
               aria-label={`Go to offer ${i + 1}`}
               className={[
                 "h-1.5 w-1.5 rounded-full transition",
-                i === index
+                i === safeIndex
                   ? "bg-primary"
                   : "bg-muted-foreground/25 hover:bg-muted-foreground/40",
               ].join(" ")}
