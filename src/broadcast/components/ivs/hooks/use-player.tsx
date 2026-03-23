@@ -241,6 +241,7 @@ export function usePlayer({
     const p = playerRef.current;
     const v = videoRef.current;
     if (!p || !v) return;
+    const canForcePlayback = autoPlay || hasPlayedRef.current;
 
     if (keepAlive) {
       p.setMuted(true);
@@ -254,19 +255,20 @@ export function usePlayer({
       setIsMuted(mutedProp);
     }
 
-    if (v.paused && (shouldPreventPause?.() ?? true)) {
+    if (canForcePlayback && v.paused && (shouldPreventPause?.() ?? true)) {
       v.play().catch(() => {});
     }
 
     const onPause = () => {
       if (disposedRef.current) return;
+      if (!(autoPlay || hasPlayedRef.current)) return;
       if (!(shouldPreventPause?.() ?? true)) return;
       v.play().catch(() => {});
     };
 
     v.addEventListener("pause", onPause);
     return () => v.removeEventListener("pause", onPause);
-  }, [keepAlive, mutedProp, shouldPreventPause, videoRef]);
+  }, [autoPlay, keepAlive, mutedProp, shouldPreventPause, videoRef]);
 
   useEffect(() => {
     disposedRef.current = false;

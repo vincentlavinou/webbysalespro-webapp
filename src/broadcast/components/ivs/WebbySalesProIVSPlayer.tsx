@@ -298,7 +298,7 @@ export default function WebbySalesProIVSPlayer({
             ref={videoRef}
             poster={poster}
             playsInline
-            autoPlay
+            autoPlay={autoPlay}
             muted={ivs.isMuted}
             preload="auto"
             aria-label={ariaLabel}
