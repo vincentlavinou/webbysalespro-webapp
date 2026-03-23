@@ -1,14 +1,16 @@
 // components/ivs/IVSPlayer.tsx
 "use client";
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { PlayerState } from "amazon-ivs-player";
+import { Expand, Minimize2, PictureInPicture2 } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
 import { usePlayer } from "./hooks/use-player";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
 import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
+import { usePiP } from "./hooks/use-pip";
 
 type Props = {
   src: string;
@@ -38,6 +40,8 @@ export default function WebbySalesProIVSPlayer({
   keepAlive = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playerRef = useRef<HTMLDivElement | null>(null);
+  const autoFullscreenRef = useRef(false);
 
   const ivs = usePlayer({
     src,
@@ -89,6 +93,91 @@ export default function WebbySalesProIVSPlayer({
 
   const shouldBlur = !isPlaying;
   const showUnmuteNudge = isPlaying && ivs.isMuted && !muted;
+  const pip = usePiP(videoRef, ivs.restoreToLive);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    type FullscreenCapableElement = HTMLDivElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    };
+    type FullscreenCapableVideo = HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+      webkitDisplayingFullscreen?: boolean;
+    };
+    type FullscreenCapableDocument = Document & {
+      webkitExitFullscreen?: () => Promise<void> | void;
+      webkitFullscreenElement?: Element | null;
+    };
+
+    const isMobileViewport = () =>
+      window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
+
+    const enterFullscreen = async () => {
+      const container = playerRef.current as FullscreenCapableElement | null;
+      const video = videoRef.current as FullscreenCapableVideo | null;
+      if (!container || !video) return;
+
+      try {
+        if (document.fullscreenElement) return;
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+          autoFullscreenRef.current = true;
+          return;
+        }
+        if (container.webkitRequestFullscreen) {
+          await container.webkitRequestFullscreen();
+          autoFullscreenRef.current = true;
+          return;
+        }
+        if (video.webkitEnterFullscreen) {
+          video.webkitEnterFullscreen();
+          autoFullscreenRef.current = true;
+        }
+      } catch {}
+    };
+
+    const exitFullscreen = async () => {
+      const doc = document as FullscreenCapableDocument;
+      const video = videoRef.current as FullscreenCapableVideo | null;
+
+      try {
+        if (doc.fullscreenElement) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitFullscreenElement && doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (video?.webkitDisplayingFullscreen) {
+          // iOS Safari does not provide a safe programmatic exit here.
+          return;
+        }
+      } catch {}
+    };
+
+    const syncOrientationFullscreen = () => {
+      if (!isMobileViewport()) return;
+      const isLandscape = window.innerWidth > window.innerHeight;
+
+      if (isLandscape) {
+        void enterFullscreen();
+        return;
+      }
+
+      if (autoFullscreenRef.current) {
+        void exitFullscreen();
+        autoFullscreenRef.current = false;
+      }
+    };
+
+    syncOrientationFullscreen();
+
+    window.addEventListener("resize", syncOrientationFullscreen);
+    window.screen.orientation?.addEventListener?.("change", syncOrientationFullscreen);
+
+    return () => {
+      window.removeEventListener("resize", syncOrientationFullscreen);
+      window.screen.orientation?.removeEventListener?.("change", syncOrientationFullscreen);
+    };
+  }, []);
 
   useMediaSession({
     active: isPlaying,
@@ -103,7 +192,7 @@ export default function WebbySalesProIVSPlayer({
 
   return (
     <div className="w-full">
-      <div className="relative w-full overflow-hidden border bg-black shadow-sm">
+      <div ref={playerRef} className="relative w-full overflow-hidden border bg-black shadow-sm">
         <div className="aspect-video">
           <video
             ref={videoRef}
@@ -116,6 +205,33 @@ export default function WebbySalesProIVSPlayer({
             className={`h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
             style={{ userSelect: "none" }}
           />
+        </div>
+
+        {pip.isPiPSupported && (
+          <div className="absolute top-3 right-3 z-40">
+            <button
+              type="button"
+              onClick={() => {
+                if (pip.isInPiP) {
+                  pip.exitPiP();
+                  return;
+                }
+                void pip.enterPiP();
+              }}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
+              aria-label={pip.isInPiP ? "Exit picture in picture" : "Open picture in picture"}
+              title={pip.isInPiP ? "Exit picture in picture" : "Open picture in picture"}
+            >
+              {pip.isInPiP ? <Minimize2 className="h-4 w-4" /> : <PictureInPicture2 className="h-4 w-4" />}
+            </button>
+          </div>
+        )}
+
+        <div className="pointer-events-none absolute bottom-3 right-3 z-30 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white/85 backdrop-blur-sm lg:hidden">
+          <span className="inline-flex items-center gap-1.5">
+            <Expand className="h-3 w-3" />
+            Rotate for fullscreen
+          </span>
         </div>
 
         {/* Return banner */}

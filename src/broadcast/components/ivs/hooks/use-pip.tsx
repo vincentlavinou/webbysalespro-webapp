@@ -15,11 +15,22 @@ interface DocumentWithPiP extends Document {
   exitPictureInPicture: () => Promise<void>;
 }
 
+function supportsPiP(video: WebKitVideoElement | null) {
+  if (typeof document === "undefined") return false;
+  const doc = document as Partial<DocumentWithPiP>;
+
+  return Boolean(
+    doc.pictureInPictureEnabled ||
+    video?.webkitSupportsPresentationMode?.("picture-in-picture")
+  );
+}
+
 export function usePiP(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   onLeavePiPRestore?: () => void
 ) {
   const [isInPiP, setIsInPiP] = useState(false);
+  const [isPiPSupported, setIsPiPSupported] = useState(false);
   const isPiPRef = useRef(false);
 
   const enterPiP = useCallback(async () => {
@@ -50,6 +61,7 @@ export function usePiP(
 
   useEffect(() => {
     const video = videoRef.current as WebKitVideoElement | null;
+    setIsPiPSupported(supportsPiP(video));
     if (!video) return;
 
     const onEnter = () => {
@@ -82,5 +94,5 @@ export function usePiP(
     };
   }, [videoRef, onLeavePiPRestore]);
 
-  return { isInPiP, isPiPRef, enterPiP, exitPiP };
+  return { isInPiP, isPiPRef, isPiPSupported, enterPiP, exitPiP };
 }
