@@ -1,46 +1,56 @@
 import Image from "next/image"
 import Link from "next/link"
+import { WebinarProvider } from "@/webinar/providers"
 
-export default function SessionRoomLayout({ children }: { children: React.ReactNode }) {
+interface SessionRoomLayoutProps {
+  children: React.ReactNode
+  params: Promise<{ id: string }>
+}
+
+export default async function SessionRoomLayout({ children, params }: SessionRoomLayoutProps) {
+  const sessionId = (await params).id
+
   return (
-    <div className="relative min-h-screen flex flex-col">
-      {/* Background */}
-      <div className="fixed inset-0 -z-10">
-        <Image
-          src="/example-background.png"
-          alt=""
-          fill
-          className="object-cover"
-          priority
-        />
-      </div>
-
-      {/* Page content */}
-      <main className="flex-1">
-        {children}
-      </main>
-
-      {/* Footer */}
-      <footer className="py-6 text-center text-sm text-gray-500">
-        <div className="flex justify-between max-w-5xl mx-auto">
-          <nav className="flex items-start gap-6">
-            <Link href="/terms" className="hover:underline hover:text-gray-800 transition-colors">
-              Terms &amp; Conditions
-            </Link>
-            <span aria-hidden>·</span>
-            <Link href="/privacy" className="hover:underline hover:text-gray-800 transition-colors">
-              Privacy Policy
-            </Link>
-            <span aria-hidden>·</span>
-            <Link href="/dmca" className="hover:underline hover:text-gray-800 transition-colors">
-              DMCA
-            </Link>
-          </nav>
-          <span className="text-sm font-bold text-gray-900 tracking-tight flex-shrink-0">
-            Webby<span className="text-emerald-600">Sales</span>Pro
-          </span>
+    <WebinarProvider sessionId={sessionId}>
+      <div className="relative min-h-screen flex flex-col">
+        {/* Background */}
+        <div className="fixed inset-0 -z-10">
+          <Image
+            src="/example-background.png"
+            alt=""
+            fill
+            className="object-cover"
+            priority
+          />
         </div>
-      </footer>
-    </div>
+
+        {/* Page content */}
+        <main className="flex-1">
+          {children}
+        </main>
+
+        {/* Footer */}
+        <footer className="py-6 text-center text-sm text-gray-500">
+          <div className="flex justify-between max-w-5xl mx-auto">
+            <nav className="flex items-start gap-6">
+              <Link href="/terms" className="hover:underline hover:text-gray-800 transition-colors">
+                Terms &amp; Conditions
+              </Link>
+              <span aria-hidden>·</span>
+              <Link href="/privacy" className="hover:underline hover:text-gray-800 transition-colors">
+                Privacy Policy
+              </Link>
+              <span aria-hidden>·</span>
+              <Link href="/dmca" className="hover:underline hover:text-gray-800 transition-colors">
+                DMCA
+              </Link>
+            </nav>
+            <span className="text-sm font-bold text-gray-900 tracking-tight flex-shrink-0">
+              Webby<span className="text-emerald-600">Sales</span>Pro
+            </span>
+          </div>
+        </footer>
+      </div>
+    </WebinarProvider>
   )
 }
