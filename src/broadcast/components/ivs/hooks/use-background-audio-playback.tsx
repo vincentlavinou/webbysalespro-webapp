@@ -31,10 +31,25 @@ export function useBackgroundAudioPlayback(
    * Call inside a user-gesture path (Join/Play click) to make Safari more likely
    * to allow background audio later.
    */
-  const prime = useCallback(() => {
+  const prime = useCallback(async () => {
     if (!enabled || !hlsUrl) return;
     const a = ensureAudio();
-    a.src = hlsUrl;
+    if (a.src !== hlsUrl) a.src = hlsUrl;
+    a.preload = "auto";
+
+    // Warm the element inside the user's gesture so Safari is willing to let
+    // us promote playback to this native audio path after the tab is hidden.
+    const previousMuted = a.muted;
+    try {
+      a.muted = true;
+      await a.play();
+      a.pause();
+      a.currentTime = 0;
+    } catch {
+      // Best-effort only. If priming is blocked, hidden playback may still fail.
+    } finally {
+      a.muted = previousMuted;
+    }
   }, [enabled, hlsUrl, ensureAudio]);
 
   const toAudio = useCallback(async () => {
@@ -44,6 +59,7 @@ export function useBackgroundAudioPlayback(
 
     const a = ensureAudio();
     if (a.src !== hlsUrl) a.src = hlsUrl;
+    a.muted = false;
 
     // Best-effort sync
     const t = Number.isFinite(video.currentTime) ? video.currentTime : 0;

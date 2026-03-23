@@ -69,6 +69,7 @@ export function usePlayer({
   const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
   const [autoplayFailed, setAutoplayFailed] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerVersion, setPlayerVersion] = useState(0);
 
   const clearRetry = useCallback(() => {
@@ -114,6 +115,7 @@ export function usePlayer({
     try {
       const state = p.getState();
       setPlayerState(state);
+      setIsPlayerReady(state !== IvsPlayerState.IDLE);
       setStats({
         latency: p.getLiveLatency(),
         bitrate: Math.round((p.getQuality()?.bitrate ?? 0) / 1000) || undefined,
@@ -239,6 +241,7 @@ export function usePlayer({
 
     setAutoplayFailed(false);
     setIsMuted(true);
+    setIsPlayerReady(false);
     setPlayerState("INIT");
     setStats({});
 
@@ -377,6 +380,7 @@ export function usePlayer({
     playerState,
     autoplayFailed,
     isMuted,
+    isPlayerReady,
     hasPlayedRef,
     setAutoplayFailed,
     setIsMuted,

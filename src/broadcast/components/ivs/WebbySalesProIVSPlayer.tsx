@@ -8,6 +8,7 @@ import { usePlayer } from "./hooks/use-player";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
+import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
 
 type Props = {
   src: string;
@@ -33,6 +34,7 @@ export default function WebbySalesProIVSPlayer({
   ariaLabel = "WebbySalesPro player",
   title,
   artwork,
+  backgroundAudioEnabled = true,
   keepAlive = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -51,11 +53,23 @@ export default function WebbySalesProIVSPlayer({
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
+  const bgAudio = useBackgroundAudioPlayback(videoRef, {
+    enabled: backgroundAudioEnabled,
+    hlsUrl: src,
+    onRestoreVideo: ivs.restoreToLive,
+  });
+
   // Visibility resilience: prefer audio fallback when hidden
   const vis = useVisibilityResilience({
     enabled: true,
     hasPlayedRef: ivs.hasPlayedRef,
     restoreToLive: ivs.restoreToLive,
+    onHiddenAudio: backgroundAudioEnabled ? () => {
+      void bgAudio.toAudio();
+    } : undefined,
+    onVisibleAudio: backgroundAudioEnabled ? () => {
+      void bgAudio.toVideo();
+    } : undefined,
   });
 
   // Lock screen metadata once we’re playing
@@ -64,9 +78,11 @@ export default function WebbySalesProIVSPlayer({
 
   const isPlaying = effectiveState === PlayerState.PLAYING;
   const isEnded = effectiveState === PlayerState.ENDED;
+  const showStartGate = ivs.isPlayerReady && ivs.autoplayFailed && !isPlaying && !isEnded;
   const isLoading =
-    !ivs.autoplayFailed &&
-    (!effectiveState ||
+    !showStartGate &&
+    (!ivs.isPlayerReady ||
+      !effectiveState ||
       effectiveState === PlayerState.IDLE ||
       effectiveState === PlayerState.READY ||
       effectiveState === PlayerState.BUFFERING);
@@ -121,7 +137,7 @@ export default function WebbySalesProIVSPlayer({
               <>
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
                 <p className="text-xs font-medium uppercase tracking-wide text-white/80">
-                  Connecting to live webinar…
+                  {ivs.isPlayerReady ? "Connecting to live webinar…" : "Preparing live webinar…"}
                 </p>
               </>
             )}
@@ -134,13 +150,13 @@ export default function WebbySalesProIVSPlayer({
         )}
 
         {/* Autoplay blocked */}
-        {ivs.autoplayFailed && !isPlaying && !isEnded && (
+        {showStartGate && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
             <button
               type="button"
               onClick={async () => {
                 // Prime audio in the user gesture path so Safari will allow background audio
-                // bgAudio.prime();
+                await bgAudio.prime();
                 await ivs.handleManualPlay();
               }}
               className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
