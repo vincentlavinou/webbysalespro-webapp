@@ -12,22 +12,6 @@ import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
 import { useBackgroundAudioPlayback } from "./hooks/use-background-audio-playback";
 import { usePiP } from "./hooks/use-pip";
 
-/**
- * Returns true on iOS and macOS Safari — the only environments where the browser
- * suspends the video element when the tab is hidden or the screen is locked.
- * On Chrome/Firefox/Edge the video element keeps its audio track alive, so no
- * fallback is needed.
- */
-function isSafariBrowser(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  return (
-    /iP(hone|ad|od)/.test(ua) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
-    (/Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua))
-  );
-}
-
 type Props = {
   src: string;
   poster?: string;
@@ -52,7 +36,6 @@ export default function WebbySalesProIVSPlayer({
   ariaLabel = "WebbySalesPro player",
   title,
   artwork,
-  backgroundAudioEnabled = true,
   keepAlive = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -61,8 +44,6 @@ export default function WebbySalesProIVSPlayer({
   const fullscreenTransitionUntilRef = useRef(0);
   const mobileChromeTimerRef = useRef<number | null>(null);
   // Background audio fallback is temporarily disabled.
-  // Code is intact — restore to `backgroundAudioEnabled && isSafariBrowser()` to re-enable.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const audioFallbackEnabled = false;
   // Kept in sync synchronously by useBackgroundAudioPlayback so shouldPreventPause
   // always reads the correct mode even before React re-renders.
