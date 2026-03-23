@@ -16,6 +16,8 @@ import clsx from 'clsx';
 import { ChatComposer } from './ChatComposer';
 import { Button } from '@/components/ui/button';
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
+import { OfferChatBubble } from '@/offer-client/components/OfferChatBubble';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type ChatItem =
   | { kind: 'message'; data: ChatMessage; time: number }
@@ -104,45 +106,62 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
         <PinnedAnnouncements announcements={chatConfig.pinned_announcements} />
       )}
 
-      {/* Scrollable message list */}
-      <div
-        ref={scrollRef}
-        className="flex-1 h-full overflow-y-auto pr-2 scroll-smooth overscroll-contain"
-        onScroll={handleScroll}
-      >
-        {chatConfig && chatConfig.is_enabled === false ? (
-          <div className={clsx("flex flex-col items-center justify-center h-full rounded-md border shadow bg-background text-center px-6 py-8", className)}>
-            <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
-          </div>
-        ) : chatItems.length === 0 ? (
-          <div className="p-3 text-sm text-muted-foreground">No messages yet</div>
-        ) : (
-          <div className="px-2 py-2 space-y-2">
-            {chatItems.map((item, idx) => {
-              if (item.kind === 'cta_announcement') {
-                return (
-                  <CtaAnnouncementBubble key={item.data.id} announcement={item.data} />
-                );
-              }
+      {/* Scrollable message list + slide-up checkout overlay */}
+      <div className="relative flex-1 min-h-0 overflow-hidden">
+        <div
+          ref={scrollRef}
+          className="absolute inset-0 overflow-y-auto pr-2 scroll-smooth overscroll-contain"
+          onScroll={handleScroll}
+        >
+          {chatConfig && chatConfig.is_enabled === false ? (
+            <div className={clsx("flex flex-col items-center justify-center h-full rounded-md border shadow bg-background text-center px-6 py-8", className)}>
+              <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
+            </div>
+          ) : chatItems.length === 0 ? (
+            <div className="p-3 text-sm text-muted-foreground">No messages yet</div>
+          ) : (
+            <div className="px-2 py-2 space-y-2">
+              {chatItems.map((item, idx) => {
+                if (item.kind === 'cta_announcement') {
+                  return (
+                    <CtaAnnouncementBubble key={item.data.id} announcement={item.data} />
+                  );
+                }
 
-              const msg = item.data;
-              const isBlocked = msg.attributes?.local_status === 'blocked';
-              const blockedReason = msg.attributes?.blocked_reasons;
-              return (
-                <div key={msg.id ?? `${msg.sender.userId}-${idx}`} className="text-sm text-foreground">
-                  <ChatMessageBubble
-                    name={msg.sender.attributes?.name || 'unknown'}
-                    content={msg.content}
-                    isSelf={msg.sender.userId === userId}
-                    avatarBgColor={msg.sender.attributes?.avatar_bg_color}
-                    isWarning={isBlocked}
-                    warningMessage={blockedReason}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
+                const msg = item.data;
+                const isBlocked = msg.attributes?.local_status === 'blocked';
+                const blockedReason = msg.attributes?.blocked_reasons;
+                return (
+                  <div key={msg.id ?? `${msg.sender.userId}-${idx}`} className="text-sm text-foreground">
+                    <ChatMessageBubble
+                      name={msg.sender.attributes?.name || 'unknown'}
+                      content={msg.content}
+                      isSelf={msg.sender.userId === userId}
+                      avatarBgColor={msg.sender.attributes?.avatar_bg_color}
+                      isWarning={isBlocked}
+                      warningMessage={blockedReason}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {(offerView === 'offer-checkingout' || offerView === 'offer-purchased') && (
+            <motion.div
+              key="offer-sheet"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 32, stiffness: 300 }}
+              className="absolute inset-0 z-20 overflow-y-auto bg-background rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)]"
+            >
+              <OfferChatBubble />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Composer (controls + input) */}

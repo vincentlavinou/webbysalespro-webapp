@@ -8,6 +8,9 @@ import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import WebbySalesProIVSPlayer from "./ivs/WebbySalesProIVSPlayer";
 import { AttendeeCountBadge } from "../attendee-count/components";
+import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
+import { OfferChatBubble } from "@/offer-client/components/OfferChatBubble";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
@@ -16,6 +19,8 @@ interface AttendeeMobileLayoutProps {
 }
 
 export default function AttendeeMobileLayout({ accessToken, broadcast, title }: AttendeeMobileLayoutProps) {
+
+    const { view: offerView } = useOfferSessionClient();
 
     const headerRef = useRef<HTMLDivElement | null>(null);
     const footerRef = useRef<HTMLDivElement | null>(null);
@@ -135,6 +140,23 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
                             >
                                 <ChatMessages scrollRef={scrollRef} autoStick={true} />
                             </main>
+
+                            {/* Slide-up checkout sheet — fixed between header and footer, never affects layout */}
+                            <AnimatePresence>
+                                {(offerView === 'offer-checkingout' || offerView === 'offer-purchased') && (
+                                    <motion.div
+                                        key="offer-sheet-mobile"
+                                        initial={{ y: '100%' }}
+                                        animate={{ y: 0 }}
+                                        exit={{ y: '100%' }}
+                                        transition={{ type: 'spring', damping: 32, stiffness: 300 }}
+                                        className="fixed inset-x-0 z-20 overflow-y-auto bg-background rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
+                                        style={{ top: headerH, bottom: footerH }}
+                                    >
+                                        <OfferChatBubble />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
                             {/* FOOTER: fixed at bottom */}
                             <footer

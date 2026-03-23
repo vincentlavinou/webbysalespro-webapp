@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { OfferChatBubble } from '@/offer-client/components/OfferChatBubble';
 import { ChatControl } from './ChatControl';
 import { ChatInput } from './ChatInput';
 import { useChat } from '../hooks';
@@ -39,7 +38,6 @@ export function ChatComposer() {
         dark:before:via-[#25D366]/35
       "
     >
-      <OfferChatBubble />
       <ChatControl />
       <ChatInput isLocked={isLocked} isDisabled={isDisabled} />
     </div>
