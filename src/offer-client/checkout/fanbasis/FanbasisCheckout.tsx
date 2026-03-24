@@ -8,10 +8,15 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { memo, useCallback, useMemo, useState } from 'react';
 
-// Pattern-match the human-readable message Fanbasis passes to onError.
-// The SDK's PaymentErrorCode enum only has config errors (UNKNOWN_ERROR etc.)
-// so there are no structured decline codes to key off — message is all we have.
-// If you find that `details` on the error carries richer info, extend this.
+function extractFanbasisMessage(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const raw = error as Record<string, unknown>;
+    if (typeof raw.errorMessage === 'string') return raw.errorMessage;
+    if (typeof raw.message === 'string') return raw.message;
+  }
+  return '';
+}
+
 const FANBASIS_MESSAGE_PATTERNS: Array<{ pattern: RegExp; event: string }> = [
   { pattern: /insufficient funds/i,                 event: 'insufficient_funds' },
   { pattern: /contact your (card )?issuer/i,         event: 'stolen_card' },
@@ -116,12 +121,13 @@ export function FanBasisCheckout() {
   }, [handleCheckoutSuccess]);
 
   const handleCardError = useCallback(async (error: Error) => {
+    const message = extractFanbasisMessage(error);
     console.error('FanBasis card checkout error:', {
-      message: error?.message,
+      message,
       raw: error,
     });
     setCardError('Payment failed. Please try again.');
-    const eventName = parseFanbasisErrorEvent(error?.message ?? '');
+    const eventName = parseFanbasisErrorEvent(message);
     try {
       await recordEvent(eventName, token);
     } catch (e) {
