@@ -5,6 +5,8 @@ import { emptyPage, PaginationPage } from "@/components/pagination";
 import { webinarApiUrl } from ".";
 import { AlreadyRegisteredError } from "./error";
 import { handleStatus } from "@/lib/http";
+import { ApiError } from "@/lib/error";
+import { resolveAttendeeLocation } from "@/lib/geo";
 import { z } from "zod";
 import { registerForWebinarInput } from "./schema";
 import { cache } from "react";
@@ -150,13 +152,37 @@ export const getWebinarFromSession = actionClient
 
 export type RegisterForWebinarInput = z.infer<typeof registerForWebinarInput>;
 
+type AttendeeRequestBody = {
+    session_ids: string[];
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string | null;
+    city?: string;
+    state?: string;
+    country_code?: string;
+}
+
+function shouldRetryWithoutLocation(error: unknown): boolean {
+    if (!(error instanceof ApiError)) {
+        return false;
+    }
+
+    if (error.status !== 400 && error.status !== 422) {
+        return false;
+    }
+
+    const detail = error.payload?.detail.toLowerCase() ?? error.message.toLowerCase();
+    return detail.includes("city") || detail.includes("state") || detail.includes("country") || detail.includes("unknown") || detail.includes("unexpected");
+}
+
 export const registerForWebinarAction = actionClient
     .inputSchema(registerForWebinarInput)
     .action(
         async (input) => {
             const { webinar_id, session_id, first_name, last_name, email, phone } = input.parsedInput;
 
-            const requestBody = {
+            const baseRequestBody: AttendeeRequestBody = {
                 session_ids: [session_id],
                 first_name,
                 last_name,
@@ -164,19 +190,47 @@ export const registerForWebinarAction = actionClient
                 phone: phone ?? null,
             };
 
-            let response = await fetch(
-                `${webinarApiUrl}/v1/webinars/${webinar_id}/attendees/`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(requestBody),
-                    cache: "no-store",
-                }
-            );
+            const location = await resolveAttendeeLocation();
+            const enrichedRequestBody: AttendeeRequestBody = {
+                ...baseRequestBody,
+                ...(location?.city ? { city: location.city } : {}),
+                ...(location?.state ? { state: location.state } : {}),
+                ...(location?.countryCode ? { country_code: location.countryCode } : {}),
+            };
 
-            response = await handleStatus(response)
+            const submitRegistration = async (requestBody: AttendeeRequestBody) => {
+                const response = await fetch(
+                    `${webinarApiUrl}/v1/webinars/${webinar_id}/attendees/`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(requestBody),
+                        cache: "no-store",
+                    }
+                );
+
+                return handleStatus(response);
+            };
+
+            let response: Response;
+
+            try {
+                response = await submitRegistration(enrichedRequestBody);
+            } catch (error) {
+                const requestWasEnriched =
+                    enrichedRequestBody.city !== undefined ||
+                    enrichedRequestBody.state !== undefined ||
+                    enrichedRequestBody.country_code !== undefined;
+
+                if (!requestWasEnriched || !shouldRetryWithoutLocation(error)) {
+                    throw error;
+                }
+
+                response = await submitRegistration(baseRequestBody);
+            }
+
             const result = await response.json() as RegisterAttendeeResponse
             console.log(result)
             return result
