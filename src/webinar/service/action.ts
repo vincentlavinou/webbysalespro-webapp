@@ -232,7 +232,7 @@ export const registerForWebinarAction = actionClient
             }
 
             const result = await response.json() as RegisterAttendeeResponse
-            console.log(result)
+
             return result
         }
     );

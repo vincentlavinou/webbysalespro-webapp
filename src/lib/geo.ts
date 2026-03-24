@@ -41,18 +41,45 @@ function parseNetlifyGeo(value: string | null): AttendeeLocation | null {
   try {
     const parsed = JSON.parse(value) as {
       city?: unknown;
-      subdivision?: unknown;
+      subdivision?:
+        | unknown
+        | {
+            code?: unknown;
+            name?: unknown;
+          };
       country?: unknown;
       countryCode?: unknown;
+      country_code?: unknown;
     };
+    const subdivision =
+      parsed.subdivision && typeof parsed.subdivision === "object"
+        ? parsed.subdivision as { code?: unknown; name?: unknown }
+        : null;
+    const country =
+      parsed.country && typeof parsed.country === "object"
+        ? parsed.country as { code?: unknown; name?: unknown }
+        : null;
+
     return {
       city: normalize(typeof parsed.city === "string" ? parsed.city : undefined),
-      state: normalize(typeof parsed.subdivision === "string" ? parsed.subdivision : undefined),
+      state: normalize(
+        typeof parsed.subdivision === "string"
+          ? parsed.subdivision
+          : typeof subdivision?.name === "string"
+            ? subdivision.name
+            : typeof subdivision?.code === "string"
+              ? subdivision.code
+              : undefined
+      ),
       countryCode: normalize(
         typeof parsed.countryCode === "string"
           ? parsed.countryCode
+          : typeof parsed.country_code === "string"
+            ? parsed.country_code
           : typeof parsed.country === "string"
             ? parsed.country
+            : typeof country?.code === "string"
+              ? country.code
             : undefined
       ),
     };
@@ -63,10 +90,13 @@ function parseNetlifyGeo(value: string | null): AttendeeLocation | null {
 
 function fromHeaders(headerStore: HeaderLike): AttendeeLocation | null {
   const netlifyGeo = parseNetlifyGeo(headerStore.get("x-nf-geo"));
-  if (netlifyGeo?.city || netlifyGeo?.state) {
+  if (netlifyGeo?.city || netlifyGeo?.state || netlifyGeo?.countryCode) {
     return {
       ...netlifyGeo,
-      ip: firstIp(headerStore.get("x-forwarded-for")) ?? normalize(headerStore.get("x-real-ip")),
+      ip:
+        firstIp(headerStore.get("x-forwarded-for")) ??
+        normalize(headerStore.get("x-real-ip")) ??
+        normalize(headerStore.get("client-ip")),
     };
   }
 
