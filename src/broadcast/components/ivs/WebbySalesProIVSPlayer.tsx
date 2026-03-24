@@ -89,6 +89,11 @@ export default function WebbySalesProIVSPlayer({
   const pip = usePiP(videoRef, ivs.restoreToLive);
   const { restoreToLive, setAutoplayFailed } = ivs;
 
+  const isTouchDevice = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+  }, []);
+
   const clearMobileChromeTimer = useCallback(() => {
     if (mobileChromeTimerRef.current) {
       window.clearTimeout(mobileChromeTimerRef.current);
@@ -111,7 +116,7 @@ export default function WebbySalesProIVSPlayer({
     if (typeof window === "undefined") return;
 
     const updateViewportMode = () => {
-      const touchViewport = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
+      const touchViewport = isTouchDevice();
       setIsTouchViewport(touchViewport);
       setShowMobileChrome(current => (touchViewport ? current : true));
       if (!touchViewport) {
@@ -126,7 +131,7 @@ export default function WebbySalesProIVSPlayer({
       window.removeEventListener("resize", updateViewportMode);
       clearMobileChromeTimer();
     };
-  }, [clearMobileChromeTimer]);
+  }, [clearMobileChromeTimer, isTouchDevice]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -143,8 +148,7 @@ export default function WebbySalesProIVSPlayer({
       webkitFullscreenElement?: Element | null;
     };
 
-    const isMobileViewport = () =>
-      window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
+    const isMobileViewport = () => isTouchDevice();
     const fullscreenVideo = videoRef.current;
 
     const markFullscreenTransition = () => {
@@ -268,7 +272,7 @@ export default function WebbySalesProIVSPlayer({
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange as EventListener);
       fullscreenVideo?.removeEventListener("webkitendfullscreen", resumeAfterFullscreenExit as EventListener);
     };
-  }, [restoreToLive, setAutoplayFailed]);
+  }, [isTouchDevice, restoreToLive, setAutoplayFailed]);
 
   useMediaSession({
     active: isPlaying,

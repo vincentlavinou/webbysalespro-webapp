@@ -10,16 +10,22 @@ interface AttendeeDesktopLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
     accessToken?: string
     title?: string;
+    compact?: boolean;
 }
 
 
-export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: AttendeeDesktopLayoutProps) => {
+export const AttendeeDesktopLayout = ({
+    accessToken,
+    broadcast,
+    title,
+    compact = false,
+}: AttendeeDesktopLayoutProps) => {
     return (
-        <div className="flex flex-col w-full h-[90vh] overflow-hidden md:px-4">
-            <div className="flex flex-col flex-1 min-h-0 lg:flex-row overflow-hidden gap-2">
+        <div className={`flex flex-col w-full overflow-hidden ${compact ? "h-[100svh]" : "h-[90vh] md:px-4"}`}>
+            <div className={`flex flex-1 min-h-0 overflow-hidden gap-2 ${compact ? "flex-col px-2 py-2" : "flex-col lg:flex-row"}`}>
 
-                <div className="flex flex-col w-full lg:flex-1 max-h-[calc(100vh-100px)] min-h-0">
-                    <div className="sticky top-0 z-10 bg-black relative">
+                <div className={`flex flex-col w-full min-h-0 ${compact ? "flex-none" : "lg:flex-1 max-h-[calc(100vh-100px)]"}`}>
+                    <div className={`z-10 bg-black relative ${compact ? "shrink-0" : "sticky top-0"}`}>
                         {broadcast.stream ? (
                             <>
                                 <WebbySalesProIVSPlayer
@@ -42,8 +48,7 @@ export const AttendeeDesktopLayout = ({ accessToken, broadcast, title }: Attende
                         {/* <VideoInjectionPlayer /> */}
                     </div>
                 </div>
-                                    {/* Chat container (grows under controls) */}
-                    {broadcast.stream && <div className="flex flex-col w-full lg:w-[320px] min-w-[280px] lg:max-w-[400px] flex-1 overflow-y-auto px-2">
+                {broadcast.stream && <div className={`flex flex-col w-full flex-1 min-h-0 ${compact ? "" : "lg:w-[320px] min-w-[280px] lg:max-w-[400px] overflow-y-auto px-2"}`}>
                         <WebinarChat
                           token={accessToken}
                           region={broadcast.stream?.region}
