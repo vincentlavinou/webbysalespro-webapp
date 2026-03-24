@@ -8,17 +8,19 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { memo, useCallback, useMemo, useState } from 'react';
 
-const FANBASIS_ERROR_PATTERNS: Array<{ keywords: string[]; event: string }> = [
-  { keywords: ['insufficient funds'],       event: 'insufficient_funds' },
-  { keywords: ['contact your card issuer'], event: 'stolen_card' },
-  { keywords: ['repeated attempts'],        event: 'card_velocity_exceeded' },
-  { keywords: ['declined'],                 event: 'generic_decline' },
+// Pattern-match the human-readable message Fanbasis passes to onError.
+// The SDK's PaymentErrorCode enum only has config errors (UNKNOWN_ERROR etc.)
+// so there are no structured decline codes to key off — message is all we have.
+// If you find that `details` on the error carries richer info, extend this.
+const FANBASIS_MESSAGE_PATTERNS: Array<{ pattern: RegExp; event: string }> = [
+  { pattern: /insufficient funds/i,                 event: 'insufficient_funds' },
+  { pattern: /contact your (card )?issuer/i,         event: 'stolen_card' },
+  { pattern: /repeated attempts|too many attempts/i, event: 'card_velocity_exceeded' },
 ];
 
 function parseFanbasisErrorEvent(message: string): string {
-  const lower = message.toLowerCase();
-  for (const { keywords, event } of FANBASIS_ERROR_PATTERNS) {
-    if (keywords.every(kw => lower.includes(kw))) return event;
+  for (const { pattern, event } of FANBASIS_MESSAGE_PATTERNS) {
+    if (pattern.test(message)) return event;
   }
   return 'generic_decline';
 }
