@@ -43,6 +43,8 @@ export default function WebbySalesProIVSPlayer({
   const [isTouchViewport, setIsTouchViewport] = useState(false);
   const [showMobileChrome, setShowMobileChrome] = useState(false);
 
+  const shouldPreventPause = useCallback(() => true, []);
+
   const ivs = usePlayer({
     src,
     autoPlay,
@@ -52,7 +54,7 @@ export default function WebbySalesProIVSPlayer({
     onEnded: emitPlaybackEnded,
     onPlaying: emitPlaybackPlaying,
     keepAlive,
-    shouldPreventPause: () => true,
+    shouldPreventPause,
   });
 
   // Latency + buffering watchdog (playerVersion ensures the effect runs after the async player init)
@@ -307,7 +309,7 @@ export default function WebbySalesProIVSPlayer({
           />
         </div>
 
-        {pip.isPiPSupported && (!isTouchViewport || showMobileChrome) && (
+        {pip.isPiPSupported && isTouchViewport && (
           <div className="absolute top-3 right-3 z-40">
             <button
               type="button"

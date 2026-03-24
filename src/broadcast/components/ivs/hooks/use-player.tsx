@@ -230,8 +230,9 @@ export function usePlayer({
     try {
       v.muted = false;
       p.setMuted(false);
-      setIsMuted(false);
     } catch {}
+    // Sync with actual element state — browser policy may silently reject the unmute.
+    setIsMuted(v.muted);
   }, [videoRef]);
 
   // Live playback should not remain paused. Re-play on pause unless a caller
@@ -252,7 +253,8 @@ export function usePlayer({
     if (!keepAlive) {
       p.setMuted(mutedProp);
       v.muted = mutedProp;
-      setIsMuted(mutedProp);
+      // Sync with actual element state in case the browser silently rejects the assignment.
+      setIsMuted(v.muted);
     }
 
     if (canForcePlayback && v.paused && (shouldPreventPause?.() ?? true)) {
