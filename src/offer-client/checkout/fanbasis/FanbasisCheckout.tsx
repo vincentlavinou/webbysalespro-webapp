@@ -2,7 +2,7 @@
 
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
 import type { FanbasisCheckoutDto } from '@/offer-client/service/type';
-import { AutoCheckout, CheckoutConfig, CheckoutProvider, PaymentError } from '@fanbasis/checkout-react';
+import { AutoCheckout, CheckoutConfig, CheckoutProvider } from '@fanbasis/checkout-react';
 import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
@@ -116,12 +116,8 @@ export function FanBasisCheckout() {
   }, [handleCheckoutSuccess]);
 
   const handleCardError = useCallback(async (error: Error) => {
-    // TODO: remove once we know the real error shape from Fanbasis
-    const fbError = error instanceof PaymentError ? error : null;
     console.error('FanBasis card checkout error:', {
       message: error?.message,
-      code: fbError?.code,
-      details: fbError?.details,
       raw: error,
     });
     setCardError('Payment failed. Please try again.');
