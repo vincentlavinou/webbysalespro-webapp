@@ -69,6 +69,12 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
     [webinar.series]
   );
   const allowsSessionSelection = allowsManualSessionSelection(webinar);
+  const autoAssignedSession = useMemo(
+    () =>
+      sessions.find((session) => session.status === WebinarSessionStatus.IN_PROGRESS)
+      ?? sessions[0],
+    [sessions]
+  );
   const formSchema = useMemo(
     () =>
       attendeeSchema.superRefine((data, ctx) => {
@@ -95,8 +101,9 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   const { execute, isPending } = useAction(registerForWebinarAction, {
     onSuccess: async ({data, input}) => {
       setIsNavigating(true);
-      const registeredSessionId = input.session_id
-      const registeredSession = webinar.series?.sessions.find((session) => session.id === registeredSessionId);
+      const registeredSessionId = input.session_id ?? autoAssignedSession?.id;
+      const registeredSession = webinar.series?.sessions.find((session) => session.id === registeredSessionId)
+        ?? autoAssignedSession;
       const hasLiveSession = webinar.series?.sessions.some(
         (session) => session.status === WebinarSessionStatus.IN_PROGRESS
       ) ?? false;
