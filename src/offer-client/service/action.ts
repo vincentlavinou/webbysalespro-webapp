@@ -9,11 +9,12 @@ export const startCheckout = actionClient
     .inputSchema(startCheckoutSchema)
     .action(async ({ parsedInput: { offerId, token, sessionId } }) => {
         const response = await fetch(
-            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/?token=${token}`,
+            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
             {
                 method: 'post',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({})
             },
@@ -27,10 +28,13 @@ export const startFanbasisCheckout = actionClient
     .inputSchema(startCheckoutSchema)
     .action(async ({ parsedInput: { offerId, token, sessionId } }) => {
         const response = await fetch(
-            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/?token=${token}`,
+            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
             {
                 method: 'post',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
                 body: JSON.stringify({})
             },
         )
@@ -43,8 +47,12 @@ export const getOfferSessionsForAttendee = actionClient
   .inputSchema(offersForSessionSchema)
   .action(async ({ parsedInput: { token, sessionId } }) => {
     const response = await fetch(
-      `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/?token=${token}`,
-      { method: "GET", headers: { "Content-Type": "application/json" }, cache: "no-store" }
+      `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        cache: "no-store",
+      }
     );
 
     const checkedResponse = await handleStatus(response);

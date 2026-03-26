@@ -1,6 +1,6 @@
 'use server'
 import { actionClient } from "@/lib/safe-action";
-import { QueryWebinar, RegisterAttendeeResponse, SeriesSession, Webinar } from "./type";
+import { QueryWebinar, RegisterV2Response, SeriesSession, Webinar } from "./type";
 import { emptyPage, PaginationPage } from "@/components/pagination";
 import { webinarApiUrl } from ".";
 import { AlreadyRegisteredError } from "./error";
@@ -132,7 +132,8 @@ const sessionIdTokenSchema = z.object({
 })
 
 export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).action(async ({parsedInput}) => {
-    const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/?token=${parsedInput.token}`, {
+    const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/`, {
+        headers: { "Authorization": `Bearer ${parsedInput.token}` },
         cache: "no-store",
     })
     const checkedResponse = await handleStatus(response)
@@ -143,7 +144,8 @@ export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).a
 export const getWebinarFromSession = actionClient
     .inputSchema(sessionIdTokenSchema)
     .action( async ({parsedInput}) => {
-        const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/?token=${parsedInput.token}`, {
+        const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/`, {
+            headers: { "Authorization": `Bearer ${parsedInput.token}` },
             cache: "no-store",
         })
         const checkedResponse = await handleStatus(response)
@@ -153,14 +155,15 @@ export const getWebinarFromSession = actionClient
 export type RegisterForWebinarInput = z.infer<typeof registerForWebinarInput>;
 
 type AttendeeRequestBody = {
-    session_ids: string[];
+    session_id: string;
     first_name: string;
     last_name: string;
     email: string;
     phone: string | null;
     city?: string;
     state?: string;
-    country_code?: string;
+    country?: string;
+    registration_source: string;
 }
 
 function shouldRetryWithoutLocation(error: unknown): boolean {
@@ -183,11 +186,12 @@ export const registerForWebinarAction = actionClient
             const { webinar_id, session_id, first_name, last_name, email, phone } = input.parsedInput;
 
             const baseRequestBody: AttendeeRequestBody = {
-                session_ids: [session_id],
+                session_id,
                 first_name,
                 last_name,
                 email,
                 phone: phone ?? null,
+                registration_source: 'public_registration_page',
             };
 
             const location = await resolveAttendeeLocation();
@@ -195,12 +199,12 @@ export const registerForWebinarAction = actionClient
                 ...baseRequestBody,
                 ...(location?.city ? { city: location.city } : {}),
                 ...(location?.state ? { state: location.state } : {}),
-                ...(location?.countryCode ? { country_code: location.countryCode } : {}),
+                ...(location?.countryCode ? { country: location.countryCode } : {}),
             };
 
             const submitRegistration = async (requestBody: AttendeeRequestBody) => {
                 const response = await fetch(
-                    `${webinarApiUrl}/v1/webinars/${webinar_id}/attendees/`,
+                    `${webinarApiUrl}/v2/webinars/${webinar_id}/registrants/`,
                     {
                         method: "POST",
                         headers: {
@@ -222,7 +226,7 @@ export const registerForWebinarAction = actionClient
                 const requestWasEnriched =
                     enrichedRequestBody.city !== undefined ||
                     enrichedRequestBody.state !== undefined ||
-                    enrichedRequestBody.country_code !== undefined;
+                    enrichedRequestBody.country !== undefined;
 
                 if (!requestWasEnriched || !shouldRetryWithoutLocation(error)) {
                     throw error;
@@ -231,7 +235,7 @@ export const registerForWebinarAction = actionClient
                 response = await submitRegistration(baseRequestBody);
             }
 
-            const result = await response.json() as RegisterAttendeeResponse
+            const result = await response.json() as RegisterV2Response
 
             return result
         }

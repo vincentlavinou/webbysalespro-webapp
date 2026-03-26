@@ -7,8 +7,8 @@ import {
     Webinar,
     webinarApiUrl,
 } from "../service";
-import { useRouter, useSearchParams } from "next/navigation";
-import { broadcastApiUrl, createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
+import { useRouter } from "next/navigation";
+import { createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
 import { BroadcastServiceToken } from "@/broadcast/service/type";
 import { onPlaybackEnded } from "@/emitter/playback";
 import { WebinarSessionStatus } from "../service/enum";
@@ -16,6 +16,7 @@ import { useEventSource } from "@/sse";
 import { getSessionAction } from "../service/action";
 import { useAction } from "next-safe-action/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";
+import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-session";
 
 // ---- Tuning knobs (can be shared with hook defaults or overridden) ----
 const HEARTBEAT_TIMEOUT_MS = 45_000;
@@ -29,16 +30,14 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     const [session, setSession] = useState<SeriesSession | undefined>(undefined);
     const [broadcastServiceToken, setBroadcastServiceToken] =
         useState<BroadcastServiceToken | undefined>(undefined);
-    const [token, setToken] = useState<string | undefined>(undefined);
     const [webinar, setWebinar] = useState<Webinar | undefined>(undefined);
     const [isRedirecting, setIsRedirecting] = useState(false);
 
-    const searchParams = useSearchParams();
-    const attendeeToken = searchParams.get("token") || undefined;
+    const { joinSessionToken: attendeeToken, attendanceId } = useAttendeeSession();
     const router = useRouter();
     const { execute: getSession } = useAction(getSessionAction, {
-        onSuccess: async ({ data, input }) => {
-            handleUpdateSession(data, input.token)
+        onSuccess: async ({ data }) => {
+            handleUpdateSession(data)
         },
         onError: ({ error: { serverError } }) => {
             notifyErrorUiMessage(serverError, "Unable to refresh webinar session details.");
@@ -55,7 +54,6 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
             if (!attendeeToken) return;
             try {
                 await getSession({ id: sessionId, token: attendeeToken })
-
             } catch (e) {
                 console.error("[WebinarProvider] Failed get session service token", e);
             }
@@ -65,7 +63,6 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 setSession(svc.session);
                 setBroadcastServiceToken(svc);
                 setWebinar(svc.webinar);
-                setToken(attendeeToken);
             } catch (e) {
                 console.error("[WebinarProvider] Failed to create service token", e);
                 notifyErrorUiMessage("Unable to connect to the webinar stream.");
@@ -80,30 +77,32 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
 
     // ---- Public event recorder ----
     const recordSessionEvent = useCallback(
-        async (name: string, token: string, payload: Record<string, unknown> | undefined) => {
+        async (name: string, _token: string, payload: Record<string, unknown> | undefined) => {
             try {
-                await recordEvent(name, sessionId, token, payload);
+                await recordEvent(name, attendanceId, attendeeToken, payload);
             } catch (e) {
                 console.error("[WebinarProvider] recordEvent failed", e);
             }
         },
-        [sessionId]
+        [attendanceId, attendeeToken]
     );
 
-    const recordEventBeacon = useCallback(async (name: string, token: string, payload: Record<string, unknown> | undefined = undefined) => {
-        const params = new URLSearchParams()
-        params.set("token", token)
-        fetch(`${broadcastApiUrl}/v1/sessions/${sessionId}/events/?${params.toString()}`, {
+    const recordEventBeacon = useCallback(async (name: string, _token: string, payload: Record<string, unknown> | undefined = undefined) => {
+        fetch(`${webinarApiUrl}/v2/attendances/${attendanceId}/events/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${attendeeToken}`,
+            },
             body: JSON.stringify({
-                event_type: name,
-                event_timestamp: new Date().toISOString(),
-                payload: payload
+                event_code: name,
+                source: 'client',
+                occurred_at: new Date().toISOString(),
+                payload: payload ?? {},
             }),
             keepalive: true,
         });
-    },[sessionId])
+    }, [attendanceId, attendeeToken])
 
     const regenerateBroadcastToken = useCallback(
         async (newToken: string) => {
@@ -112,7 +111,6 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 setSession(svc.session);
                 setBroadcastServiceToken(svc);
                 setWebinar(svc.webinar);
-                setToken(newToken);
             } catch (e) {
                 console.error("[WebinarProvider] Failed to create service token", e);
                 notifyErrorUiMessage("Unable to refresh your webinar connection.");
@@ -121,42 +119,41 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         [sessionId]
     );
 
-    const handleUpdateSession = useCallback((session: SeriesSession, token: string) => {
-
+    const handleUpdateSession = useCallback((session: SeriesSession) => {
         setSession(session);
 
         if (session.status === WebinarSessionStatus.COMPLETED) {
             setIsRedirecting(true);
-            router.replace(`/${sessionId}/completed?token=${token}`);
+            router.replace(`/${sessionId}/completed`);
         }
-
     }, [setSession, router, setIsRedirecting, sessionId])
 
     // ---- Navigate to completed when IVS player stream ends ----
     useEffect(() => {
         return onPlaybackEnded(() => {
-            if (token) {
-                setIsRedirecting(true);
-                router.replace(`/${sessionId}/completed?token=${token}`);
-            }
+            setIsRedirecting(true);
+            router.replace(`/${sessionId}/completed`);
         });
-    }, [token, sessionId, router]);
+    }, [sessionId, router]);
 
     // ---- SSE event handlers (webinar-specific) ----
     const handleEventUpdateSession = useCallback(
         (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data) as { status: WebinarSessionStatus };
-                if (token) handleUpdateSession({ ...(session || {}), status: data.status } as SeriesSession, token)
-                if (token && data.status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken(token)
+                handleUpdateSession({ ...(session || {}), status: data.status } as SeriesSession)
+                if (data.status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken(attendeeToken)
             } catch (e) {
                 console.error("[SSE] Parse error (session:update)", e, event.data);
             }
         },
-        [token, session, handleUpdateSession, regenerateBroadcastToken]
+        [session, handleUpdateSession, regenerateBroadcastToken, attendeeToken]
     );
 
     // ---- Build SSE URL (generic for hook) ----
+    // NOTE: EventSource does not support custom headers, so auth is passed as
+    // ?token= query param here. The backend accepts Bearer on all v1 endpoints
+    // but EventSource is the one caller that can't use the header form.
     const buildSseUrl = useCallback(
         (lastEventId: string | null) => {
             if (!broadcastServiceToken) return "";
@@ -166,15 +163,15 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 "channels",
                 `webinar-session-${broadcastServiceToken.session?.id || sessionId}`
             );
-            if (token) params.set("token", token);
+            if (attendeeToken) params.set("token", attendeeToken);
             if (lastEventId) params.set("lastEventId", lastEventId);
             return `${base}?${params.toString()}`;
         },
-        [broadcastServiceToken, sessionId, token]
+        [broadcastServiceToken, sessionId, attendeeToken]
     );
 
     const sseEnabled =
-        !!token &&
+        !!attendeeToken &&
         !!broadcastServiceToken &&
         mountedRef.current &&
         session?.status !== WebinarSessionStatus.COMPLETED;
@@ -191,9 +188,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
             // no-op, hook already counts this as activity
         },
         onOpen: async () => {
-            if (token) {
-                await getSession({ id: sessionId, token })
-            }
+            await getSession({ id: sessionId, token: attendeeToken })
         },
         onError: (err: Event) => {
             console.error("[SSE] Error in WebinarProvider", err);
@@ -208,7 +203,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 setSession,
                 sessionId,
                 broadcastServiceToken,
-                token,
+                token: attendeeToken,
                 isRedirecting,
                 webinar,
                 recordEvent: recordSessionEvent,

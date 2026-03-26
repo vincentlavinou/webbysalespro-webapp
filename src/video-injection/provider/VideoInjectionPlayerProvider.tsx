@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { VideoInjectionPlayerContext } from "../context/VideoInjectionPlayerContext";
 import { getVideoInjectionState } from "../service/action";
+import { AttendeeSessionContext } from "@/attendee-session/context/AttendeeSessionContext";
 
 interface VideoInjectionPlayerProviderProps {
   children: React.ReactNode;
@@ -15,6 +16,8 @@ export function VideoInjectionPlayerProvider({
   sessionId,
   token,
 }: VideoInjectionPlayerProviderProps) {
+  const attendeeSession = useContext(AttendeeSessionContext);
+  const activeToken = attendeeSession?.joinSessionToken ?? token;
   const [isActive, setIsActive] = useState(false);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [title, setTitle] = useState<string | null>(null);
@@ -27,7 +30,7 @@ export function VideoInjectionPlayerProvider({
     let cancelled = false;
 
     async function hydrate() {
-      const state = await getVideoInjectionState(sessionId, token);
+      const state = await getVideoInjectionState(sessionId, activeToken);
       if (cancelled) return;
 
       if (state.active) {
@@ -46,7 +49,7 @@ export function VideoInjectionPlayerProvider({
     return () => {
       cancelled = true;
     };
-  }, [sessionId, token]);
+  }, [activeToken, sessionId]);
 
   // const handleMetadataEvent = useCallback(
   //   (evt: { payload: { action: string; playback_url?: string; title?: string; duration_ms?: number; video_injection_id?: string } }) => {

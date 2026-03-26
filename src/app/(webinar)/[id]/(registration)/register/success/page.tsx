@@ -10,12 +10,12 @@ import ShareButton from "@/webinar/components/ShareButton";
 
 interface RegistrationSuccessProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ session_id: string; token?: string }>;
+  searchParams: Promise<{ session_id: string; t?: string; webinar_id?: string }>;
 }
 
 export default async function RegistrationSuccessPage(props: RegistrationSuccessProps) {
   const webinarId = (await props.params).id;
-  const { session_id: sessionId, token } = await props.searchParams;
+  const { session_id: sessionId, t: rawJoinToken, webinar_id } = await props.searchParams;
 
   const webinar = await getWebinar(webinarId, { fresh: true });
   if (!isWebinarPayload(webinar) || !sessionId) {
@@ -36,6 +36,12 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
   const thumbnail = webinar.media.find(
     (m) => m.file_type === "image" && m.field_type === "thumbnail"
   );
+
+  // Build the join path server-side — never constructed client-side
+  const effectiveWebinarId = webinar_id ?? webinarId;
+  const joinPath = rawJoinToken
+    ? `/join/live?t=${encodeURIComponent(rawJoinToken)}&webinar_id=${effectiveWebinarId}`
+    : undefined;
 
   return (
     <div className="px-4 pb-8">
@@ -135,18 +141,18 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
           <hr className="border-gray-100 dark:border-slate-700 mt-2" />
 
           <div className="flex flex-col gap-2 pt-1">
-            {token && (
+            {joinPath && (
               <CalendarButton
                 title={webinar.title}
                 description={webinar.description ?? ''}
                 startIso={session.scheduled_start}
                 timezone={session.timezone || 'utc'}
                 uid={sessionId}
-                url={`/${sessionId}/live?token=${token}`}
+                url={joinPath}
               />
             )}
-            {token && (
-              <BookmarkButton livePath={`/${sessionId}/live?token=${token}`} />
+            {joinPath && (
+              <BookmarkButton livePath={joinPath} />
             )}
             <ShareButton
               registrationPath={`/${webinarId}/register`}

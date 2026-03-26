@@ -8,13 +8,13 @@ export const tokenProvider = async (session: string, accessToken?: string, getRe
     const response = await fetch(`${chatApiUrl}/v1/chat/token/`,{
         headers: {
             'Content-Type': 'application/json',
+            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
             ...(await getRequestHeaders?.())
         },
         method: 'POST',
         cache: "no-store",
         body: JSON.stringify({
             session: session,
-            access_token: accessToken
         })
     })
 
@@ -27,10 +27,11 @@ export const getAttendeeChatSession = actionClient.inputSchema(
 ).action( async ({parsedInput}) => {
 
     const response = await fetch(
-        `${chatApiUrl}/v1/sessions/${parsedInput.sessionId}/chat/?token=${parsedInput.token}`,
+        `${chatApiUrl}/v1/sessions/${parsedInput.sessionId}/chat/`,
         {
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${parsedInput.token}`,
             },
             method: 'GET',
             cache: "no-store",

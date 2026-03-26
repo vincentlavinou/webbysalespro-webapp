@@ -1,7 +1,7 @@
 // WebinarChat.tsx
 'use client';
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { ChatToken } from "amazon-ivs-chat-messaging";
 import { ChatConfigurationProvider } from "../provider/ChatConfigurationProvider";
 import { getAttendeeChatSession, tokenProvider } from "../service/action";
@@ -14,6 +14,7 @@ import { ChatPanel } from "./ChatPanel";
 import { ChatConfigUpdate } from "../service/type";
 import { useAction } from "next-safe-action/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";
+import { AttendeeSessionContext } from "@/attendee-session/context/AttendeeSessionContext";
 
 export interface WebinarChatProps {
   region: string;
@@ -25,7 +26,8 @@ export interface WebinarChatProps {
 
 export function WebinarChat({ token, region, currentUserRole = "attendee", render }: WebinarChatProps) {
   const { sessionId, getRequestHeaders, accessToken } = useBroadcastConfiguration();
-  const activeToken = token || accessToken;
+  const attendeeSession = useContext(AttendeeSessionContext);
+  const activeToken = attendeeSession?.joinSessionToken ?? token ?? accessToken;
 
   // Refs so the stable tokenProvider always has the latest values when IVS calls
   // it for a fresh token — without changing the function reference on every render.

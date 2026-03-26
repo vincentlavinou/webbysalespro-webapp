@@ -1,5 +1,8 @@
 import type { Viewport } from "next";
+import { redirect } from "next/navigation";
 import { WebinarProvider } from "@/webinar/providers";
+import { AttendeeSessionProvider } from "@/attendee-session/provider/AttendeeSessionProvider";
+import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -16,9 +19,16 @@ interface LiveLayoutProps {
 export default async function LiveLayout({ children, params }: LiveLayoutProps) {
   const sessionId = (await params).id
 
+  const attendeeSession = await getAttendeeSessionCookie()
+  if (!attendeeSession) {
+    redirect(`/`)
+  }
+
   return (
-    <WebinarProvider sessionId={sessionId}>
-      {children}
-    </WebinarProvider>
+    <AttendeeSessionProvider initial={attendeeSession}>
+      <WebinarProvider sessionId={sessionId}>
+        {children}
+      </WebinarProvider>
+    </AttendeeSessionProvider>
   )
 }

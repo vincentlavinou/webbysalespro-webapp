@@ -17,8 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { type Webinar } from "@/webinar/service";
+import { registerForWebinarAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
-import { getSessionAction, registerForWebinarAction } from "@/webinar/service/action";
 
 interface DefaultRegistrationFormProps {
   webinar: Webinar;
@@ -83,17 +83,28 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
   const { execute, isPending } = useAction(registerForWebinarAction, {
     onSuccess: async ({data, input}) => {
       setIsNavigating(true);
-      const registeredSessionId =  input.session_id
+      const registeredSessionId = input.session_id
 
-      // get latest session once registration is completed
+      const joinUrl = data.grants?.[0]?.join_url
+      if (!joinUrl) {
+        toast.error("Registration succeeded but no join link was returned. Please check your email.");
+        setIsNavigating(false);
+        return;
+      }
+
+      // Extract the raw join token from the join_url the backend returned
+      let rawJoinToken: string | null = null;
       try {
-        const session = await getSessionAction({id: registeredSessionId, token: data.access_token})
-        if (session.data?.status === WebinarSessionStatus.IN_PROGRESS && data.access_token) {
-          router.push(`/${session.data.id}/live?token=${data.access_token}`);
-          return
-        }
+        const parsed = new URL(joinUrl, window.location.origin);
+        rawJoinToken = parsed.searchParams.get('t');
       } catch {
-        toast.error("Registration succeeded, but we couldn't fetch the latest session status.");
+        rawJoinToken = null;
+      }
+
+      if (!rawJoinToken) {
+        toast.error("Registration succeeded but the join link was invalid. Please check your email.");
+        setIsNavigating(false);
+        return;
       }
 
       const successUrl = webinar.registration_settings?.registration_success_url;
@@ -116,7 +127,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         return;
       }
 
-      router.push(`/${webinar.id}/register/success?session_id=${registeredSessionId}&token=${data.access_token}`);
+      router.push(`/${webinar.id}/register/success?session_id=${registeredSessionId}&t=${rawJoinToken}&webinar_id=${webinar.id}`);
     },
     onError: ({error, input}) => {
       submitLockRef.current = false;

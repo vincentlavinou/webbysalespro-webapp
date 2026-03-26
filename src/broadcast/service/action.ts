@@ -32,8 +32,8 @@ const sessionControllerSchema = z.object({
 
 const recordEventSchema = z.object({
   name: z.string(),
-  sessionId: z.string(),
-  token: z.string(),
+  attendanceId: z.string(),
+  joinSessionToken: z.string(),
   payload: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -78,6 +78,7 @@ export const createBroadcastServiceTokenAction = actionClient
     const response = await fetch(`${broadcastApiUrl}/v1/broadcast/token/`, {
       headers: {
         "Content-Type": "application/json",
+        ...(parsedInput.accessToken ? { "Authorization": `Bearer ${parsedInput.accessToken}` } : {}),
         ...(parsedInput.headers ?? {}),
       },
       method: "POST",
@@ -97,6 +98,7 @@ export const createAttendeeBroadcastServiceTokenAction = actionClient
     const response = await fetch(`${broadcastApiUrl}/v1/attendee/broadcast/token/`, {
       headers: {
         "Content-Type": "application/json",
+        ...(parsedInput.accessToken ? { "Authorization": `Bearer ${parsedInput.accessToken}` } : {}),
         ...(parsedInput.headers ?? {}),
       },
       method: "POST",
@@ -153,18 +155,17 @@ export const sessionControllerAction = actionClient
 export const recordEventAction = actionClient
   .inputSchema(recordEventSchema)
   .action(async ({ parsedInput }) => {
-    const params = new URLSearchParams();
-    params.set("token", parsedInput.token);
-
-    const response = await fetch(`${broadcastApiUrl}/v1/sessions/${parsedInput.sessionId}/events/?${params.toString()}`, {
+    const response = await fetch(`${broadcastApiUrl}/v2/attendances/${parsedInput.attendanceId}/events/`, {
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${parsedInput.joinSessionToken}`,
       },
       method: "POST",
       body: JSON.stringify({
-        event_type: parsedInput.name,
-        event_timestamp: new Date().toISOString(),
-        payload: parsedInput.payload,
+        event_code: parsedInput.name,
+        source: "client",
+        occurred_at: new Date().toISOString(),
+        payload: parsedInput.payload ?? {},
       }),
     });
 
@@ -236,14 +237,14 @@ export const sessionController = async (
 
 export const recordEvent = async (
   name: string,
-  sessionId: string,
-  token: string,
+  attendanceId: string,
+  joinSessionToken: string,
   payload: Record<string, unknown> | undefined = undefined
 ) => {
   const result = await recordEventAction({
     name,
-    sessionId,
-    token,
+    attendanceId,
+    joinSessionToken,
     payload,
   });
 

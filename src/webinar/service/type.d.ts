@@ -145,6 +145,19 @@ export type RegisterAttendeeResponse = {
     webinar: string
 }
 
+export type RegisterV2Grant = {
+    join_url: string
+}
+
+export type RegisterV2Response = {
+    id: string
+    first_name: string
+    last_name: string
+    email: string
+    phone?: string
+    grants: RegisterV2Grant[]
+}
+
 export type SessionOfferVisibilityUpdate = {
   session_id: string; // e.g. "Offer visibility updated"
   visible: boolean;

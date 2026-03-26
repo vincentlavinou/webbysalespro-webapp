@@ -130,7 +130,7 @@ function fromHeaders(headerStore: HeaderLike): AttendeeLocation | null {
 }
 
 async function lookupExternalGeo(ip: string): Promise<AttendeeLocation | null> {
-  const urlTemplate = process.env.IP_GEOLOCATION_API_URL;
+  const urlTemplate = process.env.IP_GEOLOCATION_API_URL ? process.env.IP_GEOLOCATION_API_URL : process.env.NEXT_PUBLIC_IP_GEOLOCATION_API_URL
   if (!urlTemplate) return null;
 
   const url = urlTemplate.includes("{ip}")

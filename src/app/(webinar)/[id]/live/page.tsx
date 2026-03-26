@@ -1,10 +1,11 @@
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSessionAction, getWebinarFromSession } from "@/webinar/service/action";
 import { LiveContainer } from "@/broadcast/components/LiveContainer";
 import { getOfferSessionsForAttendee } from "@/offer-client/service/action";
 import { isSessionPayload, isWebinarPayload } from "@/webinar/service/guards";
+import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,20 +15,20 @@ interface Props {
         id: string
     }>
     searchParams: Promise<{
-        token: string
         ready?: string
     }>
 }
 
 export default async function AttendeeLivePage({ params, searchParams }: Props) {
-
     const resolvedSearch = await searchParams
-    const token = resolvedSearch.token
-    if (!token) {
-        notFound()
+    const sessionId = (await params).id
+
+    const attendeeSession = await getAttendeeSessionCookie()
+    if (!attendeeSession) {
+        redirect('/')
     }
 
-    const sessionId = (await params).id
+    const token = attendeeSession.joinSessionToken
 
     const [session, webinar] = await Promise.all([
         getSessionAction({ id: sessionId, token }),
@@ -54,12 +55,12 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
             .minus({ minutes: webinar.data.settings?.waiting_room_start_time || 15 });
 
         if (session.data.status === WebinarSessionStatus.COMPLETED) {
-            clientRedirectTo = `/${sessionId}/completed?token=${token}`
+            clientRedirectTo = `/${sessionId}/completed`
         } else if (session.data.status === WebinarSessionStatus.SCHEDULED &&
             waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
-            clientRedirectTo = `/${sessionId}/early-access-room?token=${token}`
+            clientRedirectTo = `/${sessionId}/early-access-room`
         } else if (session.data.status === WebinarSessionStatus.SCHEDULED) {
-            clientRedirectTo = `/${sessionId}/waiting-room?token=${token}`
+            clientRedirectTo = `/${sessionId}/waiting-room`
         }
     }
 
