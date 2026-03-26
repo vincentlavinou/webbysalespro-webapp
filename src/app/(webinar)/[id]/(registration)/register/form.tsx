@@ -53,7 +53,7 @@ const attendeeSchema = z.object({
     .trim()
     .min(1, "Phone number is required")
     .refine(isValidPhoneNumber, "Enter a valid phone number"),
-  session_id: z.string().uuid({ message: "Please select a session" }),
+  session_id: z.string().uuid({ message: "Please select a session" }).optional(),
 });
 
 type AttendeeFormData = z.infer<typeof attendeeSchema>;
@@ -69,25 +69,40 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
     [webinar.series]
   );
   const allowsSessionSelection = allowsManualSessionSelection(webinar);
-  const autoAssignedSession = sessions[0];
+  const formSchema = useMemo(
+    () =>
+      attendeeSchema.superRefine((data, ctx) => {
+        if (allowsSessionSelection && !data.session_id) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["session_id"],
+            message: "Please select a session",
+          });
+        }
+      }),
+    [allowsSessionSelection]
+  );
 
   const {
     register,
     handleSubmit,
     control,
-    setValue,
     formState: { errors },
   } = useForm<AttendeeFormData>({
-    resolver: zodResolver(attendeeSchema),
-    defaultValues: {
-      session_id: sessions.length > 0 ? sessions[0].id : undefined,
-    },
+    resolver: zodResolver(formSchema),
   });
 
   const { execute, isPending } = useAction(registerForWebinarAction, {
     onSuccess: async ({data, input}) => {
       setIsNavigating(true);
       const registeredSessionId = input.session_id
+      const registeredSession = webinar.series?.sessions.find((session) => session.id === registeredSessionId);
+      const hasLiveSession = webinar.series?.sessions.some(
+        (session) => session.status === WebinarSessionStatus.IN_PROGRESS
+      ) ?? false;
+      const shouldJoinLive = registeredSession
+        ? registeredSession.status === WebinarSessionStatus.IN_PROGRESS
+        : hasLiveSession;
 
       const joinUrl = data.grants?.[0]?.join_url
       if (!joinUrl) {
@@ -111,9 +126,14 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         return;
       }
 
+      const joinPath = `/join/live?t=${encodeURIComponent(rawJoinToken)}&webinar_id=${webinar.id}`;
+      if (shouldJoinLive) {
+        router.push(joinPath);
+        return;
+      }
+
       const successUrl = webinar.registration_settings?.registration_success_url;
       if (successUrl) {
-        const registeredSession = webinar.series?.sessions.find(s => s.id === registeredSessionId);
         const params = new URLSearchParams();
         params.set('wsp_lead_first_name', input.first_name);
         params.set('wsp_lead_last_name', input.last_name);
@@ -131,7 +151,15 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         return;
       }
 
-      router.push(`/${webinar.id}/register/success?session_id=${registeredSessionId}&t=${rawJoinToken}&webinar_id=${webinar.id}`);
+      const successParams = new URLSearchParams({
+        t: rawJoinToken,
+        webinar_id: webinar.id,
+      });
+      if (registeredSessionId) {
+        successParams.set("session_id", registeredSessionId);
+      }
+
+      router.push(`/${webinar.id}/register/success?${successParams.toString()}`);
     },
     onError: ({error, input}) => {
       submitLockRef.current = false;
@@ -178,12 +206,6 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
     },
   });
 
-  useEffect(() => {
-    if (!allowsSessionSelection && autoAssignedSession) {
-      setValue("session_id", autoAssignedSession.id, { shouldValidate: true });
-    }
-  }, [allowsSessionSelection, autoAssignedSession, setValue]);
-
   const onSubmit = (data: AttendeeFormData) => {
     if (submitLockRef.current || isPending || isNavigating) {
       return;
@@ -193,7 +215,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
 
     execute({
       webinar_id: webinar.id,
-      session_id: data.session_id,
+      ...(data.session_id ? { session_id: data.session_id } : {}),
       first_name: data.first_name,
       last_name: data.last_name,
       email: data.email,

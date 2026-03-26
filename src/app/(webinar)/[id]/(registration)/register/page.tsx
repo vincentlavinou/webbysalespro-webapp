@@ -1,5 +1,6 @@
 import { getWebinar } from '@/webinar/service'
 import { allowsManualSessionSelection, isWebinarPayload } from '@/webinar/service/guards'
+import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { DefaultRegistrationForm } from './form'
 import { NoAvailableSessionsMessage } from '@/webinar/components'
 import Image from 'next/image'
@@ -52,6 +53,9 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
     }
     const sessions = webinar.series?.sessions || []
     const allowsSessionSelection = allowsManualSessionSelection(webinar)
+    const hasLiveSession = !allowsSessionSelection && sessions.some(
+      (session) => session.status === WebinarSessionStatus.IN_PROGRESS
+    )
 
     const thumbnail = webinar.media.find(
         (media) =>
@@ -123,9 +127,19 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
 
         {/* Right — Registration form */}
         <div className="order-1 md:order-2 rounded-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xl border border-white/60 dark:border-slate-700 p-6">
-          <p className="text-sm font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wide mb-4">
-            {allowsSessionSelection ? `Reserve your spot for ${webinar.title}` : `Register for the next available ${webinar.title} session`}
-          </p>
+          {hasLiveSession ? (
+            <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+              </span>
+              We are live right now
+            </div>
+          ) : (
+            <p className="text-sm font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wide mb-4">
+              {allowsSessionSelection ? `Reserve your spot for ${webinar.title}` : `Register for ${webinar.title}`}
+            </p>
+          )}
           {sessions && sessions[0] ? (
             <DefaultRegistrationForm webinar={webinar} />
           ) : (

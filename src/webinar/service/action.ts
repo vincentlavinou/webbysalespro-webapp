@@ -155,7 +155,7 @@ export const getWebinarFromSession = actionClient
 export type RegisterForWebinarInput = z.infer<typeof registerForWebinarInput>;
 
 type AttendeeRequestBody = {
-    session_id: string;
+    session_id?: string;
     first_name: string;
     last_name: string;
     email: string;
@@ -186,12 +186,12 @@ export const registerForWebinarAction = actionClient
             const { webinar_id, session_id, first_name, last_name, email, phone } = input.parsedInput;
 
             const baseRequestBody: AttendeeRequestBody = {
-                session_id,
                 first_name,
                 last_name,
                 email,
                 phone: phone ?? null,
                 registration_source: 'public_registration_page',
+                ...(session_id ? { session_id } : {}),
             };
 
             const location = await resolveAttendeeLocation();

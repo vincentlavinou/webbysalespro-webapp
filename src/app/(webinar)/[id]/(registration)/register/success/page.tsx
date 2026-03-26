@@ -7,10 +7,29 @@ import Image from "next/image";
 import CalendarButton from "@/webinar/components/CalendarButton";
 import BookmarkButton from "@/webinar/components/BookmarkButton";
 import ShareButton from "@/webinar/components/ShareButton";
+import { JoinResolveResponse } from "@/attendee-session/service/type";
+
+const webinarApiUrl = process.env.WEBINAR_BASE_API_URL
+  ?? process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL
+  ?? "https://api.webisalespro.com/api";
 
 interface RegistrationSuccessProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ session_id: string; t?: string; webinar_id?: string }>;
+  searchParams: Promise<{ session_id?: string; t?: string; webinar_id?: string }>;
+}
+
+async function resolveEffectiveSession(rawJoinToken: string) {
+  const response = await fetch(
+    `${webinarApiUrl}/v2/join/resolve?t=${encodeURIComponent(rawJoinToken)}`,
+    { cache: "no-store" }
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json() as JoinResolveResponse;
+  return data.effective_session;
 }
 
 export default async function RegistrationSuccessPage(props: RegistrationSuccessProps) {
@@ -18,12 +37,15 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
   const { session_id: sessionId, t: rawJoinToken, webinar_id } = await props.searchParams;
 
   const webinar = await getWebinar(webinarId, { fresh: true });
-  if (!isWebinarPayload(webinar) || !sessionId) {
+  if (!isWebinarPayload(webinar)) {
     notFound();
   }
 
   const sessions = webinar.series?.sessions ?? [];
-  const session = sessions.find((s) => s.id === sessionId);
+  const sessionFromWebinar = sessionId
+    ? sessions.find((s) => s.id === sessionId)
+    : undefined;
+  const session = sessionFromWebinar ?? (rawJoinToken ? await resolveEffectiveSession(rawJoinToken) : null);
 
   if (!session) {
     notFound();
@@ -147,7 +169,7 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
                 description={webinar.description ?? ''}
                 startIso={session.scheduled_start}
                 timezone={session.timezone || 'utc'}
-                uid={sessionId}
+                uid={session.id}
                 url={joinPath}
               />
             )}
