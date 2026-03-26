@@ -133,9 +133,8 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         return;
       }
 
-      const joinPath = `/join/live?t=${encodeURIComponent(rawJoinToken)}&webinar_id=${webinar.id}`;
       if (shouldJoinLive) {
-        router.push(joinPath);
+        router.push(joinUrl);
         return;
       }
 
