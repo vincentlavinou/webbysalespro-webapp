@@ -4,23 +4,36 @@ import { ApiError, NotFoundError, UnauthorizedError, safeDecodeErrorPayload } fr
 export async function handleStatus(response: Response): Promise<Response> {
   if (response.ok) return response;
 
-  // Map specific statuses first
+  const { payload, decoded } = await safeDecodeErrorPayload(response);
+
   if (response.status === 401 || response.status === 403) {
+    if (decoded && payload) {
+      throw new UnauthorizedError(payload.detail, payload.code ?? "unauthorized");
+    }
     throw new UnauthorizedError();
   }
+
   if (response.status === 404) {
-    // Try to get a nicer message, else fallback "Not found"
-    try {
-      const { payload, decoded } = await safeDecodeErrorPayload(response);
-      if (decoded && payload) throw new NotFoundError(payload.detail);
-    } catch {
-      /* ignore decode failures */
-    }
+    if (decoded && payload) throw new NotFoundError(payload.detail);
     throw new NotFoundError();
   }
 
-  // For everything else (400, 409, 422, 429, 5xx…), build a rich ApiError
+  // 400, 409, 422, 429, 5xx — build a rich ApiError from the parsed body
+  if (decoded && payload) {
+    throw new ApiError({
+      message: payload.detail,
+      status: response.status,
+      code: payload.code,
+      payload,
+      url: response.url,
+    });
+  }
 
-  const result = await ApiError.fromResponse(response);
-  throw result
+  const text = await response.clone().text().catch(() => "");
+  throw new ApiError({
+    message: text?.trim() || response.statusText || `Request failed with status ${response.status}`,
+    status: response.status,
+    url: response.url,
+    payload: { detail: text || "unknown error", code: "CLT-001" },
+  });
 }

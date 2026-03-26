@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { notifyErrorUiMessage } from '@/lib/notify';
 import { PaymentProviderCard } from './PaymentProviderCard';
 import {
   createPaymentProviderAction,
@@ -42,25 +43,25 @@ export function PaymentProviderManager({
 
   const { executeAsync: listPaymentProviders } = useAction(getAllPaymentProvidersAction, {
     onError: ({ error: { serverError } }) => {
-      toast.error(serverError || 'Failed to load payment providers');
+      notifyErrorUiMessage(serverError, 'Failed to load payment providers');
     },
   });
 
   const { executeAsync: createProvider } = useAction(createPaymentProviderAction, {
     onError: ({ error: { serverError } }) => {
-      toast.error(serverError || 'Failed to create payment provider');
+      notifyErrorUiMessage(serverError, 'Failed to create payment provider');
     },
   });
 
   const { executeAsync: updateProvider } = useAction(updatePaymentProviderAction, {
     onError: ({ error: { serverError } }) => {
-      toast.error(serverError || 'Failed to update payment provider');
+      notifyErrorUiMessage(serverError, 'Failed to update payment provider');
     },
   });
 
   const { executeAsync: removeProvider } = useAction(deletePaymentProviderAction, {
     onError: ({ error: { serverError } }) => {
-      toast.error(serverError || 'Failed to delete payment provider');
+      notifyErrorUiMessage(serverError, 'Failed to delete payment provider');
     },
   });
 

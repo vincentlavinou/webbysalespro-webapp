@@ -5,7 +5,6 @@ import { OfferSessionDto, OfferView } from "../service/type";
 
 interface OfferSessionClientContextType {
     sessionId: string;
-    token: string;
     email: string;
     view: OfferView;
     offers: OfferSessionDto[];
@@ -14,7 +13,7 @@ interface OfferSessionClientContextType {
     isPurchasingOffer: boolean;
     setSelectedOffer: (offer: OfferSessionDto | undefined) => void
     setPurchasedOffer: (input: { offer: OfferSessionDto, ref: string } | undefined) => void
-    recordEvent: (name: string, token: string, payload?: Record<string, unknown>) => Promise<void>
+    recordEvent: (name: string, payload?: Record<string, unknown>) => Promise<void>
     handleCheckoutSuccess: (ref: string, sendEvent?: boolean) => void
     setIsCheckingOut: (value: boolean) => void
     cancelCheckout: () => Promise<void>
@@ -24,7 +23,6 @@ interface OfferSessionClientContextType {
 
 export const OfferSessionClientContext = createContext<OfferSessionClientContextType>({
     sessionId: "",
-    token: "",
     email: "",
     view: 'offers-hidden',
     offers: [],

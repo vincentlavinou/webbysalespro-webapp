@@ -3,12 +3,10 @@ import { z } from "zod";
 export const startCheckoutSchema = z.object({
     sessionId: z.string(),
     offerId: z.string(),
-    token: z.string()
 })
 
 export const offersForSessionSchema = z.object({
     sessionId: z.string(),
-    token: z.string()
 })
 
 export const offerVisibilityMetadataSchema = z.object({

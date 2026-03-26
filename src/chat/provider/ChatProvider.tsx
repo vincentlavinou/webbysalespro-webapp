@@ -20,12 +20,11 @@ const MAX_CHAT_ITEMS = 100;
 
 export type ChatProviderProps = {
     children: React.ReactNode,
-    token?: string
     initialChatConfig?: ChatConfigUpdate | null
     currentUserRole?: "host" | "presenter" | "attendee"
 }
 
-export function ChatProvider({ children, token, initialChatConfig, currentUserRole = "attendee" }: ChatProviderProps) {
+export function ChatProvider({ children, initialChatConfig, currentUserRole = "attendee" }: ChatProviderProps) {
 
     const { userId } = useBroadcastUser()
     const { recordEvent } = useWebinar()
@@ -130,10 +129,8 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
             if (messageRecipient === DefaultChatRecipient.EVERYONE || !messageRecipient) return true;
             if (isSelf) return true;
 
-            // Host-targeted private messages should only be visible to host/presenters.
             if (messageRecipient === DefaultChatRecipient.HOST) return isHostTeam;
 
-            // Unknown recipient channels are treated as restricted.
             return isHostTeam;
         });
     }
@@ -250,13 +247,11 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
 
         try {
             await room.sendMessage(request);
-            if (token) {
-                await recordEvent("chat_message", token)
-            }
+            await recordEvent("chat_message")
         } catch (err) {
             console.error('[IVS Chat] Failed to send message', err);
         }
-    }, [connected, token, recordEvent, userId, currentUserRole]);
+    }, [connected, recordEvent, userId, currentUserRole]);
 
     const disconnect = useCallback(() => {
         manualDisconnectRef.current = true;
@@ -298,15 +293,14 @@ export function ChatProvider({ children, token, initialChatConfig, currentUserRo
     }, [initialChatConfig])
 
     useEffect(() => {
-        if (!token) return;
         return onPlaybackPlaying(() => {
             if (hasFetchedOnPlayRef.current) return;
             hasFetchedOnPlayRef.current = true;
-            getAttendeeChatSession({ sessionId, token }).then((result) => {
+            getAttendeeChatSession({ sessionId }).then((result) => {
                 if (result?.data) setChatConfig(result.data);
             });
         });
-    }, [sessionId, token]);
+    }, [sessionId]);
 
     usePlaybackMetadataEvent({
         eventType: "chat:config:update",

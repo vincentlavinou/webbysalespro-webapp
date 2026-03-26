@@ -1,25 +1,21 @@
 'use server';
 
-import { actionClient } from "@/lib/safe-action";
+import { actionClient, ServerError } from "@/lib/safe-action";
 import { handleStatus } from "@/lib/http";
-import { RequestHeaders } from "next/dist/client/components/router-reducer/fetch-server-response";
+import { getAttendeeAuthHeader } from "@/lib/attendee-request";
 import { z } from "zod";
 import { broadcastApiUrl } from ".";
 import { AttendeeBroadcastServiceToken, BroadcastServiceToken } from "./type";
 
-const headersSchema = z.record(z.string(), z.string()).optional();
-
 const createBroadcastServiceTokenSchema = z.object({
   sessionId: z.string(),
-  accessToken: z.string().optional(),
-  headers: headersSchema,
 });
 
 const setMainPresenterSchema = z.object({
   webinarId: z.string(),
   sessionId: z.string().optional(),
   presenterId: z.string().optional(),
-  headers: headersSchema,
+  headers: z.record(z.string(), z.string()).optional(),
 });
 
 const sessionControllerSchema = z.object({
@@ -27,38 +23,22 @@ const sessionControllerSchema = z.object({
   seriesId: z.string(),
   sessionId: z.string(),
   body: z.record(z.string(), z.unknown()),
-  headers: headersSchema,
+  headers: z.record(z.string(), z.string()).optional(),
 });
 
 const recordEventSchema = z.object({
   name: z.string(),
   attendanceId: z.string(),
-  joinSessionToken: z.string(),
   payload: z.record(z.string(), z.unknown()).optional(),
 });
 
-function normalizeHeaders(headers?: RequestHeaders): Record<string, string> | undefined {
-  if (!headers) return undefined;
-
-  if (headers instanceof Headers) {
-    return Object.fromEntries(headers.entries());
-  }
-
-  return Object.entries(headers).reduce<Record<string, string>>((acc, [key, value]) => {
-    if (typeof value === "string") {
-      acc[key] = value;
-    }
-    return acc;
-  }, {});
-}
-
 function unwrapActionData<T>(result: {
   data?: T;
-  serverError?: string;
+  serverError?: ServerError;
   validationErrors?: unknown;
 }): T {
   if (result.serverError) {
-    throw new Error(result.serverError);
+    throw new Error(result.serverError.detail);
   }
 
   if (result.validationErrors) {
@@ -75,16 +55,15 @@ function unwrapActionData<T>(result: {
 export const createBroadcastServiceTokenAction = actionClient
   .inputSchema(createBroadcastServiceTokenSchema)
   .action(async ({ parsedInput }) => {
+    const authHeader = await getAttendeeAuthHeader()
     const response = await fetch(`${broadcastApiUrl}/v1/broadcast/token/`, {
       headers: {
         "Content-Type": "application/json",
-        ...(parsedInput.accessToken ? { "Authorization": `Bearer ${parsedInput.accessToken}` } : {}),
-        ...(parsedInput.headers ?? {}),
+        ...authHeader,
       },
       method: "POST",
       body: JSON.stringify({
         session: parsedInput.sessionId,
-        access_token: parsedInput.accessToken,
       }),
     });
 
@@ -95,16 +74,15 @@ export const createBroadcastServiceTokenAction = actionClient
 export const createAttendeeBroadcastServiceTokenAction = actionClient
   .inputSchema(createBroadcastServiceTokenSchema)
   .action(async ({ parsedInput }) => {
+    const authHeader = await getAttendeeAuthHeader()
     const response = await fetch(`${broadcastApiUrl}/v1/attendee/broadcast/token/`, {
       headers: {
         "Content-Type": "application/json",
-        ...(parsedInput.accessToken ? { "Authorization": `Bearer ${parsedInput.accessToken}` } : {}),
-        ...(parsedInput.headers ?? {}),
+        ...authHeader,
       },
       method: "POST",
       body: JSON.stringify({
         session: parsedInput.sessionId,
-        access_token: parsedInput.accessToken,
       }),
     });
 
@@ -155,10 +133,11 @@ export const sessionControllerAction = actionClient
 export const recordEventAction = actionClient
   .inputSchema(recordEventSchema)
   .action(async ({ parsedInput }) => {
+    const authHeader = await getAttendeeAuthHeader()
     const response = await fetch(`${broadcastApiUrl}/v2/attendances/${parsedInput.attendanceId}/events/`, {
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${parsedInput.joinSessionToken}`,
+        ...authHeader,
       },
       method: "POST",
       body: JSON.stringify({
@@ -175,13 +154,9 @@ export const recordEventAction = actionClient
 
 export const createBroadcastServiceToken = async (
   webinarId: string,
-  accessToken?: string,
-  headers?: RequestHeaders
 ): Promise<BroadcastServiceToken> => {
   const result = await createBroadcastServiceTokenAction({
     sessionId: webinarId,
-    accessToken,
-    headers: normalizeHeaders(headers),
   });
 
   return unwrapActionData(result);
@@ -189,13 +164,9 @@ export const createBroadcastServiceToken = async (
 
 export const createAttendeeBroadcastServiceToken = async (
   webinarId: string,
-  accessToken?: string,
-  headers?: RequestHeaders
 ): Promise<AttendeeBroadcastServiceToken> => {
   const result = await createAttendeeBroadcastServiceTokenAction({
     sessionId: webinarId,
-    accessToken,
-    headers: normalizeHeaders(headers),
   });
 
   return unwrapActionData(result);
@@ -205,13 +176,13 @@ export const setMainPresenter = async (
   webinarId: string,
   sessionId?: string,
   presenterId?: string,
-  headers?: RequestHeaders
+  headers?: Record<string, string>
 ): Promise<BroadcastServiceToken> => {
   const result = await setMainPresenterAction({
     webinarId,
     sessionId,
     presenterId,
-    headers: normalizeHeaders(headers),
+    headers,
   });
 
   return unwrapActionData(result);
@@ -222,14 +193,14 @@ export const sessionController = async (
   seriesId: string,
   sessionId: string,
   body: Record<string, unknown>,
-  requestHeaders: () => Promise<RequestHeaders | undefined>
+  headers?: Record<string, string>
 ) => {
   const result = await sessionControllerAction({
     action,
     seriesId,
     sessionId,
     body,
-    headers: normalizeHeaders(await requestHeaders()),
+    headers,
   });
 
   unwrapActionData(result);
@@ -238,13 +209,11 @@ export const sessionController = async (
 export const recordEvent = async (
   name: string,
   attendanceId: string,
-  joinSessionToken: string,
   payload: Record<string, unknown> | undefined = undefined
 ) => {
   const result = await recordEventAction({
     name,
     attendanceId,
-    joinSessionToken,
     payload,
   });
 

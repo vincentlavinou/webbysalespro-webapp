@@ -33,7 +33,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     const [webinar, setWebinar] = useState<Webinar | undefined>(undefined);
     const [isRedirecting, setIsRedirecting] = useState(false);
 
-    const { joinSessionToken: attendeeToken, attendanceId } = useAttendeeSession();
+    const { attendanceId, joinSessionToken: attendeeToken } = useAttendeeSession();
     const router = useRouter();
     const { execute: getSession } = useAction(getSessionAction, {
         onSuccess: async ({ data }) => {
@@ -51,15 +51,14 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         mountedRef.current = true;
 
         (async () => {
-            if (!attendeeToken) return;
             try {
-                await getSession({ id: sessionId, token: attendeeToken })
+                await getSession({ id: sessionId })
             } catch (e) {
                 console.error("[WebinarProvider] Failed get session service token", e);
             }
 
             try {
-                const svc = await createBroadcastServiceToken(sessionId, attendeeToken);
+                const svc = await createBroadcastServiceToken(sessionId);
                 setSession(svc.session);
                 setBroadcastServiceToken(svc);
                 setWebinar(svc.webinar);
@@ -73,21 +72,21 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
             mountedRef.current = false;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, attendeeToken]);
+    }, [sessionId]);
 
     // ---- Public event recorder ----
     const recordSessionEvent = useCallback(
-        async (name: string, _token: string, payload: Record<string, unknown> | undefined) => {
+        async (name: string, payload: Record<string, unknown> | undefined) => {
             try {
-                await recordEvent(name, attendanceId, attendeeToken, payload);
+                await recordEvent(name, attendanceId, payload);
             } catch (e) {
                 console.error("[WebinarProvider] recordEvent failed", e);
             }
         },
-        [attendanceId, attendeeToken]
+        [attendanceId]
     );
 
-    const recordEventBeacon = useCallback(async (name: string, _token: string, payload: Record<string, unknown> | undefined = undefined) => {
+    const recordEventBeacon = useCallback(async (name: string, payload: Record<string, unknown> | undefined = undefined) => {
         fetch(`${webinarApiUrl}/v2/attendances/${attendanceId}/events/`, {
             method: 'POST',
             headers: {
@@ -105,9 +104,9 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     }, [attendanceId, attendeeToken])
 
     const regenerateBroadcastToken = useCallback(
-        async (newToken: string) => {
+        async () => {
             try {
-                const svc = await createBroadcastServiceToken(sessionId, newToken);
+                const svc = await createBroadcastServiceToken(sessionId);
                 setSession(svc.session);
                 setBroadcastServiceToken(svc);
                 setWebinar(svc.webinar);
@@ -142,12 +141,12 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
             try {
                 const data = JSON.parse(event.data) as { status: WebinarSessionStatus };
                 handleUpdateSession({ ...(session || {}), status: data.status } as SeriesSession)
-                if (data.status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken(attendeeToken)
+                if (data.status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken()
             } catch (e) {
                 console.error("[SSE] Parse error (session:update)", e, event.data);
             }
         },
-        [session, handleUpdateSession, regenerateBroadcastToken, attendeeToken]
+        [session, handleUpdateSession, regenerateBroadcastToken]
     );
 
     // ---- Build SSE URL (generic for hook) ----
@@ -183,12 +182,11 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
         eventHandlers: {
             "webinar:session:update": handleEventUpdateSession
         },
-        // We only use default "message" as a heartbeat; no payload needs parsing here.
         onMessage: () => {
             // no-op, hook already counts this as activity
         },
         onOpen: async () => {
-            await getSession({ id: sessionId, token: attendeeToken })
+            await getSession({ id: sessionId })
         },
         onError: (err: Event) => {
             console.error("[SSE] Error in WebinarProvider", err);
@@ -203,7 +201,6 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
                 setSession,
                 sessionId,
                 broadcastServiceToken,
-                token: attendeeToken,
                 isRedirecting,
                 webinar,
                 recordEvent: recordSessionEvent,

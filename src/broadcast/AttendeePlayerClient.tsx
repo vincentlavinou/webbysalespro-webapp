@@ -9,7 +9,6 @@ import { AttendeePlayerLayout } from "./components/AttendeePlayerLayout";
 interface AttendeePlayerClientProps {
     sessionId: string,
     getRequestHeaders?: () => Promise<RequestHeaders | undefined>
-    accessToken?: string
     broadcastToken: AttendeeBroadcastServiceToken
     title?: string,
 }
@@ -17,20 +16,18 @@ interface AttendeePlayerClientProps {
 export function AttendeePlayerClient(props: AttendeePlayerClientProps) {
 
     return (
-        <BroadcastConfigurationProvider 
-            sessionId={props.sessionId} 
-            getRequestHeaders={props.getRequestHeaders} 
-            seriesId={props.broadcastToken.series} 
-            accessToken={props.accessToken}>
-            <BroadcastUserProvider 
-                userId={props.broadcastToken.user_id} 
+        <BroadcastConfigurationProvider
+            sessionId={props.sessionId}
+            getRequestHeaders={props.getRequestHeaders}
+            seriesId={props.broadcastToken.series}>
+            <BroadcastUserProvider
+                userId={props.broadcastToken.user_id}
                 email={props.broadcastToken.email}>
                     <AttendeePlayerLayout
-                        broadcast={props.broadcastToken} 
-                        accessToken={props.accessToken}
-                        title={props.title} 
+                        broadcast={props.broadcastToken}
+                        title={props.title}
                         />
             </BroadcastUserProvider>
-        </BroadcastConfigurationProvider >
+        </BroadcastConfigurationProvider>
     )
 }

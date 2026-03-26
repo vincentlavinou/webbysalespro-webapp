@@ -6,7 +6,6 @@ export type BroadcastConfigurationProviderProps = {
     sessionId: string,
     seriesId: string,
     getRequestHeaders?: () => Promise<RequestHeaders | undefined>
-    accessToken?: string
     children: React.ReactNode
 }
 
@@ -14,7 +13,6 @@ export function BroadcastConfigurationProvider({
     sessionId,
     seriesId,
     getRequestHeaders,
-    accessToken,
     children
 } : BroadcastConfigurationProviderProps) {
 
@@ -22,7 +20,6 @@ export function BroadcastConfigurationProvider({
         sessionId,
         seriesId,
         getRequestHeaders,
-        accessToken
     }}>
         {children}
     </BroadcastConfigurationContext>

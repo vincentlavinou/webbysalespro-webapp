@@ -1,15 +1,19 @@
+'use server'
+
 import { ChatConfigUpdate, ChatService } from "./type"
 import { chatApiUrl } from "."
 import { actionClient } from "@/lib/safe-action"
 import { getAttendeeChatSessionSchema } from "./schema"
 import { handleStatus } from "@/lib/http"
+import { getAttendeeAuthHeader } from "@/lib/attendee-request"
 
-export const tokenProvider = async (session: string, accessToken?: string, getRequestHeaders?: () => Promise<HeadersInit | undefined>) : Promise<ChatService> => {
-    const response = await fetch(`${chatApiUrl}/v1/chat/token/`,{
+export const tokenProvider = async (session: string, getRequestHeaders?: () => Promise<HeadersInit | undefined>): Promise<ChatService> => {
+    const authHeader = await getAttendeeAuthHeader()
+    const response = await fetch(`${chatApiUrl}/v1/chat/token/`, {
         headers: {
             'Content-Type': 'application/json',
-            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-            ...(await getRequestHeaders?.())
+            ...authHeader,
+            ...(await getRequestHeaders?.()),
         },
         method: 'POST',
         cache: "no-store",
@@ -24,14 +28,14 @@ export const tokenProvider = async (session: string, accessToken?: string, getRe
 
 export const getAttendeeChatSession = actionClient.inputSchema(
     getAttendeeChatSessionSchema
-).action( async ({parsedInput}) => {
-
+).action(async ({ parsedInput }) => {
+    const authHeader = await getAttendeeAuthHeader()
     const response = await fetch(
         `${chatApiUrl}/v1/sessions/${parsedInput.sessionId}/chat/`,
         {
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${parsedInput.token}`,
+                ...authHeader,
             },
             method: 'GET',
             cache: "no-store",

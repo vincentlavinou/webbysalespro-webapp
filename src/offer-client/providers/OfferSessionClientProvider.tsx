@@ -5,6 +5,7 @@ import { OfferSessionDto, OfferView } from "../service/type";
 import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback";
 import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "../service/schema";
 import { getOfferSessionsForAttendee } from "../service/action";
+import { useWebinar } from "@/webinar/hooks";
 
 function getExternalUrl(actionPayload: Record<string, unknown> | undefined): string | null {
     if (!actionPayload) return null;
@@ -25,27 +26,22 @@ function getExternalUrl(actionPayload: Record<string, unknown> | undefined): str
 interface OfferSessionClientProviderProps {
     children: React.ReactNode
     sessionId: string,
-    token: string,
     initialOffers: OfferSessionDto[],
     email: string,
-    recordEvent: (name: string, token: string, payload?: Record<string, unknown>) => Promise<void>
 }
 
 export function OfferSessionClientProvider({
     children,
     sessionId,
-    token,
     initialOffers,
     email,
-    recordEvent
 }: OfferSessionClientProviderProps) {
-
+    const { recordEvent } = useWebinar();
     const [offers, setOffers] = useState(initialOffers)
     const [selectedOffer, setSelectedOffer] = useState<OfferSessionDto | undefined>(undefined);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [view, setView] = useState<OfferView>("offers-hidden")
     const hasFetchedOnPlayRef = useRef(false);
-    // new: success state
     const [purchasedOffer, setPurchasedOffer] = useState<{
         offer: OfferSessionDto;
         ref: string;
@@ -85,21 +81,16 @@ export function OfferSessionClientProvider({
         getSignature: (evt) => `${evt.payload.offer_session_id}-${evt.payload.mode}-${evt.payload.display_type}-${evt.payload.display_percent_sold}-${evt.payload.display_available_count}`,
     })
 
-    // Eager-refresh offer state as soon as playback actually starts.
-    // This ensures the client reflects the latest server state after the stream
-    // begins (e.g. an offer that was opened before the attendee connected).
     useEffect(() => {
         return onPlaybackPlaying(() => {
             if (hasFetchedOnPlayRef.current) return;
             hasFetchedOnPlayRef.current = true;
-            getOfferSessionsForAttendee({ sessionId, token }).then((result) => {
+            getOfferSessionsForAttendee({ sessionId }).then((result) => {
                 if (result?.data) setOffers(result.data);
             });
         });
-    }, [sessionId, token]);
+    }, [sessionId]);
 
-    // When the host closes all offers, clear any in-progress selection / checkout
-    // so the attendee isn't stuck on a view for an offer that no longer exists.
     useEffect(() => {
         const hasVisibleOffer = offers.some(
             (os) => !["closed", "scheduled"].includes(os.status)
@@ -110,7 +101,6 @@ export function OfferSessionClientProvider({
         }
     }, [offers]);
 
-    // Also clear if the specific selected offer becomes invisible.
     useEffect(() => {
         if (!selectedOffer) return;
         const updated = offers.find((os) => os.id === selectedOffer.id);
@@ -121,9 +111,7 @@ export function OfferSessionClientProvider({
     }, [offers, selectedOffer]);
 
     useEffect(() => {
-
         const calculateView = () => {
-
             const hasVisibleOffer = offers.find((os) => !["closed", "scheduled"].includes(os.status))
             const hasSelectedOffer = selectedOffer !== undefined
             const hasPurchasedOffer = purchasedOffer !== undefined
@@ -134,12 +122,10 @@ export function OfferSessionClientProvider({
             if (hasVisibleOffer) return "offers-visible" as OfferView
 
             return "offers-hidden" as OfferView
-
         }
 
         const updatedView = calculateView()
         setView(updatedView)
-
     }, [offers, selectedOffer, purchasedOffer, isCheckingOut, setView])
 
 
@@ -149,7 +135,7 @@ export function OfferSessionClientProvider({
         if (offerType === "purchase") {
             setSelectedOffer(offer);
             setIsCheckingOut(true);
-            await recordEvent("offer_shown", token, { offer_id: offer.offer.id });
+            await recordEvent("offer_shown", { offer_id: offer.offer.id });
             return;
         }
 
@@ -157,14 +143,13 @@ export function OfferSessionClientProvider({
             const externalUrl = getExternalUrl(offer.offer.action_payload);
             if (externalUrl) {
                 window.open(externalUrl, "_blank", "noopener,noreferrer");
-                recordEvent("offer_shown", token, { offer_id: offer.offer.id });
+                recordEvent("offer_shown", { offer_id: offer.offer.id });
             }
             return;
         }
 
-        // schedule_call, complete_form — fall through to SelectedOffer view
         setSelectedOffer(offer);
-    }, [token, recordEvent]);
+    }, [recordEvent]);
 
     const resetView = () => {
         setIsCheckingOut(false);
@@ -178,28 +163,27 @@ export function OfferSessionClientProvider({
     },[setView])
 
     const cancelCheckout = useCallback(async () => {
-        await recordEvent('checkout_canceled', token);
+        await recordEvent('checkout_canceled');
         setIsCheckingOut(false);
-    }, [recordEvent, token]);
+    }, [recordEvent]);
 
     const handleCheckoutSuccess = useCallback(async (ref: string, sendEvent: boolean = true) => {
         if (selectedOffer && selectedOffer.offer.price) {
             setPurchasedOffer({ offer: selectedOffer, ref: ref });
             if (sendEvent) {
-                await recordEvent("purchase_succeeded", token, {
+                await recordEvent("purchase_succeeded", {
                     "offer_id": selectedOffer.offer.id,
-                    "amount_cents": selectedOffer.offer.price.value * 100 // cents
+                    "amount_cents": selectedOffer.offer.price.value * 100
                 })
             }
             setView("offer-purchased")
         }
-    }, [selectedOffer, recordEvent, token]);
+    }, [selectedOffer, recordEvent]);
 
 
     return (
         <OfferSessionClientContext.Provider value={{
             sessionId,
-            token,
             view,
             email,
             isPurchasingOffer: isCheckingOut,

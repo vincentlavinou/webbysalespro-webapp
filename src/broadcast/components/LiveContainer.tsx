@@ -16,18 +16,17 @@ import { useRouter } from "next/navigation";
 
 type Props = {
   sessionId: string;
-  accessToken: string;
   webinarTitle: string;
   offers: OfferSessionDto[];
   clientRedirectTo?: string;
 };
 
-export function LiveContainer({ sessionId, accessToken, webinarTitle, offers, clientRedirectTo }: Props) {
+export function LiveContainer({ sessionId, webinarTitle, offers, clientRedirectTo }: Props) {
   const [broadcastToken, setBroadcastToken] = useState<BroadcastServiceToken | null>(null);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const { recordEvent } = useWebinar()
-  const { markRoom } = useSessionPresence(accessToken);
+  useWebinar();
+  const { markRoom } = useSessionPresence();
   const router = useRouter();
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers, cl
     async function load() {
       try {
         setBootstrapError(null);
-        const token = await createBroadcastServiceToken(sessionId, accessToken);
+        const token = await createBroadcastServiceToken(sessionId);
         if (!cancelled) {
           setBroadcastToken(token);
           markRoom("live_joined");
@@ -61,7 +60,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers, cl
     return () => {
       cancelled = true;
     };
-  }, [sessionId, accessToken, retryCount, markRoom]);
+  }, [sessionId, retryCount, markRoom]);
 
   if (clientRedirectTo) {
     return <WaitingRoomShimmer title="Redirecting…" />;
@@ -85,7 +84,6 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers, cl
   }
 
   if (!broadcastToken) {
-    // optional loading UI
     return <WaitingRoomShimmer title="Connecting to live session" />
   }
 
@@ -93,7 +91,6 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers, cl
     return (
       <BroadcastParticipantClient
         sessionId={sessionId}
-        accessToken={accessToken}
         broadcastToken={broadcastToken}
         title={webinarTitle}
         isViewer
@@ -103,17 +100,14 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers, cl
 
   if (broadcastToken.role === "attendee" && broadcastToken.stream) {
     return (
-      <VideoInjectionPlayerProvider sessionId={sessionId} token={accessToken}>
+      <VideoInjectionPlayerProvider sessionId={sessionId}>
         <OfferSessionClientProvider
           sessionId={sessionId}
-          token={accessToken}
           initialOffers={offers}
           email={broadcastToken.email || ''}
-          recordEvent={recordEvent}
         >
           <AttendeePlayerClient
             sessionId={sessionId}
-            accessToken={accessToken}
             broadcastToken={broadcastToken as AttendeeBroadcastServiceToken}
             title={webinarTitle}
           />

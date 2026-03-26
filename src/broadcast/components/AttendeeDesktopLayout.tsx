@@ -8,14 +8,12 @@ import { AttendeeCountBadge } from "../attendee-count/components";
 
 interface AttendeeDesktopLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
-    accessToken?: string
     title?: string;
     compact?: boolean;
 }
 
 
 export const AttendeeDesktopLayout = ({
-    accessToken,
     broadcast,
     title,
     compact = false,
@@ -50,7 +48,6 @@ export const AttendeeDesktopLayout = ({
                 </div>
                 {broadcast.stream && <div className={`flex flex-col w-full flex-1 min-h-0 ${compact ? "" : "lg:w-[320px] min-w-[280px] lg:max-w-[400px] overflow-y-auto px-2"}`}>
                         <WebinarChat
-                          token={accessToken}
                           region={broadcast.stream?.region}
                           currentUserRole={broadcast.role}
                         />

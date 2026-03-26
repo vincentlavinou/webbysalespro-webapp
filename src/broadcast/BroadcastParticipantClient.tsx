@@ -19,7 +19,6 @@ type Stage = import("amazon-ivs-web-broadcast").Stage;
 interface BroadcastClientProps {
     sessionId: string,
     getRequestHeaders?: () => Promise<RequestHeaders | undefined>
-    accessToken?: string
     broadcastToken: BroadcastServiceToken
     onStreamEvent?: (event: LocalStreamEvent) => void
     isViewer?: boolean
@@ -32,7 +31,7 @@ export function BroadcastParticipantClient(props: BroadcastClientProps) {
 
     const stageRef = useRef<Stage | undefined>(undefined);
     return (
-        <BroadcastConfigurationProvider sessionId={props.sessionId} getRequestHeaders={props.getRequestHeaders} seriesId={props.broadcastToken.series} accessToken={props.accessToken}>
+        <BroadcastConfigurationProvider sessionId={props.sessionId} getRequestHeaders={props.getRequestHeaders} seriesId={props.broadcastToken.series}>
             <BroadcastUserProvider userId={props.broadcastToken.user_id} email={props.broadcastToken.email}>
                 <BroadcastServiceProvider token={props.broadcastToken}>
                     <VideoInjectionProvider videoInjections={props.videoInjections ?? []}>

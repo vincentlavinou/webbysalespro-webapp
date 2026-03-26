@@ -9,11 +9,10 @@ import { useAttendeeLayoutMode } from "../hooks/use-attendee-layout-mode";
 
 interface BroadcastUIProps {
   broadcast: AttendeeBroadcastServiceToken;
-  accessToken?: string;
   title?: string;
 }
 
-export const AttendeePlayerLayout = ({ accessToken, broadcast, title }: BroadcastUIProps) => {
+export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => {
   const layoutMode = useAttendeeLayoutMode();
 
   const hasStream = !!broadcast.stream;
@@ -28,13 +27,11 @@ export const AttendeePlayerLayout = ({ accessToken, broadcast, title }: Broadcas
       {layoutMode === "mobile" ? (
         <AttendeeMobileLayout
           broadcast={broadcast}
-          accessToken={accessToken}
           title={title}
         />
       ) : (
         <AttendeeDesktopLayout
           broadcast={broadcast}
-          accessToken={accessToken}
           title={title}
           compact={layoutMode === "desktop-compact"}
         />

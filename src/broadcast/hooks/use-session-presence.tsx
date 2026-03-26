@@ -4,7 +4,7 @@ import { useWebinar } from "@/webinar/hooks";
 
 type Room = "early_access_room" | "waiting_room_entered" | "live_joined";
 
-export function useSessionPresence(accessToken: string) {
+export function useSessionPresence() {
   const { recordEvent, recordEventBeacon } = useWebinar();
   const currentRoomRef = useRef<Room | null>(null);
   const hasLeftRef = useRef(false);
@@ -13,8 +13,8 @@ export function useSessionPresence(accessToken: string) {
   const fireLeft = useCallback(() => {
     if (hasLeftRef.current || !currentRoomRef.current) return;
     hasLeftRef.current = true;
-    recordEventBeacon("live_left", accessToken);
-  }, [accessToken, recordEventBeacon]);
+    recordEventBeacon("live_left");
+  }, [recordEventBeacon]);
 
   const markRoom = useCallback(
     (room: Room) => {
@@ -22,9 +22,9 @@ export function useSessionPresence(accessToken: string) {
       currentRoomRef.current = room;
       setCurrentRoom(room);
       hasLeftRef.current = false;
-      recordEvent(room, accessToken);
+      recordEvent(room);
     },
-    [accessToken, recordEvent]
+    [recordEvent]
   );
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function useSessionPresence(accessToken: string) {
       } else if (document.visibilityState === "visible") {
         if (hasLeftRef.current) {
           hasLeftRef.current = false;
-          recordEvent("reentered", accessToken);
+          recordEvent("reentered");
         }
       }
     };
@@ -54,7 +54,7 @@ export function useSessionPresence(accessToken: string) {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       fireLeft();
     };
-  }, [accessToken, currentRoom, fireLeft, recordEvent]);
+  }, [currentRoom, fireLeft, recordEvent]);
 
   return { markRoom };
 }

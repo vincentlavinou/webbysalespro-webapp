@@ -61,8 +61,8 @@ export class ApiError extends Error {
 }
 
 export class UnauthorizedError extends ApiError {
-  constructor(message = "Unauthorized access. Please log in again.") {
-    super({ message, status: 401, code: "unauthorized" });
+  constructor(message = "Unauthorized access. Please log in again.", code = "unauthorized") {
+    super({ message, status: 401, code });
     this.name = "UnauthorizedError";
   }
 }

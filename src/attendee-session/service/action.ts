@@ -2,7 +2,7 @@
 
 import { actionClient } from '@/lib/safe-action'
 import { handleStatus } from '@/lib/http'
-import { clearAttendeeSessionCookie, setAttendeeSessionCookie } from '@/lib/attendee-cookie'
+import { clearAttendeeSessionCookie, getAttendeeSessionCookie, setAttendeeSessionCookie } from '@/lib/attendee-cookie'
 import { JoinResolveResponse, JoinSessionRefreshResponse } from './type'
 import { z } from 'zod'
 
@@ -12,13 +12,6 @@ const webinarApiUrl = process.env.WEBINAR_BASE_API_URL
 
 const resolveJoinSchema = z.object({
     rawJoinToken: z.string().min(1),
-    webinarId: z.string().min(1),
-})
-
-const refreshJoinSessionSchema = z.object({
-    joinSessionToken: z.string().min(1),
-    attendanceId: z.string().min(1),
-    sessionId: z.string().min(1),
     webinarId: z.string().min(1),
 })
 
@@ -34,14 +27,18 @@ export const resolveJoinAction = actionClient
     })
 
 export const refreshJoinSessionAction = actionClient
-    .inputSchema(refreshJoinSessionSchema)
-    .action(async ({ parsedInput }) => {
+    .action(async () => {
+        const session = await getAttendeeSessionCookie()
+        if (!session) {
+            throw new Error('No active session cookie')
+        }
+
         const response = await fetch(
             `${webinarApiUrl}/v2/join/session/refresh`,
             {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${parsedInput.joinSessionToken}`,
+                    'Authorization': `Bearer ${session.joinSessionToken}`,
                     'Content-Type': 'application/json',
                 },
                 cache: 'no-store',
@@ -49,7 +46,6 @@ export const refreshJoinSessionAction = actionClient
         )
 
         if (!response.ok) {
-            // Refresh failed — clear the cookie so the layout stops trying
             await clearAttendeeSessionCookie()
             throw new Error(`Refresh failed: ${response.status}`)
         }
@@ -59,9 +55,9 @@ export const refreshJoinSessionAction = actionClient
         await setAttendeeSessionCookie({
             joinSessionToken: data.join_session_token,
             expiresAt: data.expires_at,
-            attendanceId: parsedInput.attendanceId,
-            sessionId: parsedInput.sessionId,
-            webinarId: parsedInput.webinarId,
+            attendanceId: session.attendanceId,
+            sessionId: session.sessionId,
+            webinarId: session.webinarId,
         })
 
         return data

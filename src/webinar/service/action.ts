@@ -126,14 +126,15 @@ export async function updateSession(formData: FormData): Promise<void> {
     }
 }
 
-const sessionIdTokenSchema = z.object({
+const sessionIdSchema = z.object({
     id: z.string(),
-    token: z.string()
 })
 
-export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).action(async ({parsedInput}) => {
+export const getSessionAction = actionClient.inputSchema(sessionIdSchema).action(async ({parsedInput}) => {
+    const { getAttendeeAuthHeader } = await import('@/lib/attendee-request')
+    const authHeader = await getAttendeeAuthHeader()
     const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/`, {
-        headers: { "Authorization": `Bearer ${parsedInput.token}` },
+        headers: { ...authHeader },
         cache: "no-store",
     })
     const checkedResponse = await handleStatus(response)
@@ -142,10 +143,12 @@ export const getSessionAction = actionClient.inputSchema(sessionIdTokenSchema).a
 
 
 export const getWebinarFromSession = actionClient
-    .inputSchema(sessionIdTokenSchema)
+    .inputSchema(sessionIdSchema)
     .action( async ({parsedInput}) => {
+        const { getAttendeeAuthHeader } = await import('@/lib/attendee-request')
+        const authHeader = await getAttendeeAuthHeader()
         const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/`, {
-            headers: { "Authorization": `Bearer ${parsedInput.token}` },
+            headers: { ...authHeader },
             cache: "no-store",
         })
         const checkedResponse = await handleStatus(response)

@@ -189,7 +189,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
                     <p className="text-sm font-medium text-gray-900">
                       {input.first_name} {input.last_name}
                     </p>
-                    <p className="mt-1 text-sm text-gray-500">{error.serverError}</p>
+                    <p className="mt-1 text-sm text-gray-500">{error.serverError?.detail}</p>
                   </div>
                 </div>
               </div>

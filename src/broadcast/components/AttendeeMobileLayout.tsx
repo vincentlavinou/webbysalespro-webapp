@@ -14,11 +14,10 @@ import { AnimatePresence, motion } from "framer-motion";
 
 interface AttendeeMobileLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
-    accessToken?: string,
     title?: string;
 }
 
-export default function AttendeeMobileLayout({ accessToken, broadcast, title }: AttendeeMobileLayoutProps) {
+export default function AttendeeMobileLayout({ broadcast, title }: AttendeeMobileLayoutProps) {
 
     const { view: offerView } = useOfferSessionClient();
     const showOfferSheet = offerView === 'offer-checkingout' || offerView === 'offer-purchased';
@@ -119,7 +118,6 @@ export default function AttendeeMobileLayout({ accessToken, broadcast, title }: 
 
             {broadcast.stream && (
                 <WebinarChat
-                    token={accessToken}
                     region={broadcast.stream.region}
                     currentUserRole={broadcast.role}
                     render={() => {

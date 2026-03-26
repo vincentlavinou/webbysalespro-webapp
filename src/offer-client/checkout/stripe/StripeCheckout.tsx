@@ -51,7 +51,7 @@ function LoadingPaymentCard() {
 }
 
 export function StripeCheckout() {
-  const { email, token, sessionId, selectedOffer, handleCheckoutSuccess } =
+  const { email, sessionId, selectedOffer, handleCheckoutSuccess } =
     useOfferSessionClient();
 
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
@@ -73,10 +73,9 @@ export function StripeCheckout() {
     fetchCheckoutInfo({
       sessionId,
       offerId: selectedOffer?.offer?.id,
-      token,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOffer, token, sessionId]);
+  }, [selectedOffer, sessionId]);
 
   if (!stripePromise || !clientSecret) {
     return <LoadingPaymentCard />;
@@ -85,7 +84,7 @@ export function StripeCheckout() {
   return (
     <div className="h-[70vh] min-h-0">
       <Elements stripe={stripePromise} options={{ clientSecret }}>
-        <StripeCheckoutForm token={token} email={email} onSuccess={handleCheckoutSuccess} />
+        <StripeCheckoutForm email={email} onSuccess={handleCheckoutSuccess} />
       </Elements>
     </div>
   );

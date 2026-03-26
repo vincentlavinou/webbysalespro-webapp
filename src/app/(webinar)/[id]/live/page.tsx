@@ -23,16 +23,15 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
     const resolvedSearch = await searchParams
     const sessionId = (await params).id
 
+    // Verify cookie exists before server actions run (redirects instead of 401 crash)
     const attendeeSession = await getAttendeeSessionCookie()
     if (!attendeeSession) {
         redirect('/')
     }
 
-    const token = attendeeSession.joinSessionToken
-
     const [session, webinar] = await Promise.all([
-        getSessionAction({ id: sessionId, token }),
-        getWebinarFromSession({ id: sessionId, token }),
+        getSessionAction({ id: sessionId }),
+        getWebinarFromSession({ id: sessionId }),
     ])
 
     if (!isSessionPayload(session.data)) {
@@ -66,7 +65,7 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
 
     let offersData: import("@/offer-client/service/type").OfferSessionDto[] = []
     try {
-        const offers = await getOfferSessionsForAttendee({ sessionId, token })
+        const offers = await getOfferSessionsForAttendee({ sessionId })
         offersData = offers?.data ?? []
     } catch {
         // payment provider unavailable — render live without offers
@@ -75,7 +74,6 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
     return (
     <LiveContainer
       sessionId={sessionId}
-      accessToken={token}
       webinarTitle={webinar.data.title}
       offers={offersData}
       clientRedirectTo={clientRedirectTo}

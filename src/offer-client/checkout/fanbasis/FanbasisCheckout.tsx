@@ -56,7 +56,7 @@ const FanbasisCardCheckout = memo(function FanbasisCardCheckout({
 });
 
 export function FanBasisCheckout() {
-  const { token, selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
+  const { selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
     useOfferSessionClient();
 
   const { resolvedTheme } = useTheme();
@@ -108,8 +108,8 @@ export function FanBasisCheckout() {
   const handleCardClick = useCallback(() => {
     setCardError(null);
     setCardMode(true);
-    void recordEvent('checkout_started', token);
-  }, [recordEvent, token]);
+    void recordEvent('checkout_started');
+  }, [recordEvent]);
 
   const handleCardBack = useCallback(() => {
     setCardMode(false);
@@ -129,11 +129,11 @@ export function FanBasisCheckout() {
     setCardError('Payment failed. Please try again.');
     const eventName = parseFanbasisErrorEvent(message);
     try {
-      await recordEvent(eventName, token);
+      await recordEvent(eventName);
     } catch (e) {
       console.error('Failed to record card error event:', e);
     }
-  }, [recordEvent, token]);
+  }, [recordEvent]);
 
   const handleFinancingClick = useCallback(() => {
     if (!selectedOffer || financing) return;
@@ -141,9 +141,9 @@ export function FanBasisCheckout() {
     if (!url) return;
     setFinancing(true);
     window.open(url, '_blank', 'noopener,noreferrer');
-    void recordEvent('checkout_started', token);
+    void recordEvent('checkout_started');
     setTimeout(() => setFinancing(false), 4000);
-  }, [financing, payload.url, recordEvent, selectedOffer, token]);
+  }, [financing, payload.url, recordEvent, selectedOffer]);
 
   return (
     <div

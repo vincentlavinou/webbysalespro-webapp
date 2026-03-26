@@ -5,7 +5,6 @@ import { createContext } from "react"
 export type BroadcastConfigurationContextType = {
     sessionId: string
     seriesId: string
-    accessToken?: string
     getRequestHeaders?: () => Promise<RequestHeaders | undefined>
 }
 
@@ -13,5 +12,4 @@ export const BroadcastConfigurationContext = createContext<BroadcastConfiguratio
     sessionId: "",
     seriesId: "",
     getRequestHeaders: undefined,
-    accessToken: undefined
 })

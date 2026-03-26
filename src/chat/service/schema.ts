@@ -25,6 +25,5 @@ export const chatConfigUpdateSchema = z.object({
 });
 
 export const getAttendeeChatSessionSchema = z.object({
-    token: z.string(),
     sessionId: z.string().uuid()
 })
