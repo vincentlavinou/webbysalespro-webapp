@@ -45,7 +45,7 @@ export function LiveContainer({ sessionId, accessToken, webinarTitle, offers, cl
         const token = await createBroadcastServiceToken(sessionId, accessToken);
         if (!cancelled) {
           setBroadcastToken(token);
-          markRoom("joined");
+          markRoom("live_joined");
         }
       } catch {
         if (!cancelled) {

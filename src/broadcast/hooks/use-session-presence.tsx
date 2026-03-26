@@ -2,7 +2,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useWebinar } from "@/webinar/hooks";
 
-type Room = "early_access_room" | "waiting_room" | "joined";
+type Room = "early_access_room" | "waiting_room_entered" | "live_joined";
 
 export function useSessionPresence(accessToken: string) {
   const { recordEvent, recordEventBeacon } = useWebinar();
@@ -13,7 +13,7 @@ export function useSessionPresence(accessToken: string) {
   const fireLeft = useCallback(() => {
     if (hasLeftRef.current || !currentRoomRef.current) return;
     hasLeftRef.current = true;
-    recordEventBeacon("left", accessToken);
+    recordEventBeacon("live_left", accessToken);
   }, [accessToken, recordEventBeacon]);
 
   const markRoom = useCallback(
@@ -29,7 +29,7 @@ export function useSessionPresence(accessToken: string) {
 
   useEffect(() => {
     // Only track visibility/beforeunload when in the live room
-    if (currentRoom !== "joined") return;
+    if (currentRoom !== "live_joined") return;
 
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
@@ -37,7 +37,7 @@ export function useSessionPresence(accessToken: string) {
       } else if (document.visibilityState === "visible") {
         if (hasLeftRef.current) {
           hasLeftRef.current = false;
-          recordEvent("reentered_live_room", accessToken);
+          recordEvent("reentered", accessToken);
         }
       }
     };

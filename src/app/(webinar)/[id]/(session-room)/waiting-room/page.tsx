@@ -22,7 +22,7 @@ export default function WaitingRoomPage() {
   const { markRoom } = useSessionPresence(token || '')
 
   useEffect(() => {
-    if (token) markRoom('waiting_room')
+    if (token) markRoom('waiting_room_entered')
   }, [token, markRoom])
 
   useEffect(() => {
