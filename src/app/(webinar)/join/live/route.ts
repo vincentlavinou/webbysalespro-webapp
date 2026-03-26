@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     const { effective_session, auth, attendance } = data
     const sessionId = effective_session.id
     const status = effective_session.status as WebinarSessionStatus
+    const joinUrl = `${request.nextUrl.pathname}${request.nextUrl.search}`
 
     // Set the persistent httpOnly cookie
     const cookieStore = await cookies()
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
         attendanceId: attendance.id,
         sessionId,
         webinarId,
+        joinUrl,
     }), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',

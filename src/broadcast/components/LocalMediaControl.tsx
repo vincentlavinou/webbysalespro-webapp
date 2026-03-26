@@ -14,6 +14,7 @@ import { useVideoInjection } from "../hooks/use-video-injection";
 import { VideoInjectionPicker } from "./controls/VideoInjectionPicker";
 import { LocalStreamEventType } from "../service/enum";
 import { notifyErrorUiMessage } from "@/lib/notify";
+import { RequestHeaders } from "next/dist/client/components/router-reducer/fetch-server-response";
 
 interface LocalMediaControlProps {
   title?: string
@@ -25,6 +26,21 @@ function openSmallWindow(url: string) {
 
   // Open the window
   window.open(url, '_blank', windowFeatures);
+}
+
+function normalizeRequestHeaders(rawHeaders: RequestHeaders | undefined): Record<string, string> | undefined {
+  if (!rawHeaders) return undefined
+
+  if (rawHeaders instanceof Headers) {
+    return Object.fromEntries(rawHeaders.entries())
+  }
+
+  return Object.entries(rawHeaders).reduce<Record<string, string>>((acc, [key, value]) => {
+    if (typeof value === "string") {
+      acc[key] = value
+    }
+    return acc
+  }, {})
 }
 
 export function LocalMediaControl({ title }: LocalMediaControlProps) {
@@ -40,7 +56,8 @@ export function LocalMediaControl({ title }: LocalMediaControlProps) {
   const toggleOffer = useCallback(async () => {
     if (getRequestHeaders) {
       try {
-        await sessionController('toggle-offer', seriesId, sessionId, { visible: !offerVisible }, getRequestHeaders)
+        const headers = normalizeRequestHeaders(await getRequestHeaders())
+        await sessionController('toggle-offer', seriesId, sessionId, { visible: !offerVisible }, headers)
         sendStreamEvent(LocalStreamEventType.OFFER_EVENT, {
           "visible": !offerVisible
         })

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Bookmark, BookmarkCheck } from 'lucide-react'
 
 interface BookmarkButtonProps {
-  /** Path like /{sessionId}/live?token=... — origin is prepended client-side */
+  /** Path like /{sessionId}/live — origin is prepended client-side */
   livePath: string
 }
 

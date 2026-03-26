@@ -9,6 +9,7 @@ import { useWebinar } from '@/webinar/hooks'
 import { useSessionPresence } from '@/broadcast/hooks'
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
+import { useAttendeeSession } from '@/attendee-session/hooks/use-attendee-session'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -19,12 +20,13 @@ export default function EarlyAccessRoomPage() {
   const hasRedirectedRef = useRef(false)
 
   const router = useRouter()
-  const { session, webinar, token, broadcastServiceToken } = useWebinar()
-  const { markRoom } = useSessionPresence(token || '')
+  const { session, webinar, broadcastServiceToken } = useWebinar()
+  const { joinUrl } = useAttendeeSession()
+  const { markRoom } = useSessionPresence()
 
   useEffect(() => {
-    if (token) markRoom('early_access_room')
-  }, [token, markRoom])
+    markRoom('early_access_room')
+  }, [markRoom])
 
   useEffect(() => {
     if (!session) return
@@ -44,15 +46,15 @@ export default function EarlyAccessRoomPage() {
   }, [session])
 
   useEffect(() => {
-    if (!session || !token || hasRedirectedRef.current) return
+    if (!session || hasRedirectedRef.current) return
     if (session.status === WebinarSessionStatus.IN_PROGRESS && broadcastServiceToken?.stream) {
       hasRedirectedRef.current = true
       setIsRedirecting(true)
-      router.replace(`/${session.id}/live?token=${token}&ready=1`)
+      router.replace(`/${session.id}/live?ready=1`)
     }
-  }, [session, token, router, broadcastServiceToken])
+  }, [session, router, broadcastServiceToken])
 
-  if (!session || !webinar || !token) {
+  if (!session || !webinar) {
     return <WaitingRoomShimmer title="Opening early access room..." />
   }
 
@@ -172,19 +174,15 @@ export default function EarlyAccessRoomPage() {
 
             <hr className="border-gray-100 dark:border-slate-700" />
 
-            {token && (
-              <CalendarButton
-                title={webinar.title}
-                description={webinar.description ?? ''}
-                startIso={session.scheduled_start}
-                timezone={session.timezone || 'utc'}
-                uid={session.id}
-                url={`/${session.id}/live?token=${token}`}
-              />
-            )}
-            {token && (
-              <BookmarkButton livePath={`/${session.id}/live?token=${token}`} />
-            )}
+            <CalendarButton
+              title={webinar.title}
+              description={webinar.description ?? ''}
+              startIso={session.scheduled_start}
+              timezone={session.timezone || 'utc'}
+              uid={session.id}
+              url={joinUrl}
+            />
+            <BookmarkButton livePath={joinUrl} />
           </div>
 
         </div>

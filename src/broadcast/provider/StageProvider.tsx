@@ -23,10 +23,26 @@ import { StageContext, WebiSalesProParticipant } from "../context/StageContext";
 import { useMediaStrategy } from "../hooks/use-media-strategy";
 import { LocalStreamEvent } from "../service/type";
 import { notifyErrorUiMessage } from "@/lib/notify";
+import { RequestHeaders } from "next/dist/client/components/router-reducer/fetch-server-response";
 
 // ✅ Use type-only imports to avoid SSR errors
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
+
+function normalizeRequestHeaders(rawHeaders: RequestHeaders | undefined): Record<string, string> | undefined {
+  if (!rawHeaders) return undefined
+
+  if (rawHeaders instanceof Headers) {
+    return Object.fromEntries(rawHeaders.entries())
+  }
+
+  return Object.entries(rawHeaders).reduce<Record<string, string>>((acc, [key, value]) => {
+    if (typeof value === "string") {
+      acc[key] = value
+    }
+    return acc
+  }, {})
+}
 
 interface StageProviderProps {
   children: ReactNode,
@@ -84,7 +100,8 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
       );
       if(getRequestHeaders) {
         try {
-          await sessionController("start", seriesId, sessionId, {}, getRequestHeaders)
+          const headers = normalizeRequestHeaders(await getRequestHeaders())
+          await sessionController("start", seriesId, sessionId, {}, headers)
         } catch {
           notifyErrorUiMessage("Failed to start the live session.");
         }
@@ -106,7 +123,8 @@ export const StageProvider = ({ children, stageRef, onStreamEvent, isViewer }: S
     setParticipants([]);
     if(getRequestHeaders) {
         try {
-          await sessionController("stop", seriesId, sessionId, {}, getRequestHeaders)
+          const headers = normalizeRequestHeaders(await getRequestHeaders())
+          await sessionController("stop", seriesId, sessionId, {}, headers)
         } catch {
           notifyErrorUiMessage("Failed to stop the live session cleanly.");
         }

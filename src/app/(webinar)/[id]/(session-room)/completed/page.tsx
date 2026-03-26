@@ -5,16 +5,11 @@ import { isWebinarPayload } from "@/webinar/service/guards";
 
 interface CompletedPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ token?: string }>;
 }
 
 export default async function CompletedPage(props: CompletedPageProps) {
   const sessionId = (await props.params).id;
-  const token = (await props.searchParams).token;
-
-  const webinarResult = token
-    ? await getWebinarFromSession({ id: sessionId, token })
-    : null;
+  const webinarResult = await getWebinarFromSession({ id: sessionId });
   const webinar = webinarResult && isWebinarPayload(webinarResult.data) ? webinarResult.data : null;
   const hasWebinar = webinar !== null;
 

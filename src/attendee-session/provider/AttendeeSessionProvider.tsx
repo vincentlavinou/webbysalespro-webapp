@@ -116,6 +116,7 @@ export function AttendeeSessionProvider({ initial, children }: Props) {
                 attendanceId: session.attendanceId,
                 sessionId: session.sessionId,
                 webinarId: session.webinarId,
+                joinUrl: session.joinUrl,
                 refresh,
             }}
         >

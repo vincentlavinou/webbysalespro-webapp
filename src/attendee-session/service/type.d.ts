@@ -28,4 +28,5 @@ export type AttendeeSessionCookie = {
     attendanceId: string
     sessionId: string
     webinarId: string
+    joinUrl: string
 }

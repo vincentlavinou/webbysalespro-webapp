@@ -58,6 +58,7 @@ export const refreshJoinSessionAction = actionClient
             attendanceId: session.attendanceId,
             sessionId: session.sessionId,
             webinarId: session.webinarId,
+            joinUrl: session.joinUrl,
         })
 
         return data
