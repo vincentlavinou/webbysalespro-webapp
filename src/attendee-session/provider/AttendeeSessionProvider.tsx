@@ -32,8 +32,8 @@ export function AttendeeSessionProvider({ initial, children }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session])
 
-    const doRefresh = useCallback(async (current: AttendeeSessionCookie) => {
-        if (isRefreshingRef.current) return
+    const doRefresh = useCallback(async (current: AttendeeSessionCookie): Promise<string | undefined> => {
+        if (isRefreshingRef.current) return undefined
         isRefreshingRef.current = true
 
         try {
@@ -52,12 +52,15 @@ export function AttendeeSessionProvider({ initial, children }: Props) {
                 }
                 setSession(updated)
                 scheduleRefresh(updated.expiresAt)
+                return updated.joinSessionToken
             } else {
                 // Refresh failed (action cleared the cookie server-side) — go to completed
                 router.replace(`/${current.sessionId}/completed`)
+                return undefined
             }
         } catch {
             router.replace(`/${current.sessionId}/completed`)
+            return undefined
         } finally {
             isRefreshingRef.current = false
         }
@@ -79,8 +82,8 @@ export function AttendeeSessionProvider({ initial, children }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    const refresh = useCallback(async () => {
-        await doRefresh(session)
+    const refresh = useCallback(async (): Promise<string | undefined> => {
+        return await doRefresh(session)
     }, [doRefresh, session])
 
     return (

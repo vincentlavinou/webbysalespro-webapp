@@ -8,8 +8,8 @@ export type AttendeeSessionContextType = {
     attendanceId: string
     sessionId: string
     webinarId: string
-    /** Call after a 401/403 to rotate the token immediately */
-    refresh: () => Promise<void>
+    /** Call after a 401/403 to rotate the token immediately. Returns the new token, or undefined if refresh failed. */
+    refresh: () => Promise<string | undefined>
 }
 
 export const AttendeeSessionContext = createContext<AttendeeSessionContextType | null>(null)

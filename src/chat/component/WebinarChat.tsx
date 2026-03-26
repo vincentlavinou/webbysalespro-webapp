@@ -2,6 +2,7 @@
 'use client';
 
 import { ReactNode, useContext, useEffect, useRef, useState } from "react";
+import { UnauthorizedError } from "@/lib/error";
 import { ChatToken } from "amazon-ivs-chat-messaging";
 import { ChatConfigurationProvider } from "../provider/ChatConfigurationProvider";
 import { getAttendeeChatSession, tokenProvider } from "../service/action";
@@ -40,19 +41,35 @@ export function WebinarChat({ token, region, currentUserRole = "attendee", rende
   activeTokenRef.current = activeToken;
   const getRequestHeadersRef = useRef(getRequestHeaders);
   getRequestHeadersRef.current = getRequestHeaders;
+  const refreshAttendeeSessionRef = useRef(attendeeSession?.refresh ?? null);
+  refreshAttendeeSessionRef.current = attendeeSession?.refresh ?? null;
 
   // Created once. Stable reference across all re-renders.
+  // On 401, refreshes the JoinSession token and retries once so IVS token
+  // refresh never fails due to a race between JoinSession expiry and IVS refresh.
   const stableTokenProvider = useRef(async (): Promise<ChatToken> => {
-    const response = await tokenProvider(
-      sessionIdRef.current,
-      activeTokenRef.current,
-      getRequestHeadersRef.current,
-    );
-    return {
-      token: response.chat.token,
-      sessionExpirationTime: response.chat.session_expiration_time,
-      tokenExpirationTime: response.chat.token_expiration_time,
-    } as ChatToken;
+    const fetchChatToken = async (token: string | undefined) => {
+      const response = await tokenProvider(
+        sessionIdRef.current,
+        token,
+        getRequestHeadersRef.current,
+      );
+      return {
+        token: response.chat.token,
+        sessionExpirationTime: response.chat.session_expiration_time,
+        tokenExpirationTime: response.chat.token_expiration_time,
+      } as ChatToken;
+    };
+
+    try {
+      return await fetchChatToken(activeTokenRef.current);
+    } catch (err) {
+      if (err instanceof UnauthorizedError && refreshAttendeeSessionRef.current) {
+        const freshToken = await refreshAttendeeSessionRef.current();
+        return await fetchChatToken(freshToken);
+      }
+      throw err;
+    }
   });
 
   const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
