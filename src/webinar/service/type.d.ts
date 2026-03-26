@@ -76,10 +76,20 @@ export type SeriesSession = {
     offer_shown_at?: string
 }
 
+export type WebinarSeriesRegistrationBehavior = {
+    mode: string
+}
+
+export type WebinarSeriesLinkBehavior = {
+    mode: string
+}
+
 export type WebinarSeries = {
     id: string,
     type: WebinarSeriesType
     status: WebinarSeriesStatus,
+    registration_behavior?: WebinarSeriesRegistrationBehavior
+    link_behavior?: WebinarSeriesLinkBehavior
     sessions: SeriesSession[]
 }
 

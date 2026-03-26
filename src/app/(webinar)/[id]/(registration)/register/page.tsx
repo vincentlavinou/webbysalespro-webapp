@@ -1,5 +1,5 @@
 import { getWebinar } from '@/webinar/service'
-import { isWebinarPayload } from '@/webinar/service/guards'
+import { allowsManualSessionSelection, isWebinarPayload } from '@/webinar/service/guards'
 import { DefaultRegistrationForm } from './form'
 import { NoAvailableSessionsMessage } from '@/webinar/components'
 import Image from 'next/image'
@@ -51,6 +51,7 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
       notFound()
     }
     const sessions = webinar.series?.sessions || []
+    const allowsSessionSelection = allowsManualSessionSelection(webinar)
 
     const thumbnail = webinar.media.find(
         (media) =>
@@ -123,7 +124,7 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
         {/* Right — Registration form */}
         <div className="order-1 md:order-2 rounded-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xl border border-white/60 dark:border-slate-700 p-6">
           <p className="text-sm font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wide mb-4">
-            Reserve your spot for {webinar.title}
+            {allowsSessionSelection ? `Reserve your spot for ${webinar.title}` : `Register for the next available ${webinar.title} session`}
           </p>
           {sessions && sessions[0] ? (
             <DefaultRegistrationForm webinar={webinar} />

@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { type Webinar } from "@/webinar/service";
 import { registerForWebinarAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
+import { allowsManualSessionSelection } from "@/webinar/service/guards";
 
 interface DefaultRegistrationFormProps {
   webinar: Webinar;
@@ -67,11 +68,14 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
     () => webinar.series?.sessions || [],
     [webinar.series]
   );
+  const allowsSessionSelection = allowsManualSessionSelection(webinar);
+  const autoAssignedSession = sessions[0];
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<AttendeeFormData>({
     resolver: zodResolver(attendeeSchema),
@@ -174,6 +178,12 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
     },
   });
 
+  useEffect(() => {
+    if (!allowsSessionSelection && autoAssignedSession) {
+      setValue("session_id", autoAssignedSession.id, { shouldValidate: true });
+    }
+  }, [allowsSessionSelection, autoAssignedSession, setValue]);
+
   const onSubmit = (data: AttendeeFormData) => {
     if (submitLockRef.current || isPending || isNavigating) {
       return;
@@ -221,43 +231,51 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       onBlur={() => { isFieldFocusedRef.current = false }}
       className="space-y-4"
     >
-      {/* Session picker */}
-      <div className="flex flex-col gap-2">
-        <Label className="text-gray-700">Select a Session</Label>
-        <Controller
-          name="session_id"
-          control={control}
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger className="w-full bg-white border-gray-200">
-                <SelectValue placeholder="Select a session" />
-              </SelectTrigger>
-              <SelectContent>
-                {sessions?.map((session) => {
-                  const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
-                  return (
-                    <SelectItem key={session.id} value={session.id}>
-                      <span className="flex items-center gap-2">
-                        {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
-                        {isLive && (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+      {allowsSessionSelection ? (
+        <div className="flex flex-col gap-2">
+          <Label className="text-gray-700">Select a Session</Label>
+          <Controller
+            name="session_id"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="w-full bg-white border-gray-200">
+                  <SelectValue placeholder="Select a session" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sessions?.map((session) => {
+                    const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
+                    return (
+                      <SelectItem key={session.id} value={session.id}>
+                        <span className="flex items-center gap-2">
+                          {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
+                          {isLive && (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+                              </span>
+                              LIVE
                             </span>
-                            LIVE
-                          </span>
-                        )}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          )}
-        />
-        {errors.session_id && <p className="text-red-500 text-sm">{errors.session_id.message}</p>}
-      </div>
+                          )}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.session_id && <p className="text-red-500 text-sm">{errors.session_id.message}</p>}
+        </div>
+      ) : autoAssignedSession ? (
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+          <p className="text-sm font-semibold text-emerald-900">You&apos;ll be registered for the next available session.</p>
+          <p className="mt-1 text-sm text-emerald-800">
+            {DateTime.fromISO(autoAssignedSession.scheduled_start, { zone: autoAssignedSession.timezone || "utc" }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
+          </p>
+        </div>
+      ) : null}
 
       {/* First & Last name side-by-side */}
       <div className="grid grid-cols-2 gap-3">

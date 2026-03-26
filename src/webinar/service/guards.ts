@@ -19,3 +19,7 @@ export function isSessionPayload(value: unknown): value is SeriesSession {
     Object.values(WebinarSessionStatus).includes(candidate.status as WebinarSessionStatus)
   );
 }
+
+export function allowsManualSessionSelection(webinar: Pick<Webinar, "series">): boolean {
+  return webinar.series?.registration_behavior?.mode !== "next_available";
+}
