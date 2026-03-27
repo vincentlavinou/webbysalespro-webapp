@@ -117,7 +117,7 @@ export function FanBasisCheckout() {
   }, []);
 
   const handleCardSuccess = useCallback((data: {transactionId: string}) => {
-    handleCheckoutSuccess(data.transactionId, false);
+    handleCheckoutSuccess(data.transactionId);
   }, [handleCheckoutSuccess]);
 
   const handleCardError = useCallback(async (error: Error) => {
