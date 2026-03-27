@@ -13,3 +13,11 @@ export {
 export {
     NoAvailableSessionsMessage
 } from './NoAvailableSessionsMessage'
+
+export {
+    WebinarDetailCard
+} from './WebinarDetailCard'
+
+export {
+    SessionDetailCard
+} from './SessionDetailCard'

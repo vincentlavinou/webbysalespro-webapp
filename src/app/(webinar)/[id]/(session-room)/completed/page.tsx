@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { CheckCircle2 } from "lucide-react";
 import { getWebinarFromSession } from "@/webinar/service/action";
 import { isWebinarPayload } from "@/webinar/service/guards";
+import { WebinarDetailCard } from "@/webinar/components";
 
 interface CompletedPageProps {
   params: Promise<{ id: string }>;
@@ -11,68 +11,21 @@ export default async function CompletedPage(props: CompletedPageProps) {
   const sessionId = (await props.params).id;
   const webinarResult = await getWebinarFromSession({ id: sessionId });
   const webinar = webinarResult && isWebinarPayload(webinarResult.data) ? webinarResult.data : null;
-  const hasWebinar = webinar !== null;
-
-  const thumbnail = hasWebinar
-    ? webinar.media?.find((m) => m.file_type === "image" && m.field_type === "thumbnail")
-    : null;
 
   return (
     <div className="max-w-5xl mx-auto w-full px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
           {/* Left — Webinar details */}
-          <div className="order-last md:order-first rounded-2xl overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xl border border-white/60 dark:border-slate-700">
-            {thumbnail?.file_url && (
-              <div className="relative w-full h-[220px]">
-                <Image src={thumbnail.file_url} alt="Webinar thumbnail" fill className="object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-              </div>
-            )}
-            <div className="p-6">
+          <WebinarDetailCard
+            webinar={webinar}
+            fallbackTitle="Webinar Session"
+            badge={
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-full px-3 py-1 mb-4">
                 Session Ended
               </span>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-3">
-                {hasWebinar ? webinar.title : "Webinar Session"}
-              </h1>
-              {hasWebinar && webinar.description && (
-                <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed">
-                  {webinar.description}
-                </p>
-              )}
-
-              {hasWebinar && webinar.presenters?.length > 0 && (
-                <>
-                  <hr className="border-gray-100 dark:border-slate-700 my-5" />
-                  <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-3">
-                    Your {webinar.presenters.length === 1 ? "Presenter" : "Presenters"}
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    {webinar.presenters.map((presenter) => {
-                      const avatar = presenter.media?.find(
-                        (m) => m.file_type === "image" && (m.field_type === "thumbnail" || m.field_type === "profile")
-                      );
-                      return (
-                        <div key={presenter.id} className="flex items-center gap-3">
-                          <div className="relative h-11 w-11 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-700 flex-shrink-0 ring-2 ring-white dark:ring-slate-600 shadow">
-                            {avatar?.file_url ? (
-                              <Image src={avatar.file_url} alt={presenter.name} fill className="object-cover" />
-                            ) : (
-                              <span className="flex h-full w-full items-center justify-center text-gray-500 dark:text-slate-400 font-bold text-sm">
-                                {presenter.name.charAt(0).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">{presenter.name}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+            }
+          />
 
           {/* Right — Completion message */}
           <div className="order-first md:order-last rounded-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xl border border-white/60 dark:border-slate-700 p-6">
