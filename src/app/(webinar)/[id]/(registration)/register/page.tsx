@@ -70,8 +70,8 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
         {/* Left — Webinar details */}
         <div className="order-2 md:order-1 rounded-2xl overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xl border border-white/60 dark:border-slate-700">
           {thumbnail?.file_url && (
-            <div className="relative w-full h-[220px]">
-              <Image src={thumbnail.file_url} alt="Webinar thumbnail" fill className="object-cover" />
+            <div className="relative w-full">
+              <Image src={thumbnail.file_url} alt="Webinar thumbnail" width={0} height={0} sizes="100vw" className="w-full h-auto" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             </div>
           )}
