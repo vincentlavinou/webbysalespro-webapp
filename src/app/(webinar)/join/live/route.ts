@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
     const webinarId = searchParams.get('webinar_id')
 
     if (!rawJoinToken || !webinarId) {
-        return NextResponse.redirect(new URL('/', request.url))
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        url.search = ''
+        return NextResponse.redirect(url)
     }
 
     let data: JoinResolveResponse
@@ -28,11 +31,17 @@ export async function GET(request: NextRequest) {
             { cache: 'no-store' }
         )
         if (!response.ok) {
-            return NextResponse.redirect(new URL(`/${webinarId}/register`, request.url))
+            const url = request.nextUrl.clone()
+            url.pathname = `/${webinarId}/register`
+            url.search = ''
+            return NextResponse.redirect(url)
         }
         data = await response.json() as JoinResolveResponse
     } catch {
-        return NextResponse.redirect(new URL(`/${webinarId}/register`, request.url))
+        const url = request.nextUrl.clone()
+        url.pathname = `/${webinarId}/register`
+        url.search = ''
+        return NextResponse.redirect(url)
     }
 
     const { effective_session, auth, attendance } = data
@@ -58,15 +67,24 @@ export async function GET(request: NextRequest) {
     })
 
     if (status === WebinarSessionStatus.CANCELED) {
-        return NextResponse.redirect(new URL(`/${webinarId}/register`, request.url))
+        const url = request.nextUrl.clone()
+        url.pathname = `/${webinarId}/register`
+        url.search = ''
+        return NextResponse.redirect(url)
     }
 
     if (status === WebinarSessionStatus.COMPLETED) {
-        return NextResponse.redirect(new URL(`/${sessionId}/completed`, request.url))
+        const url = request.nextUrl.clone()
+        url.pathname = `/${sessionId}/completed`
+        url.search = ''
+        return NextResponse.redirect(url)
     }
 
     if (status === WebinarSessionStatus.IN_PROGRESS) {
-        return NextResponse.redirect(new URL(`/${sessionId}/live`, request.url))
+        const url = request.nextUrl.clone()
+        url.pathname = `/${sessionId}/live`
+        url.search = ''
+        return NextResponse.redirect(url)
     }
 
     // SCHEDULED — decide between early-access-room and waiting-room
@@ -80,8 +98,14 @@ export async function GET(request: NextRequest) {
     }).minus({ minutes: waitingRoomMinutes })
 
     if (waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
-        return NextResponse.redirect(new URL(`/${sessionId}/early-access-room`, request.url))
+        const url = request.nextUrl.clone()
+        url.pathname = `/${sessionId}/early-access-room`
+        url.search = ''
+        return NextResponse.redirect(url)
     }
 
-    return NextResponse.redirect(new URL(`/${sessionId}/waiting-room`, request.url))
+    const url = request.nextUrl.clone()
+    url.pathname = `/${sessionId}/waiting-room`
+    url.search = ''
+    return NextResponse.redirect(url)
 }
