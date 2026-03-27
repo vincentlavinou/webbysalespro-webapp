@@ -30,9 +30,14 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
       )}
       <div className="p-6">
         {badge}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-3">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-1">
           {webinar?.title ?? fallbackTitle}
         </h1>
+        {webinar?.sub_title && (
+          <p className="text-center text-base font-medium text-emerald-600 dark:text-emerald-400 mb-3">
+            {webinar.sub_title}
+          </p>
+        )}
         {webinar?.description && (
           <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed">
             {webinar.description}

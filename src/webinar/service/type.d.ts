@@ -117,6 +117,7 @@ export type Webinar = {
     owner: number
     name: string
     title: string
+    sub_title?: string
     description: string
     created_at: string
     updated_at: string
