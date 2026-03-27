@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "https://webbysalesproevents.netlify.app/*"
+  to = "https://events.webbysalespro.com/:splat"
+  status = 301
+  force = true
