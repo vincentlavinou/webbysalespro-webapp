@@ -296,6 +296,10 @@ export default function WebbySalesProIVSPlayer({
         className="relative w-full overflow-hidden border bg-black shadow-sm"
         onPointerUp={() => {
           revealMobileChrome();
+          if (!isPlaying) {
+            ivs.setAutoplayFailed(false);
+            void ivs.handleManualPlay();
+          }
         }}
         style={{ touchAction: "manipulation" }}
       >
