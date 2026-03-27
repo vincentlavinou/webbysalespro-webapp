@@ -42,7 +42,7 @@ export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) =
             Upcoming Session: {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d yyyy, h:mm a")}
           </p>
           <p className="text-xs md:text-sm px-1 opacity-90">
-            {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).offsetNameLong}
+            {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).offsetNameLong ?? session.timezone}
           </p>
         </div>
         <div className="font-mono  text-xs md:text-sm text-white bg-emerald-700  px-3 py-1 rounded-md">

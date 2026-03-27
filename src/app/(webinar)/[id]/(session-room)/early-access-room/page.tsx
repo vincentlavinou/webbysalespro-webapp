@@ -60,7 +60,7 @@ export default function EarlyAccessRoomPage() {
 
   const sessionDt = DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' })
   const formattedDate = sessionDt.toFormat('cccc, LLLL d yyyy, h:mm a')
-  const timezone = sessionDt.offsetNameLong
+  const timezone = sessionDt.offsetNameLong ?? session.timezone ?? sessionDt.zoneName
 
   return (
     <div>

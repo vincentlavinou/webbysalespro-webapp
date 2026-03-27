@@ -53,7 +53,7 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
 
   const sessionDt = DateTime.fromISO(session.scheduled_start, { zone: session.timezone || "utc" });
   const formattedDate = sessionDt.toFormat("cccc, LLLL d yyyy, h:mm a");
-  const timezone = sessionDt.offsetNameLong;
+  const timezone = sessionDt.offsetNameLong ?? session.timezone ?? sessionDt.zoneName;
 
   // Build the join path server-side — never constructed client-side
   const effectiveWebinarId = webinar_id ?? webinarId;
