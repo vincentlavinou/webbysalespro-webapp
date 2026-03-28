@@ -21,3 +21,7 @@ export {
 export {
     SessionDetailCard
 } from './SessionDetailCard'
+
+export {
+    WebinarFooter
+} from './WebinarFooter'

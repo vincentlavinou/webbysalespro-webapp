@@ -1,6 +1,6 @@
 import Image from "next/image"
-import Link from "next/link"
 import { notFound } from "next/navigation"
+import { WebinarFooter } from "@/webinar/components"
 import { getWebinar } from "@/webinar/service"
 import { isWebinarPayload } from "@/webinar/service/guards"
 
@@ -33,26 +33,7 @@ export default async function RegistrationBranchLayout({ children, params }: Reg
         {children}
       </main>
 
-      <footer className="py-6 text-center text-sm text-gray-500 dark:text-slate-400">
-        <div className="flex justify-between max-w-5xl mx-auto">
-          <nav className="flex items-start gap-6">
-            <Link href="/terms" className="hover:underline hover:text-gray-800 dark:hover:text-slate-200 transition-colors">
-              Terms &amp; Conditions
-            </Link>
-            <span aria-hidden>·</span>
-            <Link href="/privacy" className="hover:underline hover:text-gray-800 dark:hover:text-slate-200 transition-colors">
-              Privacy Policy
-            </Link>
-            <span aria-hidden>·</span>
-            <Link href="/dmca" className="hover:underline hover:text-gray-800 dark:hover:text-slate-200 transition-colors">
-              DMCA
-            </Link>
-          </nav>
-          <span className="text-sm font-bold text-gray-900 dark:text-white tracking-tight flex-shrink-0">
-            Webby<span className="text-emerald-600 dark:text-emerald-400">Sales</span>Pro
-          </span>
-        </div>
-      </footer>
+      <WebinarFooter />
     </div>
   )
 }

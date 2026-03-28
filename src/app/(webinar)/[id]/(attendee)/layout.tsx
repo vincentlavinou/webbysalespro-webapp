@@ -1,6 +1,6 @@
 import Image from "next/image"
-import Link from "next/link"
 import { notFound } from "next/navigation"
+import { WebinarFooter } from "@/webinar/components"
 import { getWebinar } from "@/webinar/service"
 import { isWebinarPayload } from "@/webinar/service/guards"
 import { WebinarProvider } from "@/webinar/providers"
@@ -36,27 +36,7 @@ export default async function AttendeeLayout({ children, params }: AttendeeLayou
           {children}
         </main>
 
-        {/* Footer */}
-        <footer className="py-6 text-center text-sm text-gray-500">
-          <div className="flex justify-between  max-w-5xl mx-auto">
-            <nav className="flex items-start gap-6">
-              <Link href="/terms" className="hover:underline hover:text-gray-800 transition-colors">
-                Terms &amp; Conditions
-              </Link>
-              <span aria-hidden>·</span>
-              <Link href="/privacy" className="hover:underline hover:text-gray-800 transition-colors">
-                Privacy Policy
-              </Link>
-              <span aria-hidden>·</span>
-              <Link href="/dmca" className="hover:underline hover:text-gray-800 transition-colors">
-                DMCA
-              </Link>
-            </nav>
-            <span className="text-sm font-bold text-gray-900 tracking-tight flex-shrink-0">
-              Webby<span className="text-emerald-600">Sales</span>Pro
-            </span>
-          </div>
-        </footer>
+        <WebinarFooter />
       </div>
     </WebinarProvider>
   )
