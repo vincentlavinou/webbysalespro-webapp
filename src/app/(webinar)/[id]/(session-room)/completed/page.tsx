@@ -1,7 +1,7 @@
 import { CheckCircle2 } from "lucide-react";
 import { getWebinarFromSession } from "@/webinar/service/action";
 import { isWebinarPayload } from "@/webinar/service/guards";
-import { WebinarDetailCard } from "@/webinar/components";
+import { WebinarDetailCard } from "@/webinar/components/WebinarDetailCard";
 
 interface CompletedPageProps {
   params: Promise<{ id: string }>;

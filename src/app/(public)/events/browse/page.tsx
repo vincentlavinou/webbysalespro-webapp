@@ -3,7 +3,8 @@ import { SearchWidget } from "@/components/search";
 import { Badge } from "@/components/ui/badge";
 import { InfoIcon } from "@/components/ui/info-icon";
 import { getWebinars } from "@webinar/service";
-import { NoUpcomingWebinars, WebinarCard } from "@webinar/components";
+import { NoUpcomingWebinars } from "@/webinar/components/NoUpcomingWebinars";
+import { WebinarCard } from "@/webinar/components/WebinarCard";
 
 const DEFAULT_PAGE_SIZE = 6;
 

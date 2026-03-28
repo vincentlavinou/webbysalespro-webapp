@@ -11,7 +11,8 @@ import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { useAttendeeSession } from '@/attendee-session/hooks/use-attendee-session'
 import { useRouter } from 'next/navigation'
-import { WebinarDetailCard, SessionDetailCard } from '@/webinar/components'
+import { SessionDetailCard } from '@/webinar/components/SessionDetailCard'
+import { WebinarDetailCard } from '@/webinar/components/WebinarDetailCard'
 
 export default function WaitingRoomPage() {
   const [timeLeft, setTimeLeft] = useState<string>('')

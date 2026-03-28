@@ -1,4 +1,4 @@
-import { UpcomingSessionBanner } from "@/webinar/components"
+import { UpcomingSessionBanner } from "@/webinar/components/UpcomingSessionBanner"
 import { getWebinar } from "@/webinar/service"
 import { isWebinarPayload } from "@/webinar/service/guards"
 import { notFound } from "next/navigation"

@@ -6,7 +6,8 @@ import { notFound } from "next/navigation";
 import CalendarButton from "@/webinar/components/CalendarButton";
 import BookmarkButton from "@/webinar/components/BookmarkButton";
 import ShareButton from "@/webinar/components/ShareButton";
-import { WebinarDetailCard, SessionDetailCard } from "@/webinar/components";
+import { SessionDetailCard } from "@/webinar/components/SessionDetailCard";
+import { WebinarDetailCard } from "@/webinar/components/WebinarDetailCard";
 import { JoinResolveResponse } from "@/attendee-session/service/type";
 
 const webinarApiUrl = process.env.WEBINAR_BASE_API_URL

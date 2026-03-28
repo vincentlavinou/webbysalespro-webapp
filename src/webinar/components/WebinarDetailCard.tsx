@@ -1,7 +1,7 @@
 import Image from "next/image"
 import { ReactNode } from "react"
-import DOMPurify from "isomorphic-dompurify"
 import { Webinar } from "@/webinar/service/type"
+import { sanitizeRichText } from "@/lib/sanitize-rich-text"
 
 interface WebinarDetailCardProps {
   webinar: Webinar | null
@@ -13,6 +13,7 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
   const thumbnail = webinar?.media?.find(
     (m) => m.file_type === "image" && m.field_type === "thumbnail"
   )
+  const sanitizedDescription = webinar?.description ? sanitizeRichText(webinar.description) : ""
 
   return (
     <div className="order-last md:order-first rounded-2xl overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xl border border-white/60 dark:border-slate-700">
@@ -42,7 +43,7 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
         {webinar?.description && (
           <div
             className="prose prose-sm dark:prose-invert max-w-none text-gray-500 dark:text-slate-400 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(webinar.description) }}
+            dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
           />
         )}
 
