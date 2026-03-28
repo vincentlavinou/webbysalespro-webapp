@@ -1,5 +1,6 @@
 import Image from "next/image"
 import { ReactNode } from "react"
+import DOMPurify from "isomorphic-dompurify"
 import { Webinar } from "@/webinar/service/type"
 
 interface WebinarDetailCardProps {
@@ -39,9 +40,10 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
           </p>
         )}
         {webinar?.description && (
-          <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed">
-            {webinar.description}
-          </p>
+          <div
+            className="prose prose-sm dark:prose-invert max-w-none text-gray-500 dark:text-slate-400 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(webinar.description) }}
+          />
         )}
 
         {webinar?.presenters?.length && webinar.presenters.length > 0 && (
