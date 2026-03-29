@@ -12,18 +12,31 @@ export type AttendeeLocation = {
 };
 
 type ExternalGeoResponse = {
+  status?: unknown;
   city?: unknown;
   state?: unknown;
   country_code?: unknown;
   countryCode?: unknown;
   country?: unknown;
   region?: unknown;
+  regionName?: unknown;
   region_name?: unknown;
   subdivision?: unknown;
   subdivision_1_name?: unknown;
 };
 
 const LOCATION_LOOKUP_TIMEOUT_MS = 1500;
+
+// ip-api.com rate limit guard: respect X-Rl / X-Ttl headers
+let ipApiRateLimitExhaustedUntil = 0;
+
+function checkIpApiRateLimit(response: Response): void {
+  const remaining = parseInt(response.headers.get("X-Rl") ?? "1", 10);
+  const ttl = parseInt(response.headers.get("X-Ttl") ?? "0", 10);
+  if (remaining === 0 && ttl > 0) {
+    ipApiRateLimitExhaustedUntil = Date.now() + ttl * 1000;
+  }
+}
 
 function normalize(value: string | null | undefined): string | undefined {
   const trimmed = value?.trim();
@@ -130,6 +143,8 @@ function fromHeaders(headerStore: HeaderLike): AttendeeLocation | null {
 }
 
 async function lookupExternalGeo(ip: string): Promise<AttendeeLocation | null> {
+  if (Date.now() < ipApiRateLimitExhaustedUntil) return null;
+
   const urlTemplate = process.env.IP_GEOLOCATION_API_URL ? process.env.IP_GEOLOCATION_API_URL : process.env.NEXT_PUBLIC_IP_GEOLOCATION_API_URL
   if (!urlTemplate) return null;
 
@@ -152,24 +167,37 @@ async function lookupExternalGeo(ip: string): Promise<AttendeeLocation | null> {
       signal: controller.signal,
     });
 
+    console.log(await response.clone().json())
+
     if (!response.ok) {
+      // Still check rate limit headers on 429
+      checkIpApiRateLimit(response);
       return null;
     }
 
+    checkIpApiRateLimit(response);
     const payload = (await response.json()) as ExternalGeoResponse;
+
+    // ip-api.com (and similar) return a status field; treat non-success as failure
+    if (typeof payload.status === "string" && payload.status !== "success") {
+      return null;
+    }
+
     const city = normalize(typeof payload.city === "string" ? payload.city : undefined);
     const state = normalize(
       typeof payload.state === "string"
         ? payload.state
         : typeof payload.region === "string"
           ? payload.region
-          : typeof payload.region_name === "string"
-            ? payload.region_name
-            : typeof payload.subdivision === "string"
-              ? payload.subdivision
-              : typeof payload.subdivision_1_name === "string"
-                ? payload.subdivision_1_name
-                : undefined
+          : typeof payload.regionName === "string"
+            ? payload.regionName
+            : typeof payload.region_name === "string"
+              ? payload.region_name
+              : typeof payload.subdivision === "string"
+                ? payload.subdivision
+                : typeof payload.subdivision_1_name === "string"
+                  ? payload.subdivision_1_name
+                  : undefined
     );
     const countryCode = normalize(
       typeof payload.country_code === "string"
@@ -206,9 +234,11 @@ export async function resolveAttendeeLocation(): Promise<AttendeeLocation | null
   }
 
   const externalLocation = await lookupExternalGeo(resolvedFromHeaders.ip);
+  console.log(externalLocation)
   if (!externalLocation) {
     return resolvedFromHeaders;
   }
+
 
   return {
     city: externalLocation.city ?? resolvedFromHeaders.city,
