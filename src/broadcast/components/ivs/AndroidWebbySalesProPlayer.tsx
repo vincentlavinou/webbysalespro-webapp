@@ -35,7 +35,7 @@ type PlaybackMode =
   | "unsupported"
   | "error";
 
-export default function AndroidWebbySalesProPlayer({
+export function AndroidWebbySalesProPlayer({
   src,
   poster,
   showStats = false,
@@ -486,4 +486,87 @@ export default function AndroidWebbySalesProPlayer({
       </div>
     </div>
   );
+}
+
+export default function IvsAndroidDebug({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    let player: any;
+
+    const start = async () => {
+      console.log("[IVS] mount", { src });
+
+      const video = videoRef.current;
+      if (!video) {
+        console.log("[IVS] no video element");
+        return;
+      }
+
+      const IVSPlayer = await import("amazon-ivs-player");
+      console.log("[IVS] sdk loaded", { supported: IVSPlayer.isPlayerSupported });
+
+      if (!IVSPlayer.isPlayerSupported) {
+        console.log("[IVS] not supported");
+        return;
+      }
+
+      const player = IVSPlayer.create({
+          wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
+          wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
+          logLevel: IVSPlayer.LogLevel.DEBUG
+        });
+      console.log("[IVS] player created");
+
+      video.muted = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+
+      player.attachHTMLVideoElement(video);
+      player.setMuted(true);
+      player.setAutoplay(true);
+      player.setLiveLowLatencyEnabled(true);
+
+      player.addEventListener(IVSPlayer.PlayerState.READY, () =>
+        console.log("[IVS] READY")
+      );
+      player.addEventListener(IVSPlayer.PlayerState.BUFFERING, () =>
+        console.log("[IVS] BUFFERING")
+      );
+      player.addEventListener(IVSPlayer.PlayerState.PLAYING, () =>
+        console.log("[IVS] PLAYING")
+      );
+      player.addEventListener(IVSPlayer.PlayerState.ENDED, () =>
+        console.log("[IVS] ENDED")
+      );
+
+      player.addEventListener(IVSPlayer.PlayerEventType.ERROR, (e: unknown) =>
+        console.log("[IVS] ERROR", e)
+      );
+      player.addEventListener(IVSPlayer.PlayerEventType.PLAYBACK_BLOCKED, () =>
+        console.log("[IVS] PLAYBACK_BLOCKED")
+      );
+      player.addEventListener(IVSPlayer.PlayerEventType.AUDIO_BLOCKED, () =>
+        console.log("[IVS] AUDIO_BLOCKED")
+      );
+
+      console.log("[IVS] loading", src);
+      player.load(src);
+
+      console.log("[IVS] play()");
+      player.play();
+    };
+
+    void start();
+
+    return () => {
+      try {
+        player?.delete?.();
+      } catch {}
+    };
+  }, [src]);
+
+  return <video ref={videoRef} controls playsInline className="w-full" />;
 }
