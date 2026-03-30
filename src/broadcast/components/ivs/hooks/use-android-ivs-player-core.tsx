@@ -59,6 +59,7 @@ export function useAndroidIvsPlayerCore({
   const hasPlayedRef = useRef(false);
   const manualPlayInFlightRef = useRef(false);
   const startupWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startupPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
@@ -73,8 +74,31 @@ export function useAndroidIvsPlayerCore({
     startupWatchdogRef.current = null;
   }, []);
 
+  const clearStartupPoll = useCallback(() => {
+    if (!startupPollRef.current) return;
+    clearInterval(startupPollRef.current);
+    startupPollRef.current = null;
+  }, []);
+
   const armStartupWatchdog = useCallback((reason: string) => {
     clearStartupWatchdog();
+    clearStartupPoll();
+    startupPollRef.current = setInterval(() => {
+      const player = playerRef.current;
+      const video = videoRef.current;
+      logAndroidIvs("watchdog:startupPoll", {
+        reason,
+        manualPlayInFlight: manualPlayInFlightRef.current,
+        hasPlayed: hasPlayedRef.current,
+        playerState: player?.getState?.(),
+        readyState: video?.readyState,
+        networkState: video?.networkState,
+        paused: video?.paused,
+        currentTime: video?.currentTime,
+        muted: video?.muted,
+        error: video?.error?.message || video?.error?.code || null,
+      });
+    }, 500);
     startupWatchdogRef.current = setTimeout(() => {
       const player = playerRef.current;
       const video = videoRef.current;
@@ -89,9 +113,10 @@ export function useAndroidIvsPlayerCore({
         paused: video?.paused,
         currentTime: video?.currentTime,
         muted: video?.muted,
+        error: video?.error?.message || video?.error?.code || null,
       });
     }, 4000);
-  }, [clearStartupWatchdog, mode, videoRef]);
+  }, [clearStartupPoll, clearStartupWatchdog, mode, videoRef]);
 
   const updateStats = useCallback(() => {
     const player = playerRef.current;
@@ -134,6 +159,7 @@ export function useAndroidIvsPlayerCore({
       }
 
       await video.play();
+      clearStartupPoll();
       clearStartupWatchdog();
       logAndroidIvs("restoreToLive:playResolved", {
         playerState: player.getState(),
@@ -153,7 +179,7 @@ export function useAndroidIvsPlayerCore({
       setLastErrorMessage(message);
       setMode("gate");
     }
-  }, [clearStartupWatchdog, src, videoRef]);
+  }, [clearStartupPoll, clearStartupWatchdog, src, videoRef]);
 
   const handleManualPlay = useCallback(async () => {
     const player = playerRef.current;
@@ -185,6 +211,7 @@ export function useAndroidIvsPlayerCore({
         paused: video.paused,
         readyState: video.readyState,
       });
+      clearStartupPoll();
       setLastErrorMessage(null);
     } catch (error) {
       const message = getErrorMessage(error, "Browser blocked playback.");
@@ -200,7 +227,7 @@ export function useAndroidIvsPlayerCore({
     } finally {
       manualPlayInFlightRef.current = false;
     }
-  }, [armStartupWatchdog, src, videoRef]);
+  }, [armStartupWatchdog, clearStartupPoll, src, videoRef]);
 
   const tapToUnmute = useCallback(() => {
     const video = videoRef.current;
@@ -251,6 +278,7 @@ export function useAndroidIvsPlayerCore({
     };
 
     const onPlaying = () => {
+      clearStartupPoll();
       clearStartupWatchdog();
       logAndroidIvs("video:playing", {
         paused: video.paused,
@@ -275,12 +303,50 @@ export function useAndroidIvsPlayerCore({
       });
     };
 
+    const onError = () => {
+      logAndroidIvs("video:error", {
+        code: video.error?.code ?? null,
+        message: video.error?.message ?? null,
+        readyState: video.readyState,
+        networkState: video.networkState,
+      });
+    };
+
+    const onStalled = () => {
+      logAndroidIvs("video:stalled", {
+        readyState: video.readyState,
+        networkState: video.networkState,
+        currentTime: video.currentTime,
+      });
+    };
+
+    const onSuspend = () => {
+      logAndroidIvs("video:suspend", {
+        readyState: video.readyState,
+        networkState: video.networkState,
+        currentTime: video.currentTime,
+      });
+    };
+
+    const onProgress = () => {
+      logAndroidIvs("video:progress", {
+        readyState: video.readyState,
+        networkState: video.networkState,
+        currentTime: video.currentTime,
+        buffered: video.buffered.length ? video.buffered.end(video.buffered.length - 1) : 0,
+      });
+    };
+
     video.addEventListener("volumechange", syncMutedState);
     video.addEventListener("pause", onPause);
     video.addEventListener("play", onPlay);
     video.addEventListener("playing", onPlaying);
     video.addEventListener("waiting", onWaiting);
     video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("error", onError);
+    video.addEventListener("stalled", onStalled);
+    video.addEventListener("suspend", onSuspend);
+    video.addEventListener("progress", onProgress);
 
     return () => {
       video.removeEventListener("volumechange", syncMutedState);
@@ -289,8 +355,12 @@ export function useAndroidIvsPlayerCore({
       video.removeEventListener("playing", onPlaying);
       video.removeEventListener("waiting", onWaiting);
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("error", onError);
+      video.removeEventListener("stalled", onStalled);
+      video.removeEventListener("suspend", onSuspend);
+      video.removeEventListener("progress", onProgress);
     };
-  }, [clearStartupWatchdog, keepAlive, shouldPreventPause, videoRef]);
+  }, [clearStartupPoll, clearStartupWatchdog, keepAlive, shouldPreventPause, videoRef]);
 
   useEffect(() => {
     logAndroidIvs("hook:mount", { src });
@@ -453,9 +523,13 @@ export function useAndroidIvsPlayerCore({
         };
 
         logAndroidIvs("init:loadSource", { src });
-        player.load(src);
         setPlayerState("INIT");
-        setMode(autoPlay ? "idle" : "gate");
+        if (autoPlay) {
+          player.load(src);
+          setMode("idle");
+        } else {
+          setMode("gate");
+        }
 
         if (autoPlay) {
           try {
@@ -491,6 +565,7 @@ export function useAndroidIvsPlayerCore({
     return () => {
       logAndroidIvs("hook:unmount", { src });
       disposedRef.current = true;
+      clearStartupPoll();
       clearStartupWatchdog();
       removeListeners();
 
@@ -501,7 +576,7 @@ export function useAndroidIvsPlayerCore({
 
       playerRef.current = null;
     };
-  }, [autoPlay, clearStartupWatchdog, onEnded, onPlaying, onTextMetadata, src, updateStats, videoRef]);
+  }, [autoPlay, clearStartupPoll, clearStartupWatchdog, onEnded, onPlaying, onTextMetadata, src, updateStats, videoRef]);
 
   return {
     playerRef,
