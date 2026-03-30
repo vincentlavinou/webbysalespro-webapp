@@ -20,6 +20,6 @@ export default function WebbySalesProPlayer(props: Props) {
   const deviceType = useDeviceType();
 
   if (deviceType === "ios") return <IOSWebbySalesProPlayer {...props} />;
-  if (deviceType === "android") return <AndroidWebbySalesProPlayer {...props} />;
+  if (deviceType === "android") return <AndroidWebbySalesProPlayer {...props} showStats />;
   return <DesktopWebbySalesProPlayer {...props} />;
 }

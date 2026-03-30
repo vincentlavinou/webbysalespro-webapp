@@ -151,6 +151,7 @@ type StatsState = {
   bitrate?: number;
   resolution?: string;
   state?: string;
+  metadataEvents?: number;
 };
 
 export function useHlsPlayerCore({
@@ -178,6 +179,7 @@ export function useHlsPlayerCore({
   const [isMuted, setIsMuted] = useState(false);
   const [playerVersion, setPlayerVersion] = useState(0);
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
+  const metadataEventsRef = useRef(0);
 
   const clearRetry = useCallback(() => {
     if (retryTimerRef.current) {
@@ -205,6 +207,7 @@ export function useHlsPlayerCore({
       bitrate: level?.bitrate ? Math.round(level.bitrate / 1000) : undefined,
       resolution: width && height ? `${width}x${height}` : undefined,
       state: video.paused ? "PAUSED" : "PLAYING",
+      metadataEvents: metadataEventsRef.current,
     });
   }, [videoRef]);
 
@@ -387,6 +390,7 @@ export function useHlsPlayerCore({
     setPlayerState("INIT");
     setStats({});
     setLastErrorMessage(null);
+    metadataEventsRef.current = 0;
 
     const video = videoRef.current;
     if (!video) return;
@@ -433,26 +437,46 @@ export function useHlsPlayerCore({
     };
 
     const onLevelUpdated = () => {
-      setPlayerState("BUFFERING");
       updateStats();
     };
 
     const onMetadataParsed = (
       _event: string,
-      data: { samples: Array<{ data: Uint8Array }> },
+      data: { samples: Array<{ data: Uint8Array | ArrayBuffer }> },
     ) => {
+      let emitted = false;
+
       for (const sample of data.samples) {
-        const messages = extractMetadataStrings(sample.data);
+        const rawData =
+          sample.data instanceof Uint8Array ? sample.data : new Uint8Array(sample.data);
+        const messages = extractMetadataStrings(rawData);
+
         for (const message of messages) {
           try {
             JSON.parse(message);
             onTextMetadata?.(message);
+            emitted = true;
           } catch {
             // Ignore non-JSON ID3 text frames. Playback metadata consumers
             // expect the same JSON payload shape emitted by the IVS player.
           }
         }
       }
+
+      if (emitted) {
+        metadataEventsRef.current += 1;
+        updateStats();
+      }
+    };
+
+    const onWaiting = () => {
+      setPlayerState("BUFFERING");
+      updateStats();
+    };
+
+    const onCanPlay = () => {
+      setPlayerState(video.paused ? "READY" : "PLAYING");
+      updateStats();
     };
 
     const onPlayingInternal = () => {
@@ -505,12 +529,18 @@ export function useHlsPlayerCore({
 
     video.addEventListener("playing", onPlayingInternal);
     video.addEventListener("ended", onEndedInternal);
+    video.addEventListener("waiting", onWaiting);
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("canplaythrough", onCanPlay);
 
     return () => {
       disposedRef.current = true;
       clearRetry();
       video.removeEventListener("playing", onPlayingInternal);
       video.removeEventListener("ended", onEndedInternal);
+      video.removeEventListener("waiting", onWaiting);
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("canplaythrough", onCanPlay);
       hls.off(Hls.Events.MEDIA_ATTACHED, onMediaAttached);
       hls.off(Hls.Events.MANIFEST_PARSED, onManifestParsed);
       hls.off(Hls.Events.LEVEL_UPDATED, onLevelUpdated);

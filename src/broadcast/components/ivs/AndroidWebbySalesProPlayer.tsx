@@ -226,6 +226,7 @@ export default function AndroidWebbySalesProPlayer({
             <div>Latency: {typeof hls.stats.latency === "number" ? `${hls.stats.latency.toFixed(1)}s` : "…"}</div>
             <div>Bitrate: {hls.stats.bitrate ? `${hls.stats.bitrate} kbps` : "…"}</div>
             <div>Res: {hls.stats.resolution ?? "…"}</div>
+            <div>Metadata: {hls.stats.metadataEvents ?? 0}</div>
           </div>
         )}
       </div>
