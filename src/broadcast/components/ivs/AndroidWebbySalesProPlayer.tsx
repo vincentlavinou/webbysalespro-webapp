@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type {
+  MediaPlayer,
   Player,
   PlayerError,
   Quality,
@@ -492,7 +493,7 @@ export default function IvsAndroidDebug({ src }: { src: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    let player: any;
+    let player: MediaPlayer | undefined;
 
     const start = async () => {
       console.log("[IVS] mount", { src });
