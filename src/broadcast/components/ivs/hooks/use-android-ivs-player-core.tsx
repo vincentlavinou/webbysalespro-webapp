@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
+import {
   Player,
   PlayerError,
   PlayerState,
@@ -397,7 +397,7 @@ export function useAndroidIvsPlayerCore({
     try {
       if (player) {
         const playerState = player.getState?.() as PlayerState | undefined;
-        if (playerState === "PLAYING" || playerState === "BUFFERING" || playerState === "READY") {
+        if (playerState === PlayerState.PLAYING || playerState === PlayerState.BUFFERING || playerState === PlayerState.READY) {
           seekPlayerToLive(player);
           await video.play();
           setErrorMessage(null);
