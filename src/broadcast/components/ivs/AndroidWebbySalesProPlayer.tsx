@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { PlayerState } from "amazon-ivs-player";
 import { Expand } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
 import { useAndroidIvsPlayerCore } from "./hooks/use-android-ivs-player-core";
