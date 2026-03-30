@@ -93,7 +93,6 @@ export function AndroidWebbySalesProPlayer({
         const player = IVSPlayer.create({
           wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
           wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
-          logLevel: IVSPlayer.LogLevel.DEBUG
         });
 
         playerRef.current = player;
@@ -280,18 +279,6 @@ export function AndroidWebbySalesProPlayer({
         };
 
         player.load(src);
-
-        try {
-          player.play();
-        } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Playback could not start automatically.";
-          setErrorMessage(message);
-          setMode("blocked");
-          console.warn("[IVS] play() blocked", error);
-        }
       } catch (error) {
         const message =
           error instanceof Error
@@ -515,7 +502,6 @@ export default function IvsAndroidDebug({ src }: { src: string }) {
       const player = IVSPlayer.create({
           wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
           wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
-          logLevel: IVSPlayer.LogLevel.DEBUG
         });
       console.log("[IVS] player created");
 
@@ -555,9 +541,6 @@ export default function IvsAndroidDebug({ src }: { src: string }) {
 
       console.log("[IVS] loading", src);
       player.load(src);
-
-      console.log("[IVS] play()");
-      player.play();
     };
 
     void start();
