@@ -8,6 +8,7 @@ import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
 import { OfferChatBubble } from "@/offer-client/components/OfferChatBubble";
 import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
+import { notifySuccessUiMessage } from "@/lib/notify";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import { useDeviceType } from "./ivs/hooks/use-device-type";
@@ -211,7 +212,8 @@ export default function AttendeeMobileLayout({
 
     setIsRefreshingStream(true);
     try {
-      await playerRef.current?.restoreToLive();
+      await playerRef.current?.restoreToLive({ forceReload: true });
+      notifySuccessUiMessage("Reconnected to stream");
     } finally {
       setIsRefreshingStream(false);
     }
