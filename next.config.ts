@@ -21,11 +21,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Required for IVS WASM worker inter-thread communication on Android Chrome 92+
-        source: "/(.*)",
+        // Stripe Elements does not support cross-origin isolated pages.
+        // Keep IVS asset headers explicit, but avoid forcing COOP/COEP site-wide.
+        source: "/ivs/:path*",
         headers: [
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
+          { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
         ],
       },
       {
