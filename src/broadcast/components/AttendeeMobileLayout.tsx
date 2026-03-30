@@ -65,10 +65,12 @@ export default function AttendeeMobileLayout({
     isImmersive,
     layoutState,
     shouldRotatePortraitImmersive,
+    shouldRotatePortraitSplit,
   } = useImmersiveLayout(viewportSize);
 
   const isSplitLayout = layoutState === "split";
   const shouldRotateImmersivePlayer = shouldRotatePortraitImmersive;
+  const shouldRotateSplitLayout = shouldRotatePortraitSplit;
 
   useEffect(() => {
     const measure = () => {
@@ -139,8 +141,14 @@ export default function AttendeeMobileLayout({
     };
   }, []);
 
-  const contentHeight = isSplitLayout
+  const splitViewportWidth = shouldRotateSplitLayout
     ? viewportSize.height
+    : viewportSize.width;
+  const splitViewportHeight = shouldRotateSplitLayout
+    ? viewportSize.width
+    : viewportSize.height;
+  const contentHeight = isSplitLayout
+    ? splitViewportHeight
     : Math.max(0, viewportSize.height - playerSectionHeight);
 
   const chatPaddingBottom = footerHeight + keyboardHeight;
@@ -199,8 +207,20 @@ export default function AttendeeMobileLayout({
           isImmersive
             ? "h-full transition-[opacity] duration-300 ease-out"
             : isSplitLayout
-              ? "flex h-full flex-row transition-[opacity] duration-300 ease-out"
+              ? shouldRotateSplitLayout
+                ? "fixed left-1/2 top-1/2 z-30 flex flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
+                : "flex h-full flex-row transition-[opacity] duration-300 ease-out"
               : "flex h-full flex-col transition-[opacity] duration-300 ease-out"
+        }
+        style={
+          isSplitLayout && shouldRotateSplitLayout
+            ? {
+                width: splitViewportWidth,
+                height: splitViewportHeight,
+                transform: "translate(-50%, -50%) rotate(90deg)",
+                transformOrigin: "center center",
+              }
+            : undefined
         }
       >
         <section
