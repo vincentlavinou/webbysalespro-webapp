@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Expand } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
-import { useHlsPlayerCore } from "./hooks/use-hls-player-core";
+import { useAndroidIvsPlayerCore } from "./hooks/use-android-ivs-player-core";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
@@ -35,7 +35,7 @@ export default function AndroidWebbySalesProPlayer({
 
   const shouldPreventPause = useCallback(() => true, []);
 
-  const hls = useHlsPlayerCore({
+  const ivs = useAndroidIvsPlayerCore({
     src,
     autoPlay: false,
     videoRef,
@@ -50,22 +50,22 @@ export default function AndroidWebbySalesProPlayer({
     videoRef,
     containerRef,
     onResumeNeeded: useCallback(() => {
-      void hls.restoreToLive({ gracePeriodMs: 800 });
-    }, [hls]),
+      void ivs.restoreToLive();
+    }, [ivs]),
   });
 
   useVisibilityResilience({
     enabled: true,
-    hasPlayedRef: hls.hasPlayedRef,
+    hasPlayedRef: ivs.hasPlayedRef,
     shouldIgnoreVisibilityChange: useCallback(
       () => fullscreenModeRef.current !== "none",
       [fullscreenModeRef],
     ),
-    restoreToLive: hls.restoreToLive,
+    restoreToLive: ivs.restoreToLive,
   });
 
   useMediaSession({
-    active: hls.mode === "playing" || hls.mode === "playing-muted",
+    active: ivs.mode === "playing" || ivs.mode === "playing-muted",
     title,
     ariaLabel,
     poster,
@@ -96,10 +96,10 @@ export default function AndroidWebbySalesProPlayer({
 
   // ─── Derived display state ────────────────────────────────────────────────
 
-  const { mode, playerState } = hls;
+  const { mode, playerState } = ivs;
   const isBuffering = (mode === "playing" || mode === "playing-muted") && playerState === "BUFFERING";
   const shouldBlur = mode !== "playing" && mode !== "playing-muted";
-  const showUnmuteNudge = mode === "playing-muted" && hls.isMuted;
+  const showUnmuteNudge = mode === "playing-muted" && ivs.isMuted;
 
   if (mode === "unsupported") {
     return (
@@ -129,7 +129,7 @@ export default function AndroidWebbySalesProPlayer({
         className="relative w-full overflow-hidden border bg-black shadow-sm"
         onPointerUp={() => {
           revealMobileChrome();
-          if (mode === "gate") void hls.handleManualPlay();
+          if (mode === "gate") void ivs.handleManualPlay();
         }}
         style={{ touchAction: "manipulation" }}
       >
@@ -182,7 +182,7 @@ export default function AndroidWebbySalesProPlayer({
               onPointerUp={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation();
-                void hls.handleManualPlay();
+                void ivs.handleManualPlay();
               }}
               className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
@@ -196,9 +196,9 @@ export default function AndroidWebbySalesProPlayer({
           </div>
         )}
 
-        {mode === "gate" && hls.lastErrorMessage && (
+        {mode === "gate" && ivs.lastErrorMessage && (
           <div className="pointer-events-none absolute inset-x-4 bottom-4 z-30 rounded-md bg-red-950/85 px-3 py-2 text-xs text-red-50 backdrop-blur-sm">
-            Playback could not start: {hls.lastErrorMessage}
+            Playback could not start: {ivs.lastErrorMessage}
           </div>
         )}
 
@@ -207,7 +207,7 @@ export default function AndroidWebbySalesProPlayer({
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
             <button
               type="button"
-              onClick={hls.tapToUnmute}
+              onClick={ivs.tapToUnmute}
               className="flex flex-col items-center gap-3 rounded-2xl bg-black/80 px-8 py-6 text-white shadow-xl backdrop-blur-sm hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white/50"
             >
               <svg viewBox="0 0 24 24" className="h-10 w-10 shrink-0" fill="currentColor" aria-hidden="true">
@@ -222,11 +222,10 @@ export default function AndroidWebbySalesProPlayer({
         {showStats && (
           <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
             <div>Mode: {mode} | FS: {fullscreenMode}</div>
-            <div>HLS: {playerState ?? "…"}</div>
-            <div>Latency: {typeof hls.stats.latency === "number" ? `${hls.stats.latency.toFixed(1)}s` : "…"}</div>
-            <div>Bitrate: {hls.stats.bitrate ? `${hls.stats.bitrate} kbps` : "…"}</div>
-            <div>Res: {hls.stats.resolution ?? "…"}</div>
-            <div>Metadata: {hls.stats.metadataEvents ?? 0}</div>
+            <div>IVS: {playerState ?? "…"}</div>
+            <div>Latency: {typeof ivs.stats.latency === "number" ? `${ivs.stats.latency.toFixed(1)}s` : "…"}</div>
+            <div>Bitrate: {ivs.stats.bitrate ? `${ivs.stats.bitrate} kbps` : "…"}</div>
+            <div>Res: {ivs.stats.resolution ?? "…"}</div>
           </div>
         )}
       </div>

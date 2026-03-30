@@ -455,8 +455,10 @@ export function useHlsPlayerCore({
           try {
             JSON.parse(message);
             onTextMetadata?.(message);
+            console.log(message)
             emitted = true;
           } catch {
+            console.log(`Failed Message: ${message}`)
             // Ignore non-JSON ID3 text frames. Playback metadata consumers
             // expect the same JSON payload shape emitted by the IVS player.
           }

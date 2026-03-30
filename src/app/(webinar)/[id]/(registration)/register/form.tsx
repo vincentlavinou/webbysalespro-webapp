@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { type Webinar } from "@/webinar/service";
+import { webinarAppUrl, type Webinar } from "@/webinar/service";
 import { registerForWebinarAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { allowsManualSessionSelection } from "@/webinar/service/guards";
@@ -165,7 +165,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         successParams.set("session_id", registeredSessionId);
       }
 
-      router.push(`/${webinar.id}/register/success?${successParams.toString()}`);
+      router.push(`${webinarAppUrl}/${webinar.id}/register/success?${successParams.toString()}`);
     },
     onError: ({error, input}) => {
       submitLockRef.current = false;
