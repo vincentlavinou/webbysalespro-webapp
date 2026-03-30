@@ -59,11 +59,16 @@ export default function AttendeeMobileLayout({
   const [viewportSize, setViewportSize] =
     useState<ViewportSize>(readLayoutViewport);
 
-  const { enterImmersive, exitImmersive, isImmersive, isPhysicalLandscape, layoutState } =
-    useImmersiveLayout(viewportSize);
+  const {
+    enterImmersive,
+    exitImmersive,
+    isImmersive,
+    layoutState,
+    shouldRotatePortraitImmersive,
+  } = useImmersiveLayout(viewportSize);
 
   const isSplitLayout = layoutState === "split";
-  const shouldRotateImmersivePlayer = isImmersive && !isPhysicalLandscape;
+  const shouldRotateImmersivePlayer = shouldRotatePortraitImmersive;
 
   useEffect(() => {
     const measure = () => {
@@ -192,29 +197,29 @@ export default function AttendeeMobileLayout({
       <div
         className={
           isImmersive
-            ? "h-full"
+            ? "h-full transition-[opacity] duration-300 ease-out"
             : isSplitLayout
-              ? "flex h-full flex-row"
-              : "flex h-full flex-col"
+              ? "flex h-full flex-row transition-[opacity] duration-300 ease-out"
+              : "flex h-full flex-col transition-[opacity] duration-300 ease-out"
         }
       >
         <section
           ref={playerSectionRef}
           className={
             isImmersive
-              ? "fixed inset-0 z-40 flex items-center justify-center bg-black"
+              ? "fixed inset-0 z-40 flex items-center justify-center bg-black transition-[background-color,opacity] duration-300 ease-out"
               : isSplitLayout
-                ? "relative flex h-full min-w-0 flex-[1.15] items-stretch bg-black"
-                : "relative shrink-0 bg-black"
+                ? "relative flex h-full min-w-0 flex-[1.15] items-stretch bg-black transition-[flex-basis,opacity] duration-300 ease-out"
+                : "relative shrink-0 bg-black transition-[opacity] duration-300 ease-out"
           }
         >
           <div
             className={
               isImmersive
-                ? "relative flex items-center justify-center"
+                ? "relative flex items-center justify-center transition-[transform,width,opacity] duration-300 ease-out"
                 : isSplitLayout
-                  ? "relative flex-1 self-stretch"
-                  : "relative grid w-full aspect-video place-items-center text-sm text-white/80"
+                  ? "relative flex flex-1 items-center justify-center self-stretch overflow-hidden transition-[transform,opacity] duration-300 ease-out"
+                  : "relative grid w-full aspect-video place-items-center text-sm text-white/80 transition-[transform,opacity] duration-300 ease-out"
             }
             style={
               isImmersive
@@ -233,14 +238,14 @@ export default function AttendeeMobileLayout({
             <div
               className={
                 isImmersive
-                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-4"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-3"
+                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-4 transition-[opacity,transform] duration-200 ease-out"
+                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-3 transition-[opacity,transform] duration-200 ease-out"
               }
             >
               <button
                 type="button"
                 onClick={isImmersive ? exitImmersive : enterImmersive}
-                className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
+                className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
                 aria-label={isImmersive ? "Exit immersive mode" : "Enter immersive mode"}
               >
                 {isImmersive ? (
@@ -261,8 +266,8 @@ export default function AttendeeMobileLayout({
               <section
                 className={
                   isSplitLayout
-                    ? "relative flex min-h-0 flex-1 flex-col border-l border-white/10 bg-background text-foreground"
-                    : "relative flex min-h-0 flex-1 flex-col bg-background text-foreground"
+                    ? "relative flex min-h-0 flex-1 flex-col border-l border-white/10 bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
+                    : "relative flex min-h-0 flex-1 flex-col bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
                 }
                 style={{ height: contentHeight }}
               >

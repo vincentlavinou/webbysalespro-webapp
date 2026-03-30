@@ -13,6 +13,8 @@ const PORTRAIT_EXIT_DELAY_MS = 2000;
 
 export function useImmersiveLayout({ width, height }: ViewportSize) {
   const [isImmersive, setIsImmersive] = useState(false);
+  const [immersiveEnteredInPortrait, setImmersiveEnteredInPortrait] = useState(false);
+  const [immersiveSawLandscape, setImmersiveSawLandscape] = useState(false);
   const portraitExitTimerRef = useRef<number | null>(null);
 
   const isPhysicalLandscape = useMemo(() => {
@@ -29,11 +31,15 @@ export function useImmersiveLayout({ width, height }: ViewportSize) {
 
   const enterImmersive = useCallback(() => {
     clearPortraitExitTimer();
+    setImmersiveEnteredInPortrait(!isPhysicalLandscape);
+    setImmersiveSawLandscape(isPhysicalLandscape);
     setIsImmersive(true);
-  }, [clearPortraitExitTimer]);
+  }, [clearPortraitExitTimer, isPhysicalLandscape]);
 
   const exitImmersive = useCallback(() => {
     clearPortraitExitTimer();
+    setImmersiveEnteredInPortrait(false);
+    setImmersiveSawLandscape(false);
     setIsImmersive(false);
   }, [clearPortraitExitTimer]);
 
@@ -45,6 +51,7 @@ export function useImmersiveLayout({ width, height }: ViewportSize) {
 
     if (isPhysicalLandscape) {
       clearPortraitExitTimer();
+      setImmersiveSawLandscape(true);
       return;
     }
 
@@ -69,6 +76,11 @@ export function useImmersiveLayout({ width, height }: ViewportSize) {
     exitImmersive,
     isImmersive,
     isPhysicalLandscape,
+    shouldRotatePortraitImmersive:
+      isImmersive &&
+      immersiveEnteredInPortrait &&
+      !isPhysicalLandscape &&
+      !immersiveSawLandscape,
     layoutState,
   };
 }
