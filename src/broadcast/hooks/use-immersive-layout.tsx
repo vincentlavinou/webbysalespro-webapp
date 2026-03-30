@@ -103,13 +103,14 @@ export function useImmersiveLayout({ width, height }: ViewportSize) {
     if (
       forcedLayoutState === null &&
       !isPhysicalLandscape &&
-      previousLayoutStateRef.current === "split"
+      previousLayoutStateRef.current === "split" &&
+      splitEnteredInPortrait
     ) {
       setSplitEnteredInPortrait(false);
       setSplitSawLandscape(true);
       setForcedLayoutState("split");
     }
-  }, [forcedLayoutState, isPhysicalLandscape]);
+  }, [forcedLayoutState, isPhysicalLandscape, splitEnteredInPortrait]);
 
   useEffect(() => {
     if (layoutState !== "split") {

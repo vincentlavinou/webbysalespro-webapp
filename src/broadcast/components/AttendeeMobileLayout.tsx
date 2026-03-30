@@ -10,6 +10,7 @@ import { OfferChatBubble } from "@/offer-client/components/OfferChatBubble";
 import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
+import { useDeviceType } from "./ivs/hooks/use-device-type";
 import { AttendeeCountBadge } from "../attendee-count/components";
 import { useImmersiveLayout } from "../hooks/use-immersive-layout";
 import { AttendeeBroadcastServiceToken } from "../service/type";
@@ -41,6 +42,30 @@ function readLayoutViewport(): ViewportSize {
   };
 }
 
+function getKeyboardInset(
+  deviceType: ReturnType<typeof useDeviceType>,
+  viewportHeight: number,
+  visualViewport?: VisualViewport | null,
+) {
+  if (!visualViewport) {
+    return 0;
+  }
+
+  if (deviceType === "ios") {
+    const visualViewportBottom = Math.round(
+      visualViewport.height + visualViewport.offsetTop,
+    );
+
+    return Math.max(0, viewportHeight - visualViewportBottom);
+  }
+
+  if (deviceType === "android") {
+    return Math.max(0, viewportHeight - Math.round(visualViewport.height));
+  }
+
+  return 0;
+}
+
 export default function AttendeeMobileLayout({
   broadcast,
   title,
@@ -58,6 +83,7 @@ export default function AttendeeMobileLayout({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [viewportSize, setViewportSize] =
     useState<ViewportSize>(readLayoutViewport);
+  const deviceType = useDeviceType();
 
   const {
     advanceLayout,
@@ -107,9 +133,6 @@ export default function AttendeeMobileLayout({
 
     const updateViewport = () => {
       const layoutViewport = readLayoutViewport();
-      const visibleHeight = Math.round(
-        (vv?.height ?? layoutViewport.height) - (vv?.offsetTop ?? 0),
-      );
 
       setViewportSize((current) => {
         if (
@@ -123,7 +146,7 @@ export default function AttendeeMobileLayout({
       });
 
       setKeyboardHeight((current) => {
-        const nextHeight = Math.max(0, layoutViewport.height - visibleHeight);
+        const nextHeight = getKeyboardInset(deviceType, layoutViewport.height, vv);
         return current === nextHeight ? current : nextHeight;
       });
     };
@@ -139,7 +162,7 @@ export default function AttendeeMobileLayout({
       vv?.removeEventListener("scroll", updateViewport);
       window.removeEventListener("resize", updateViewport);
     };
-  }, []);
+  }, [deviceType]);
 
   const splitViewportWidth = shouldRotateSplitLayout
     ? viewportSize.height
