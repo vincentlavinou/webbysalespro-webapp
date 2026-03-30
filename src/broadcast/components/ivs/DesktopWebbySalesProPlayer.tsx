@@ -60,7 +60,7 @@ export default function DesktopWebbySalesProPlayer({
   });
 
   useMediaSession({
-    active: ivs.mode === "playing",
+    active: ivs.mode === "playing" || ivs.mode === "playing-muted",
     title,
     ariaLabel,
     poster,
@@ -87,9 +87,9 @@ export default function DesktopWebbySalesProPlayer({
   // ─── Derived display state ───────────────────────────────────────────────
 
   const { mode, playerState } = ivs;
-  const isBuffering = mode === "playing" && playerState === PlayerState.BUFFERING;
-  const shouldBlur = mode !== "playing";
-  const showUnmuteNudge = mode === "playing" && ivs.isMuted;
+  const isBuffering = (mode === "playing" || mode === "playing-muted") && playerState === PlayerState.BUFFERING;
+  const shouldBlur = mode !== "playing" && mode !== "playing-muted";
+  const showUnmuteNudge = mode === "playing-muted" && ivs.isMuted;
 
   return (
     <div className="w-full">
@@ -103,7 +103,6 @@ export default function DesktopWebbySalesProPlayer({
             ref={videoRef}
             poster={poster}
             playsInline
-            muted={ivs.isMuted}
             preload="auto"
             aria-label={ariaLabel}
             className={`h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}

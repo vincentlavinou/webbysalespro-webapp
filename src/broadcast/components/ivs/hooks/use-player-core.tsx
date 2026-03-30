@@ -18,6 +18,7 @@ export type PlayerMode =
   | "idle"        // initialising — show loading spinner
   | "gate"        // ready, waiting for user tap / click
   | "playing"     // live and playing
+  | "playing-muted" // live and playing, but the media element is muted
   | "ended"       // stream ended
   | "unsupported" // IVS SDK not supported on this device (Android HLS fallback)
 
@@ -36,7 +37,7 @@ type Options = {
   onEnded?: () => void;
   onPlaying?: () => void;
   onError?: (e: PlayerError) => void;
-  /** Keep the player muted and re-play if the browser pauses it so timed metadata cues keep firing (e.g. video injection overlay). */
+  /** Re-play if the browser pauses it so timed metadata cues keep firing (e.g. video injection overlay). */
   keepAlive?: boolean;
   /** Return false when a pause is intentional and should not be immediately reversed. */
   shouldPreventPause?: () => boolean;
@@ -73,7 +74,7 @@ export function usePlayerCore({
   const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
   const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [playerVersion, setPlayerVersion] = useState(0);
 
   // ─── Retry helpers ────────────────────────────────────────────────────────
@@ -147,7 +148,11 @@ export function usePlayerCore({
       lastForcedReloadRef.current = now;
       clearRetry();
       backoffRef.current = START_BACKOFF;
-      try { p.load(src); } catch { scheduleRetry(); }
+      try { p.load(src); } catch {
+        scheduleRetry();
+        setMode("gate");
+        return;
+      }
       try {
         await v.play();
         // mode will be set to "playing" by onPlayingInternal
@@ -198,7 +203,13 @@ export function usePlayerCore({
 
     clearRetry();
     backoffRef.current = START_BACKOFF;
-    p.load(src);
+    try {
+      p.load(src);
+    } catch {
+      scheduleRetry();
+      setMode("gate");
+      return;
+    }
     try {
       await v.play();
       // mode set to "playing" by onPlayingInternal
@@ -220,12 +231,13 @@ export function usePlayerCore({
 
     clearRetry();
     backoffRef.current = START_BACKOFF;
-    p.load(src);
-
-    // Set unmuted BEFORE play() so the user gesture covers the audio unlock.
-    p.setMuted(false);
-    v.muted = false;
-    setIsMuted(false);
+    try {
+      p.load(src);
+    } catch {
+      scheduleRetry();
+      setMode("gate");
+      return;
+    }
 
     try {
       await v.play();
@@ -233,7 +245,7 @@ export function usePlayerCore({
     } catch {
       setMode("gate");
     }
-  }, [videoRef, src, clearRetry]);
+  }, [videoRef, src, clearRetry, scheduleRetry]);
 
   // ─── Tap to unmute ────────────────────────────────────────────────────────
 
@@ -243,7 +255,6 @@ export function usePlayerCore({
     if (!p || !v) return;
     try {
       v.muted = false;
-      p.setMuted(false);
     } catch {}
     setIsMuted(v.muted);
   }, [videoRef]);
@@ -256,19 +267,20 @@ export function usePlayerCore({
     if (!p || !v) return;
     const canForcePlayback = autoPlay || hasPlayedRef.current;
 
-    if (keepAlive) {
-      p.setMuted(true);
-      v.muted = true;
-      setIsMuted(true);
-    } else {
-      p.setMuted(false);
-      v.muted = false;
-      setIsMuted(v.muted);
-    }
+    setIsMuted(v.muted);
 
     if (canForcePlayback && v.paused && (shouldPreventPause?.() ?? true)) {
       v.play().catch(() => {});
     }
+
+    const syncMutedState = () => {
+      setIsMuted(v.muted);
+      setMode(current => {
+        if (current === "playing" && v.muted) return "playing-muted";
+        if (current === "playing-muted" && !v.muted) return "playing";
+        return current;
+      });
+    };
 
     const onPause = () => {
       if (disposedRef.current) return;
@@ -277,8 +289,12 @@ export function usePlayerCore({
       v.play().catch(() => {});
     };
 
+    v.addEventListener("volumechange", syncMutedState);
     v.addEventListener("pause", onPause);
-    return () => v.removeEventListener("pause", onPause);
+    return () => {
+      v.removeEventListener("volumechange", syncMutedState);
+      v.removeEventListener("pause", onPause);
+    };
   }, [autoPlay, keepAlive, shouldPreventPause, videoRef]);
 
   // ─── IVS player init / teardown ───────────────────────────────────────────
@@ -287,7 +303,7 @@ export function usePlayerCore({
     disposedRef.current = false;
     hasPlayedRef.current = false;
     setMode("idle");
-    setIsMuted(true);
+    setIsMuted(false);
     setPlayerState("INIT");
     setStats({});
 
@@ -316,7 +332,6 @@ export function usePlayerCore({
       setPlayerVersion(n => n + 1);
 
       p.setAutoplay(autoPlay);
-      p.setMuted(true); // start muted; unmuted on first successful play
       p.setAutoQualityMode(true);
       p.setLiveLowLatencyEnabled(true);
       p.setRebufferToLive(true);
@@ -325,13 +340,11 @@ export function usePlayerCore({
 
       const onPlayingInternal = () => {
         backoffRef.current = START_BACKOFF;
-        setMode("playing");
+        setMode(v.muted ? "playing-muted" : "playing");
         updateStats();
         hasPlayedRef.current = true;
         onPlaying?.();
         if (v) setSharedAudioContext(v);
-        // Best-effort unmute within the current gesture context
-        try { p.setMuted(false); v.muted = false; } catch {}
         setIsMuted(v.muted);
       };
 
