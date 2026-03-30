@@ -30,6 +30,17 @@ const FALLBACK_VIEWPORT: ViewportSize = {
   height: 500,
 };
 
+function readLayoutViewport(): ViewportSize {
+  if (typeof window === "undefined") {
+    return FALLBACK_VIEWPORT;
+  }
+
+  return {
+    width: Math.round(window.innerWidth),
+    height: Math.round(window.innerHeight),
+  };
+}
+
 export default function AttendeeMobileLayout({
   broadcast,
   title,
@@ -44,10 +55,9 @@ export default function AttendeeMobileLayout({
 
   const [playerSectionHeight, setPlayerSectionHeight] = useState(0);
   const [footerHeight, setFooterHeight] = useState(0);
-  const [vhBase, setVhBase] = useState<number>(FALLBACK_VIEWPORT.height);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [viewportSize, setViewportSize] =
-    useState<ViewportSize>(FALLBACK_VIEWPORT);
+    useState<ViewportSize>(readLayoutViewport);
 
   const { enterImmersive, exitImmersive, isImmersive, isPhysicalLandscape, layoutState } =
     useImmersiveLayout(viewportSize);
@@ -89,19 +99,25 @@ export default function AttendeeMobileLayout({
     const vv = window.visualViewport;
 
     const updateViewport = () => {
-      const width = Math.round(vv?.width ?? window.innerWidth);
-      const height = Math.round(
-        (vv?.height ?? window.innerHeight) - (vv?.offsetTop ?? 0),
+      const layoutViewport = readLayoutViewport();
+      const visibleHeight = Math.round(
+        (vv?.height ?? layoutViewport.height) - (vv?.offsetTop ?? 0),
       );
 
-      setViewportSize({ width, height });
-      setVhBase((prev) => {
-        const baseHeight = Math.max(prev, height);
-        setKeyboardHeight((current) => {
-          const nextHeight = Math.max(0, baseHeight - height);
-          return current === nextHeight ? current : nextHeight;
-        });
-        return baseHeight;
+      setViewportSize((current) => {
+        if (
+          current.width === layoutViewport.width &&
+          current.height === layoutViewport.height
+        ) {
+          return current;
+        }
+
+        return layoutViewport;
+      });
+
+      setKeyboardHeight((current) => {
+        const nextHeight = Math.max(0, layoutViewport.height - visibleHeight);
+        return current === nextHeight ? current : nextHeight;
       });
     };
 
@@ -119,8 +135,8 @@ export default function AttendeeMobileLayout({
   }, []);
 
   const contentHeight = isSplitLayout
-    ? vhBase
-    : Math.max(0, vhBase - playerSectionHeight);
+    ? viewportSize.height
+    : Math.max(0, viewportSize.height - playerSectionHeight);
 
   const chatPaddingBottom = footerHeight + keyboardHeight;
   const immersiveViewportWidth = shouldRotateImmersivePlayer
@@ -261,7 +277,7 @@ export default function AttendeeMobileLayout({
                 <AnimatePresence>
                   {showOfferSheet && (
                     <motion.div
-                      key={`offer-sheet-${isLandscape ? "landscape" : "portrait"}`}
+                      key={`offer-sheet-${isSplitLayout ? "landscape" : "portrait"}`}
                       initial={{ y: "100%" }}
                       animate={{ y: 0 }}
                       exit={{ y: "100%" }}
