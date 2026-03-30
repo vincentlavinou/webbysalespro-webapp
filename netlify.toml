@@ -1,3 +1,14 @@
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "credentialless"
+
+[[headers]]
+  for = "/ivs/amazon-ivs-wasmworker.min.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
 [[redirects]]
   from = "https://webbysalesproevents.netlify.app/*"
   to = "https://events.webbysalespro.com/:splat"
