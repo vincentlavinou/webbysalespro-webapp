@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
       },
       {
         // Ensure .wasm binary is served with the correct MIME type
-        source: "/ivs/:path*",
+        source: "/ivs/amazon-ivs-wasmworker.min.wasm",
         headers: [
           { key: "Content-Type", value: "application/wasm" },
         ],
