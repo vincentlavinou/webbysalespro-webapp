@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { ChatComposer } from "@/chat/component/ChatComposer";
 import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
@@ -10,6 +11,7 @@ import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-cl
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import { AttendeeCountBadge } from "../attendee-count/components";
+import { useImmersiveLayout } from "../hooks/use-immersive-layout";
 import { AttendeeBroadcastServiceToken } from "../service/type";
 import WebbySalesProPlayer from "./ivs/WebbySalesProPlayer";
 
@@ -47,7 +49,11 @@ export default function AttendeeMobileLayout({
   const [viewportSize, setViewportSize] =
     useState<ViewportSize>(FALLBACK_VIEWPORT);
 
-  const isLandscape = viewportSize.width > viewportSize.height;
+  const { enterImmersive, exitImmersive, isImmersive, isPhysicalLandscape, layoutState } =
+    useImmersiveLayout(viewportSize);
+
+  const isSplitLayout = layoutState === "split";
+  const shouldRotateImmersivePlayer = isImmersive && !isPhysicalLandscape;
 
   useEffect(() => {
     const measure = () => {
@@ -112,11 +118,21 @@ export default function AttendeeMobileLayout({
     };
   }, []);
 
-  const contentHeight = isLandscape
+  const contentHeight = isSplitLayout
     ? vhBase
     : Math.max(0, vhBase - playerSectionHeight);
 
   const chatPaddingBottom = footerHeight + keyboardHeight;
+  const immersiveViewportWidth = shouldRotateImmersivePlayer
+    ? viewportSize.height
+    : viewportSize.width;
+  const immersiveViewportHeight = shouldRotateImmersivePlayer
+    ? viewportSize.width
+    : viewportSize.height;
+  const immersivePlayerWidth =
+    immersiveViewportWidth > 0 && immersiveViewportHeight > 0
+      ? Math.min(immersiveViewportWidth, immersiveViewportHeight * (16 / 9))
+      : 0;
 
   const scrollToBottom = () => {
     const el = scrollRef.current;
@@ -131,7 +147,7 @@ export default function AttendeeMobileLayout({
 
   useEffect(() => {
     requestAnimationFrame(scrollToBottom);
-  }, [footerHeight, keyboardHeight, isLandscape]);
+  }, [footerHeight, isSplitLayout, keyboardHeight]);
 
   const playerContent = broadcast.stream ? (
     <>
@@ -156,35 +172,79 @@ export default function AttendeeMobileLayout({
   );
 
   return (
-    <div className="h-[100svh] overflow-hidden bg-neutral-900 text-neutral-100">
-      <div className={isLandscape ? "flex h-full flex-row" : "flex h-full flex-col"}>
+    <div className="relative h-[100svh] overflow-hidden bg-neutral-900 text-neutral-100">
+      <div
+        className={
+          isImmersive
+            ? "h-full"
+            : isSplitLayout
+              ? "flex h-full flex-row"
+              : "flex h-full flex-col"
+        }
+      >
         <section
           ref={playerSectionRef}
           className={
-            isLandscape
-              ? "flex h-full min-w-0 flex-[1.15] items-stretch bg-black"
-              : "shrink-0 bg-black"
+            isImmersive
+              ? "fixed inset-0 z-40 flex items-center justify-center bg-black"
+              : isSplitLayout
+                ? "relative flex h-full min-w-0 flex-[1.15] items-stretch bg-black"
+                : "relative shrink-0 bg-black"
           }
         >
           <div
             className={
-              isLandscape
-                ? "relative flex-1 self-stretch"
-                : "relative grid w-full aspect-video place-items-center text-sm text-white/80"
+              isImmersive
+                ? "relative flex items-center justify-center"
+                : isSplitLayout
+                  ? "relative flex-1 self-stretch"
+                  : "relative grid w-full aspect-video place-items-center text-sm text-white/80"
+            }
+            style={
+              isImmersive
+                ? {
+                    width: immersivePlayerWidth || undefined,
+                    transform: shouldRotateImmersivePlayer ? "rotate(90deg)" : undefined,
+                    transformOrigin: "center center",
+                  }
+                : undefined
             }
           >
             {playerContent}
           </div>
+
+          {broadcast.stream && (
+            <div
+              className={
+                isImmersive
+                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-4"
+                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-3"
+              }
+            >
+              <button
+                type="button"
+                onClick={isImmersive ? exitImmersive : enterImmersive}
+                className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
+                aria-label={isImmersive ? "Exit immersive mode" : "Enter immersive mode"}
+              >
+                {isImmersive ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <Maximize2 className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          )}
         </section>
 
-        {broadcast.stream && (
+        {broadcast.stream && !isImmersive && (
           <WebinarChat
             region={broadcast.stream.region}
             currentUserRole={broadcast.role}
             render={() => (
               <section
                 className={
-                  isLandscape
+                  isSplitLayout
                     ? "relative flex min-h-0 flex-1 flex-col border-l border-white/10 bg-background text-foreground"
                     : "relative flex min-h-0 flex-1 flex-col bg-background text-foreground"
                 }
@@ -207,7 +267,7 @@ export default function AttendeeMobileLayout({
                       exit={{ y: "100%" }}
                       transition={{ type: "spring", damping: 32, stiffness: 300 }}
                       className={
-                        isLandscape
+                        isSplitLayout
                           ? "absolute inset-0 z-30 overflow-y-auto bg-background shadow-[-8px_0_24px_rgba(0,0,0,0.2)]"
                           : "absolute inset-x-0 bottom-0 top-0 z-30 overflow-y-auto rounded-t-xl bg-background shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
                       }
