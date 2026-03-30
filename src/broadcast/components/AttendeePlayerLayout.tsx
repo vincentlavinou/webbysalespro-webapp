@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { AttendeeBroadcastServiceToken } from "../service/type";
 import { WebinarLoadingView } from "./views/WebinarLoadingView";
 import AttendeeMobileLayout from "./AttendeeMobileLayout";
@@ -15,27 +16,53 @@ interface BroadcastUIProps {
 export const AttendeePlayerLayout = ({ broadcast, title }: BroadcastUIProps) => {
   const layoutMode = useAttendeeLayoutMode();
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousHtmlOverscrollBehavior = html.style.overscrollBehavior;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyOverscrollBehavior = body.style.overscrollBehavior;
+    const previousBodyHeight = body.style.height;
+
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    body.style.height = "100dvh";
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      html.style.overscrollBehavior = previousHtmlOverscrollBehavior;
+      body.style.overflow = previousBodyOverflow;
+      body.style.overscrollBehavior = previousBodyOverscrollBehavior;
+      body.style.height = previousBodyHeight;
+    };
+  }, []);
+
   const hasStream = !!broadcast.stream;
   if (!hasStream) return <WebinarLoadingView />;
 
   return (
-    <AttendeeCountProvider
-      sessionId={broadcast.session.id}
-      initialCount={broadcast.session.attendee_count}
-      initialVisible={broadcast.session.is_attendee_count_visible}
-    >
-      {layoutMode === "mobile" ? (
-        <AttendeeMobileLayout
-          broadcast={broadcast}
-          title={title}
-        />
-      ) : (
-        <AttendeeDesktopLayout
-          broadcast={broadcast}
-          title={title}
-          compact={layoutMode === "desktop-compact"}
-        />
-      )}
-    </AttendeeCountProvider>
+    <div className="h-[100dvh] max-h-[100dvh] w-full overflow-hidden overscroll-none">
+      <AttendeeCountProvider
+        sessionId={broadcast.session.id}
+        initialCount={broadcast.session.attendee_count}
+        initialVisible={broadcast.session.is_attendee_count_visible}
+      >
+        {layoutMode === "mobile" ? (
+          <AttendeeMobileLayout
+            broadcast={broadcast}
+            title={title}
+          />
+        ) : (
+          <AttendeeDesktopLayout
+            broadcast={broadcast}
+            title={title}
+            compact={layoutMode === "desktop-compact"}
+          />
+        )}
+      </AttendeeCountProvider>
+    </div>
   );
 };

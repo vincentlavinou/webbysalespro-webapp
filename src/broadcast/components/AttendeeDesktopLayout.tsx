@@ -19,11 +19,11 @@ export const AttendeeDesktopLayout = ({
     compact = false,
 }: AttendeeDesktopLayoutProps) => {
     return (
-        <div className={`flex flex-col w-full overflow-hidden ${compact ? "h-[100svh]" : "h-[90vh] md:px-4"}`}>
-            <div className={`flex flex-1 min-h-0 overflow-hidden gap-2 ${compact ? "flex-col px-2 py-2" : "flex-col lg:flex-row"}`}>
+        <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${compact ? "px-2 py-2" : "px-2 py-2 md:px-4 md:py-4"}`}>
+            <div className={`flex flex-1 min-h-0 overflow-hidden gap-2 ${compact ? "flex-col" : "flex-col lg:flex-row"}`}>
 
-                <div className={`flex flex-col w-full min-h-0 ${compact ? "flex-none" : "lg:flex-1 max-h-[calc(100vh-100px)]"}`}>
-                    <div className={`z-10 bg-black relative ${compact ? "shrink-0" : "sticky top-0"}`}>
+                <div className={`flex min-h-0 w-full flex-col ${compact ? "flex-none" : "lg:flex-1"}`}>
+                    <div className="relative z-10 bg-black">
                         {broadcast.stream ? (
                             <>
                                 <WebbySalesProPlayer
@@ -45,7 +45,7 @@ export const AttendeeDesktopLayout = ({
                         {/* <VideoInjectionPlayer /> */}
                     </div>
                 </div>
-                {broadcast.stream && <div className={`flex flex-col w-full flex-1 min-h-0 ${compact ? "" : "lg:w-[320px] min-w-[280px] lg:max-w-[400px] overflow-y-auto px-2"}`}>
+                {broadcast.stream && <div className={`flex w-full min-h-0 min-w-0 flex-col ${compact ? "flex-1" : "flex-1 lg:w-[320px] lg:min-w-[280px] lg:max-w-[400px]"}`}>
                         <WebinarChat
                           region={broadcast.stream?.region}
                           currentUserRole={broadcast.role}
