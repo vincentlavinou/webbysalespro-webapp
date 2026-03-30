@@ -92,6 +92,7 @@ export default function AndroidWebbySalesProPlayer({
         const player = IVSPlayer.create({
           wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
           wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
+          logLevel: IVSPlayer.LogLevel.DEBUG
         });
 
         playerRef.current = player;
