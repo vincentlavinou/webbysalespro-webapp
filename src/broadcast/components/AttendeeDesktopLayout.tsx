@@ -3,7 +3,7 @@ import { AttendeeBroadcastServiceToken } from "../service/type";
 import { WebinarChat } from "@/chat/component";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
-import WebbySalesProIVSPlayer from "./ivs/WebbySalesProIVSPlayer";
+import WebbySalesProPlayer from "./ivs/WebbySalesProPlayer";
 import { AttendeeCountBadge } from "../attendee-count/components";
 
 interface AttendeeDesktopLayoutProps {
@@ -26,10 +26,9 @@ export const AttendeeDesktopLayout = ({
                     <div className={`z-10 bg-black relative ${compact ? "shrink-0" : "sticky top-0"}`}>
                         {broadcast.stream ? (
                             <>
-                                <WebbySalesProIVSPlayer
+                                <WebbySalesProPlayer
                                     src={broadcast.stream.config.playback_url}
                                     poster="/poster.jpg"
-                                    autoPlay
                                     ariaLabel="Live Webinar Player"
                                     title={broadcast.webinar.title}
                                     artwork={broadcast.webinar.media

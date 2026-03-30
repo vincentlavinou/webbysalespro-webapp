@@ -6,7 +6,7 @@ import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
-import WebbySalesProIVSPlayer from "./ivs/WebbySalesProIVSPlayer";
+import WebbySalesProPlayer from "./ivs/WebbySalesProPlayer";
 import { AttendeeCountBadge } from "../attendee-count/components";
 import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
 import { OfferChatBubble } from "@/offer-client/components/OfferChatBubble";
@@ -97,7 +97,7 @@ export default function AttendeeMobileLayout({ broadcast, title }: AttendeeMobil
                 <div className="w-full aspect-video grid place-items-center text-sm text-white/80 relative">
                     {broadcast.stream ? (
                         <>
-                            <WebbySalesProIVSPlayer
+                            <WebbySalesProPlayer
                                 src={broadcast.stream.config.playback_url}
                                 poster="/poster.jpg"
                                 ariaLabel="Live Webinar Player"

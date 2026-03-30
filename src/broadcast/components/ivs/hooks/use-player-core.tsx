@@ -1,4 +1,4 @@
-// components/ivs/hooks/use-player.tsx
+// components/ivs/hooks/use-player-core.tsx
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,31 +11,32 @@ import type {
 import { PlayerEventType, PlayerState as IvsPlayerState } from "amazon-ivs-player";
 import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
 
+// ─── Player mode ────────────────────────────────────────────────────────────
+// Single source of truth for what the player is doing from a UI/behavior perspective.
+// IVS internal state (BUFFERING, IDLE, etc.) is kept separately for latency/stats only.
+export type PlayerMode =
+  | "idle"        // initialising — show loading spinner
+  | "gate"        // ready, waiting for user tap / click
+  | "playing"     // live and playing
+  | "ended"       // stream ended
+  | "unsupported" // IVS SDK not supported on this device (Android HLS fallback)
+
+// ─── Constants ──────────────────────────────────────────────────────────────
 const START_BACKOFF = 800;
 const MAX_BACKOFF = 8000;
 const JITTER = 0.25;
 const RESTORE_COOLDOWN_MS = 3000;
 const FORCE_RELOAD_COOLDOWN_MS = 1500;
 
-// iOS Safari requires a user gesture before any media plays with audio.
-// Attempting autoplay and catching the error causes timing issues where audio
-// never starts even after the user taps. Detect iOS and skip the attempt.
-function isIOS() {
-  if (typeof navigator === "undefined") return false;
-  return /iP(hone|ad|od)/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
 type Options = {
   src: string;
   autoPlay: boolean;
-  mutedProp: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onTextMetadata?: (text: string) => void;
   onEnded?: () => void;
   onPlaying?: () => void;
   onError?: (e: PlayerError) => void;
-  /** Keep the player muted and re-play if the browser pauses it, so timed metadata cues keep firing while something else (e.g. video injection) is in the foreground. */
+  /** Keep the player muted and re-play if the browser pauses it so timed metadata cues keep firing (e.g. video injection overlay). */
   keepAlive?: boolean;
   /** Return false when a pause is intentional and should not be immediately reversed. */
   shouldPreventPause?: () => boolean;
@@ -48,10 +49,9 @@ type StatsState = {
   state?: string;
 };
 
-export function usePlayer({
+export function usePlayerCore({
   src,
   autoPlay,
-  mutedProp,
   videoRef,
   onTextMetadata,
   onEnded,
@@ -70,12 +70,13 @@ export function usePlayer({
 
   const hasPlayedRef = useRef(false);
 
+  const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
   const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
-  const [autoplayFailed, setAutoplayFailed] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerVersion, setPlayerVersion] = useState(0);
+
+  // ─── Retry helpers ────────────────────────────────────────────────────────
 
   const clearRetry = useCallback(() => {
     if (retryTimerRef.current) {
@@ -105,7 +106,7 @@ export function usePlayer({
       try {
         p.load(src);
         if (autoPlay && v) {
-          await v.play().catch(() => setAutoplayFailed(true));
+          await v.play().catch(() => setMode("gate"));
         }
         backoffRef.current = START_BACKOFF;
       } catch {
@@ -114,13 +115,14 @@ export function usePlayer({
     }, delay);
   }, [autoPlay, src, videoRef]);
 
+  // ─── Stats ────────────────────────────────────────────────────────────────
+
   const updateStats = useCallback(() => {
     const p = playerRef.current;
     if (!p) return;
     try {
       const state = p.getState();
       setPlayerState(state);
-      setIsPlayerReady(state !== IvsPlayerState.IDLE);
       setStats({
         latency: p.getLiveLatency(),
         bitrate: Math.round((p.getQuality()?.bitrate ?? 0) / 1000) || undefined,
@@ -130,7 +132,9 @@ export function usePlayer({
     } catch {}
   }, []);
 
-  const restoreToLive = useCallback(async (options?: { forceReload?: boolean }) => {
+  // ─── Restore to live ──────────────────────────────────────────────────────
+
+  const restoreToLive = useCallback(async (options?: { forceReload?: boolean; gracePeriodMs?: number }) => {
     const p = playerRef.current;
     const v = videoRef.current;
     if (!p || !v || disposedRef.current) return;
@@ -141,21 +145,14 @@ export function usePlayer({
     if (forceReload) {
       if (now - lastForcedReloadRef.current < FORCE_RELOAD_COOLDOWN_MS) return;
       lastForcedReloadRef.current = now;
-
       clearRetry();
       backoffRef.current = START_BACKOFF;
-
-      try {
-        p.load(src);
-      } catch {
-        scheduleRetry();
-      }
-
+      try { p.load(src); } catch { scheduleRetry(); }
       try {
         await v.play();
-        setAutoplayFailed(false);
+        // mode will be set to "playing" by onPlayingInternal
       } catch {
-        setAutoplayFailed(true);
+        setMode("gate");
       }
       return;
     }
@@ -164,25 +161,39 @@ export function usePlayer({
     lastRestoreRef.current = now;
 
     const state = p.getState();
+
     if (state === IvsPlayerState.PLAYING) {
       if (v.paused) {
-        try {
-          await v.play();
-        } catch {
-          setAutoplayFailed(true);
-        }
-      } else {
-        setAutoplayFailed(false);
+        try { await v.play(); } catch { setMode("gate"); }
       }
       return;
     }
 
     if (state === IvsPlayerState.BUFFERING || state === IvsPlayerState.READY) {
-      try {
-        await v.play();
-        setAutoplayFailed(false);
-        return;
-      } catch {}
+      try { await v.play(); return; } catch {}
+    }
+
+    // IVS is IDLE — can happen transiently during fullscreen transitions.
+    // Wait the grace period before deciding to reload.
+    if (options?.gracePeriodMs && options.gracePeriodMs > 0) {
+      await new Promise<void>(resolve => setTimeout(resolve, options.gracePeriodMs));
+      if (disposedRef.current) return;
+
+      const recovered = p.getState();
+      if (
+        recovered === IvsPlayerState.PLAYING ||
+        recovered === IvsPlayerState.BUFFERING ||
+        recovered === IvsPlayerState.READY
+      ) {
+        if (!v.paused) return; // already playing — stream recovered on its own
+        try { await v.play(); return; } catch {
+          // IVS recovered but video element needs a user gesture — show gate,
+          // don't reload the healthy stream.
+          setMode("gate");
+          return;
+        }
+      }
+      // Still IDLE after grace period — fall through to reload.
     }
 
     clearRetry();
@@ -190,38 +201,41 @@ export function usePlayer({
     p.load(src);
     try {
       await v.play();
-      setAutoplayFailed(false);
+      // mode set to "playing" by onPlayingInternal
     } catch {
-      setAutoplayFailed(true);
+      setMode("gate");
     }
   }, [src, videoRef, clearRetry, scheduleRetry]);
+
+  // ─── Manual play (user tap / click) ──────────────────────────────────────
 
   const handleManualPlay = useCallback(async () => {
     const p = playerRef.current;
     const v = videoRef.current;
     if (!p || !v) return;
 
-    // Reload from live edge — IVS setRebufferToLive(true) ensures we land at the
-    // live edge on load. Do this before play() so the gesture covers the play call.
+    // Dismiss the gate immediately while play is initiating — prevents the iOS
+    // race where p.load() briefly re-triggers "gate" state during startup.
+    setMode("idle");
+
     clearRetry();
     backoffRef.current = START_BACKOFF;
     p.load(src);
 
-    // Set desired mute state BEFORE play() within the user gesture context.
-    // Do NOT mute first then unmute — iOS may consume the gesture on the muted play.
-    const wantMuted = mutedProp;
-    p.setMuted(wantMuted);
-    v.muted = wantMuted;
-    setIsMuted(wantMuted);
+    // Set unmuted BEFORE play() so the user gesture covers the audio unlock.
+    p.setMuted(false);
+    v.muted = false;
+    setIsMuted(false);
 
     try {
       await v.play();
-      setAutoplayFailed(false);
+      // onPlayingInternal will transition mode → "playing"
     } catch {
-      // Still blocked — keep the overlay up so user can try again
-      setAutoplayFailed(true);
+      setMode("gate");
     }
-  }, [videoRef, mutedProp, src, clearRetry]);
+  }, [videoRef, src, clearRetry]);
+
+  // ─── Tap to unmute ────────────────────────────────────────────────────────
 
   const tapToUnmute = useCallback(() => {
     const p = playerRef.current;
@@ -231,13 +245,11 @@ export function usePlayer({
       v.muted = false;
       p.setMuted(false);
     } catch {}
-    // Sync with actual element state — browser policy may silently reject the unmute.
     setIsMuted(v.muted);
   }, [videoRef]);
 
-  // Live playback should not remain paused. Re-play on pause unless a caller
-  // explicitly marks the pause as intentional, such as a successful
-  // handoff from the video element to the background audio element.
+  // ─── Pause prevention (live stream must not stay paused) ──────────────────
+
   useEffect(() => {
     const p = playerRef.current;
     const v = videoRef.current;
@@ -248,12 +260,9 @@ export function usePlayer({
       p.setMuted(true);
       v.muted = true;
       setIsMuted(true);
-    }
-
-    if (!keepAlive) {
-      p.setMuted(mutedProp);
-      v.muted = mutedProp;
-      // Sync with actual element state in case the browser silently rejects the assignment.
+    } else {
+      p.setMuted(false);
+      v.muted = false;
       setIsMuted(v.muted);
     }
 
@@ -270,15 +279,15 @@ export function usePlayer({
 
     v.addEventListener("pause", onPause);
     return () => v.removeEventListener("pause", onPause);
-  }, [autoPlay, keepAlive, mutedProp, shouldPreventPause, videoRef]);
+  }, [autoPlay, keepAlive, shouldPreventPause, videoRef]);
+
+  // ─── IVS player init / teardown ───────────────────────────────────────────
 
   useEffect(() => {
     disposedRef.current = false;
     hasPlayedRef.current = false;
-
-    setAutoplayFailed(false);
+    setMode("idle");
     setIsMuted(true);
-    setIsPlayerReady(false);
     setPlayerState("INIT");
     setStats({});
 
@@ -292,7 +301,8 @@ export function usePlayer({
       if (disposedRef.current) return;
 
       if (!ivs.isPlayerSupported) {
-        console.warn("IVS Player not supported.");
+        console.warn("IVS Player not supported on this device.");
+        setMode("unsupported");
         return;
       }
 
@@ -303,39 +313,30 @@ export function usePlayer({
 
       playerRef.current = p;
       p.attachHTMLVideoElement(v);
-      setPlayerVersion(v => v + 1);
+      setPlayerVersion(n => n + 1);
 
       p.setAutoplay(autoPlay);
-      p.setMuted(true); // always start muted (iOS)
+      p.setMuted(true); // start muted; unmuted on first successful play
       p.setAutoQualityMode(true);
       p.setLiveLowLatencyEnabled(true);
       p.setRebufferToLive(true);
 
       const onReady = () => updateStats();
+
       const onPlayingInternal = () => {
         backoffRef.current = START_BACKOFF;
-        setAutoplayFailed(false);
+        setMode("playing");
         updateStats();
         hasPlayedRef.current = true;
         onPlaying?.();
-
-        // Link this video element's audio session to the shared Web Audio context
-        // so the cta-announcement ching sound plays on iOS without being suspended.
         if (v) setSharedAudioContext(v);
-
-        // best-effort unmute (will succeed if user gesture exists)
-        if (!mutedProp) {
-          try {
-            p.setMuted(false);
-            v.muted = false;
-          } catch {}
-          // Always sync with actual element state — browser autoplay policy
-          // may silently keep the video muted even if no exception is thrown.
-          setIsMuted(v.muted);
-        }
+        // Best-effort unmute within the current gesture context
+        try { p.setMuted(false); v.muted = false; } catch {}
+        setIsMuted(v.muted);
       };
 
       const onEndedInternal = () => {
+        setMode("ended");
         updateStats();
         onEnded?.();
       };
@@ -349,9 +350,7 @@ export function usePlayer({
       };
 
       const onMeta = (payload: TextMetadataCue) => {
-        try {
-          onTextMetadata?.(payload.text);
-        } catch {}
+        try { onTextMetadata?.(payload.text); } catch {}
       };
 
       p.addEventListener(ivs.PlayerState.READY, onReady);
@@ -362,29 +361,21 @@ export function usePlayer({
       p.addEventListener(PlayerEventType.ERROR, onErrorInternal);
       p.addEventListener(PlayerEventType.TEXT_METADATA_CUE, onMeta);
 
-      try {
-        p.load(src);
-      } catch {
-        scheduleRetry();
-      }
+      try { p.load(src); } catch { scheduleRetry(); }
 
       if (autoPlay) {
-        // On iOS, skip the autoplay attempt entirely — it will either play muted
-        // (no audio) or throw. Show the play gate immediately so the user's tap
-        // happens within a clean gesture context that iOS will honour with audio.
-        if (isIOS()) {
-          setAutoplayFailed(true);
-        } else {
-          try {
-            await v.play();
-            setAutoplayFailed(false);
-          } catch {
-            setAutoplayFailed(true);
-          }
+        // Desktop: try autoplay with sound. Browser blocks it → show click-to-play.
+        // Never fall back to muted autoplay.
+        try {
+          await v.play();
+          // mode → "playing" via onPlayingInternal
+        } catch {
+          setMode("gate");
         }
       } else {
-        // No autoplay requested — always show the play gate so user initiates.
-        setAutoplayFailed(true);
+        // iOS / Android: skip autoplay entirely — show tap-to-play immediately
+        // so the user's first tap is in a clean gesture context for audio unlock.
+        setMode("gate");
       }
 
       cleanup = () => {
@@ -395,10 +386,7 @@ export function usePlayer({
         p.removeEventListener(ivs.PlayerState.ENDED, onEndedInternal);
         p.removeEventListener(PlayerEventType.ERROR, onErrorInternal);
         p.removeEventListener(PlayerEventType.TEXT_METADATA_CUE, onMeta);
-        try {
-          p.pause();
-          p.delete();
-        } catch {}
+        try { p.pause(); p.delete(); } catch {}
       };
     })();
 
@@ -408,19 +396,16 @@ export function usePlayer({
       playerRef.current = null;
       cleanup?.();
     };
-  }, [src, autoPlay, mutedProp, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
+  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
 
   return {
     playerRef,
     playerVersion,
+    mode,
     stats,
     playerState,
-    autoplayFailed,
     isMuted,
-    isPlayerReady,
     hasPlayedRef,
-    setAutoplayFailed,
-    setIsMuted,
     updateStats,
     scheduleRetry,
     restoreToLive,
