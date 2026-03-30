@@ -7,16 +7,27 @@ export type DeviceType = "ios" | "android" | "desktop";
 
 function detectDeviceType(): DeviceType {
   if (typeof navigator === "undefined") return "desktop";
-  const ua = navigator.userAgent;
-  if (
-    /iP(hone|ad|od)/.test(ua) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  ) {
-    return "ios";
-  }
-  if (/Android/i.test(ua)) {
+
+  const nav = navigator as Navigator & {
+    userAgentData?: {
+      mobile?: boolean;
+      platform?: string;
+    };
+  };
+  const ua = navigator.userAgent ?? "";
+  const platform = nav.userAgentData?.platform ?? navigator.platform ?? "";
+
+  if (/Android/i.test(ua) || /Android/i.test(platform)) {
     return "android";
   }
+
+  const isAppleMobileDevice = /iP(hone|ad|od)/.test(ua);
+  const isIPadDesktopUA = platform === "MacIntel" && navigator.maxTouchPoints > 1;
+
+  if (isAppleMobileDevice || isIPadDesktopUA) {
+    return "ios";
+  }
+
   return "desktop";
 }
 

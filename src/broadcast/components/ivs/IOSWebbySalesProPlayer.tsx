@@ -1,12 +1,11 @@
 // components/ivs/IOSWebbySalesProPlayer.tsx
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef } from "react";
 import { PlayerState } from "amazon-ivs-player";
-import { Expand, Minimize2, PictureInPicture2 } from "lucide-react";
+import { Minimize2, PictureInPicture2 } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
 import { useIvsPlayerCore } from "./hooks/use-ivs-player-core";
-import { useFullscreen } from "./hooks/use-fullscreen";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
@@ -32,9 +31,6 @@ export default function IOSWebbySalesProPlayer({
   keepAlive = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mobileChromeTimerRef = useRef<number | null>(null);
-  const [showMobileChrome, setShowMobileChrome] = useState(false);
 
   const shouldPreventPause = useCallback(() => true, []);
 
@@ -52,14 +48,6 @@ export default function IOSWebbySalesProPlayer({
 
   const pip = usePiP(videoRef, ivs.restoreToLive);
 
-  const { fullscreenMode, fullscreenModeRef } = useFullscreen({
-    videoRef,
-    containerRef,
-    onResumeNeeded: useCallback(() => {
-      void ivs.restoreToLive({ gracePeriodMs: 800 });
-    }, [ivs]),
-  });
-
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
   useVisibilityResilience({
@@ -68,11 +56,6 @@ export default function IOSWebbySalesProPlayer({
     isPiPRef: pip.isPiPRef,
     enterPiP: pip.enterPiP,
     exitPiP: pip.exitPiP,
-    // Race-proof: checks the ref directly, not a closure over stale state.
-    shouldIgnoreVisibilityChange: useCallback(
-      () => fullscreenModeRef.current !== "none",
-      [fullscreenModeRef],
-    ),
     restoreToLive: ivs.restoreToLive,
   });
 
@@ -86,26 +69,6 @@ export default function IOSWebbySalesProPlayer({
     onPause: () => { videoRef.current?.play().catch(() => {}); },
   });
 
-  // ─── Mobile chrome (rotate hint) ────────────────────────────────────────
-
-  const clearMobileChromeTimer = useCallback(() => {
-    if (mobileChromeTimerRef.current) {
-      window.clearTimeout(mobileChromeTimerRef.current);
-      mobileChromeTimerRef.current = null;
-    }
-  }, []);
-
-  const revealMobileChrome = useCallback(() => {
-    setShowMobileChrome(true);
-    clearMobileChromeTimer();
-    mobileChromeTimerRef.current = window.setTimeout(() => {
-      setShowMobileChrome(false);
-      mobileChromeTimerRef.current = null;
-    }, 5000);
-  }, [clearMobileChromeTimer]);
-
-  useEffect(() => () => clearMobileChromeTimer(), [clearMobileChromeTimer]);
-
   // ─── Derived display state ───────────────────────────────────────────────
 
   const { mode, playerState } = ivs;
@@ -116,10 +79,8 @@ export default function IOSWebbySalesProPlayer({
   return (
     <div className="w-full">
       <div
-        ref={containerRef}
         className="relative w-full overflow-hidden border bg-black shadow-sm"
         onPointerUp={() => {
-          revealMobileChrome();
           if (mode === "gate") void ivs.handleManualPlay();
         }}
         style={{ touchAction: "manipulation" }}
@@ -154,16 +115,6 @@ export default function IOSWebbySalesProPlayer({
             >
               {pip.isInPiP ? <Minimize2 className="h-4 w-4" /> : <PictureInPicture2 className="h-4 w-4" />}
             </button>
-          </div>
-        )}
-
-        {/* Rotate hint */}
-        {showMobileChrome && (
-          <div className="pointer-events-none absolute bottom-3 right-3 z-30 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white/85 backdrop-blur-sm">
-            <span className="inline-flex items-center gap-1.5">
-              <Expand className="h-3 w-3" />
-              Rotate for fullscreen
-            </span>
           </div>
         )}
 
@@ -223,7 +174,7 @@ export default function IOSWebbySalesProPlayer({
         {/* Stats */}
         {showStats && (
           <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
-            <div>Mode: {mode} | FS: {fullscreenMode}</div>
+            <div>Mode: {mode}</div>
             <div>IVS: {playerState ?? "…"}</div>
             <div>Latency: {typeof ivs.stats.latency === "number" ? `${ivs.stats.latency.toFixed(1)}s` : "…"}</div>
             <div>Bitrate: {ivs.stats.bitrate ? `${ivs.stats.bitrate} kbps` : "…"}</div>
