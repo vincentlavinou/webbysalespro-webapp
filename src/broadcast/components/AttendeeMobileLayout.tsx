@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { ChatComposer } from "@/chat/component/ChatComposer";
@@ -14,14 +14,14 @@ import { useDeviceType } from "./ivs/hooks/use-device-type";
 import { AttendeeCountBadge } from "../attendee-count/components";
 import { useImmersiveLayout } from "../hooks/use-immersive-layout";
 import { AttendeeBroadcastServiceToken } from "../service/type";
-import WebbySalesProPlayer from "./ivs/WebbySalesProPlayer";
+import WebbySalesProPlayer, {
+  type WebbySalesProPlayerHandle,
+} from "./ivs/WebbySalesProPlayer";
 import { StreamRefreshControl } from "./StreamRefreshControl";
 
 interface AttendeeMobileLayoutProps {
   broadcast: AttendeeBroadcastServiceToken;
   title?: string;
-  onRefreshStream?: () => Promise<void> | void;
-  isRefreshingStream?: boolean;
 }
 
 type ViewportSize = {
@@ -72,20 +72,20 @@ function getKeyboardInset(
 export default function AttendeeMobileLayout({
   broadcast,
   title,
-  onRefreshStream,
-  isRefreshingStream = false,
 }: AttendeeMobileLayoutProps) {
   const { view: offerView } = useOfferSessionClient();
   const showOfferSheet =
     offerView === "offer-checkingout" || offerView === "offer-purchased";
 
   const playerSectionRef = useRef<HTMLElement | null>(null);
+  const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
   const footerRef = useRef<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const [playerSectionHeight, setPlayerSectionHeight] = useState(0);
   const [footerHeight, setFooterHeight] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isRefreshingStream, setIsRefreshingStream] = useState(false);
   const [viewportSize, setViewportSize] =
     useState<ViewportSize>(readLayoutViewport);
   const deviceType = useDeviceType();
@@ -206,9 +206,21 @@ export default function AttendeeMobileLayout({
     requestAnimationFrame(scrollToBottom);
   }, [footerHeight, isSplitLayout, keyboardHeight]);
 
+  const handleRefreshStream = useCallback(async () => {
+    if (isRefreshingStream) return;
+
+    setIsRefreshingStream(true);
+    try {
+      await playerRef.current?.restoreToLive();
+    } finally {
+      setIsRefreshingStream(false);
+    }
+  }, [isRefreshingStream]);
+
   const playerContent = broadcast.stream ? (
     <>
       <WebbySalesProPlayer
+        ref={playerRef}
         src={broadcast.stream.config.playback_url}
         poster="/poster.jpg"
         ariaLabel="Live Webinar Player"
@@ -282,14 +294,14 @@ export default function AttendeeMobileLayout({
             {playerContent}
           </div>
 
-          {broadcast.stream && onRefreshStream && (
+          {broadcast.stream && (
             <StreamRefreshControl
               className={
                 isImmersive
                   ? "pointer-events-auto fixed left-1/2 top-3 z-50 -translate-x-1/2"
                   : "pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
               }
-              onRefresh={onRefreshStream}
+              onRefresh={handleRefreshStream}
               isRefreshing={isRefreshingStream}
             />
           )}
@@ -298,14 +310,14 @@ export default function AttendeeMobileLayout({
             <div
               className={
                 isImmersive
-                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-4 transition-[opacity,transform] duration-200 ease-out"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-3 transition-[opacity,transform] duration-200 ease-out"
+                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-3 transition-[opacity,transform] duration-200 ease-out"
+                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-2.5 transition-[opacity,transform] duration-200 ease-out"
               }
             >
               <button
                 type="button"
                 onClick={isImmersive ? exitImmersive : advanceLayout}
-                className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
+                className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
                 aria-label={
                   isImmersive
                     ? "Exit immersive mode"
@@ -315,9 +327,9 @@ export default function AttendeeMobileLayout({
                 }
               >
                 {isImmersive ? (
-                  <Minimize2 className="h-4 w-4" />
+                  <Minimize2 className="h-3.5 w-3.5" />
                 ) : (
-                  <Maximize2 className="h-4 w-4" />
+                  <Maximize2 className="h-3.5 w-3.5" />
                 )}
               </button>
             </div>

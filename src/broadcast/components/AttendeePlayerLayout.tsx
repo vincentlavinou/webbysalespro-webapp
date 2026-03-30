@@ -11,15 +11,11 @@ import { useAttendeeLayoutMode } from "../hooks/use-attendee-layout-mode";
 interface BroadcastUIProps {
   broadcast: AttendeeBroadcastServiceToken;
   title?: string;
-  onRefreshStream?: () => Promise<void> | void;
-  isRefreshingStream?: boolean;
 }
 
 export const AttendeePlayerLayout = ({
   broadcast,
   title,
-  onRefreshStream,
-  isRefreshingStream = false,
 }: BroadcastUIProps) => {
   const layoutMode = useAttendeeLayoutMode();
 
@@ -61,16 +57,12 @@ export const AttendeePlayerLayout = ({
           <AttendeeMobileLayout
             broadcast={broadcast}
             title={title}
-            onRefreshStream={onRefreshStream}
-            isRefreshingStream={isRefreshingStream}
           />
         ) : (
           <AttendeeDesktopLayout
             broadcast={broadcast}
             title={title}
             compact={layoutMode === "desktop-compact"}
-            onRefreshStream={onRefreshStream}
-            isRefreshingStream={isRefreshingStream}
           />
         )}
       </AttendeeCountProvider>

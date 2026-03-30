@@ -1,9 +1,10 @@
 "use client";
+import { useCallback, useRef, useState } from "react";
 import { AttendeeBroadcastServiceToken } from "../service/type";
 import { WebinarChat } from "@/chat/component";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
-import WebbySalesProPlayer from "./ivs/WebbySalesProPlayer";
+import WebbySalesProPlayer, { type WebbySalesProPlayerHandle } from "./ivs/WebbySalesProPlayer";
 import { AttendeeCountBadge } from "../attendee-count/components";
 import { StreamRefreshControl } from "./StreamRefreshControl";
 
@@ -11,8 +12,6 @@ interface AttendeeDesktopLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
     title?: string;
     compact?: boolean;
-    onRefreshStream?: () => Promise<void> | void;
-    isRefreshingStream?: boolean;
 }
 
 
@@ -20,9 +19,21 @@ export const AttendeeDesktopLayout = ({
     broadcast,
     title,
     compact = false,
-    onRefreshStream,
-    isRefreshingStream = false,
 }: AttendeeDesktopLayoutProps) => {
+    const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
+    const [isRefreshingStream, setIsRefreshingStream] = useState(false);
+
+    const handleRefreshStream = useCallback(async () => {
+        if (isRefreshingStream) return;
+
+        setIsRefreshingStream(true);
+        try {
+            await playerRef.current?.restoreToLive();
+        } finally {
+            setIsRefreshingStream(false);
+        }
+    }, [isRefreshingStream]);
+
     return (
         <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${compact ? "px-2 py-2" : "px-2 py-2 md:px-4 md:py-4"}`}>
             <div className={`flex flex-1 min-h-0 overflow-hidden gap-2 ${compact ? "flex-col" : "flex-col lg:flex-row"}`}>
@@ -32,6 +43,7 @@ export const AttendeeDesktopLayout = ({
                         {broadcast.stream ? (
                             <>
                                 <WebbySalesProPlayer
+                                    ref={playerRef}
                                     src={broadcast.stream.config.playback_url}
                                     poster="/poster.jpg"
                                     ariaLabel="Live Webinar Player"
@@ -41,13 +53,11 @@ export const AttendeeDesktopLayout = ({
                                         .map((m: WebinarMedia) => ({ src: m.file_url }))}
                                 />
                                 <AttendeeCountBadge />
-                                {onRefreshStream && (
-                                  <StreamRefreshControl
+                                <StreamRefreshControl
                                     className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
-                                    onRefresh={onRefreshStream}
+                                    onRefresh={handleRefreshStream}
                                     isRefreshing={isRefreshingStream}
                                   />
-                                )}
                             </>
                         ) : (
                             <div className="w-full h-full bg-black/80 grid place-items-center text-white">

@@ -1,6 +1,7 @@
 // components/ivs/WebbySalesProPlayer.tsx
 "use client";
 
+import React, { forwardRef } from "react";
 import { useDeviceType } from "./hooks/use-device-type";
 import IOSWebbySalesProPlayer from "./IOSWebbySalesProPlayer";
 import AndroidWebbySalesProPlayer from "./AndroidWebbySalesProPlayer";
@@ -16,10 +17,25 @@ type Props = {
   keepAlive?: boolean;
 };
 
-export default function WebbySalesProPlayer(props: Props) {
-  const deviceType = useDeviceType();
+export type WebbySalesProPlayerHandle = {
+  restoreToLive: (options?: {
+    forceReload?: boolean;
+    gracePeriodMs?: number;
+  }) => Promise<void>;
+};
 
-  if (deviceType === "ios") return <IOSWebbySalesProPlayer {...props} />;
-  if (deviceType === "android") return <AndroidWebbySalesProPlayer {...props} />;
-  return <DesktopWebbySalesProPlayer {...props} />;
-}
+const WebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
+  function WebbySalesProPlayer(props, ref) {
+    const deviceType = useDeviceType();
+
+    if (deviceType === "ios") {
+      return <IOSWebbySalesProPlayer ref={ref} {...props} />;
+    }
+    if (deviceType === "android") {
+      return <AndroidWebbySalesProPlayer ref={ref} {...props} />;
+    }
+    return <DesktopWebbySalesProPlayer ref={ref} {...props} />;
+  },
+);
+
+export default WebbySalesProPlayer;

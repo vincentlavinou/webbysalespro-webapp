@@ -1,7 +1,12 @@
 // components/ivs/IOSWebbySalesProPlayer.tsx
 "use client";
 
-import React, { useCallback, useRef } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { PlayerState } from "amazon-ivs-player";
 import { Minimize2, PictureInPicture2 } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
@@ -10,6 +15,7 @@ import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
 import { usePiP } from "./hooks/use-pip";
+import type { WebbySalesProPlayerHandle } from "./WebbySalesProPlayer";
 
 type Props = {
   src: string;
@@ -21,7 +27,8 @@ type Props = {
   keepAlive?: boolean;
 };
 
-export default function IOSWebbySalesProPlayer({
+const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
+function IOSWebbySalesProPlayer({
   src,
   poster,
   showStats = false,
@@ -29,7 +36,7 @@ export default function IOSWebbySalesProPlayer({
   title,
   artwork,
   keepAlive = false,
-}: Props) {
+}: Props, ref) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const shouldPreventPause = useCallback(() => true, []);
@@ -49,6 +56,10 @@ export default function IOSWebbySalesProPlayer({
   const pip = usePiP(videoRef, ivs.restoreToLive);
 
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
+
+  useImperativeHandle(ref, () => ({
+    restoreToLive: ivs.restoreToLive,
+  }), [ivs.restoreToLive]);
 
   useVisibilityResilience({
     enabled: true,
@@ -183,4 +194,6 @@ export default function IOSWebbySalesProPlayer({
       </div>
     </div>
   );
-}
+});
+
+export default IOSWebbySalesProPlayer;

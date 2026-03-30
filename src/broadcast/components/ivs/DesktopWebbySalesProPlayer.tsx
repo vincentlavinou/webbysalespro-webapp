@@ -1,7 +1,13 @@
 // components/ivs/DesktopWebbySalesProPlayer.tsx
 "use client";
 
-import React, { useCallback, useEffect, useRef } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { PlayerState } from "amazon-ivs-player";
 import { PictureInPicture2, Minimize2 } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
@@ -10,6 +16,7 @@ import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
 import { usePiP } from "./hooks/use-pip";
+import type { WebbySalesProPlayerHandle } from "./WebbySalesProPlayer";
 
 type Props = {
   src: string;
@@ -21,7 +28,8 @@ type Props = {
   keepAlive?: boolean;
 };
 
-export default function DesktopWebbySalesProPlayer({
+const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
+function DesktopWebbySalesProPlayer({
   src,
   poster,
   showStats = false,
@@ -29,7 +37,7 @@ export default function DesktopWebbySalesProPlayer({
   title,
   artwork,
   keepAlive = false,
-}: Props) {
+}: Props, ref) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -50,6 +58,10 @@ export default function DesktopWebbySalesProPlayer({
   const pip = usePiP(videoRef, ivs.restoreToLive);
 
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
+
+  useImperativeHandle(ref, () => ({
+    restoreToLive: ivs.restoreToLive,
+  }), [ivs.restoreToLive]);
 
   // Desktop browsers don't fire visibilitychange on fullscreen transitions,
   // so no shouldIgnoreVisibilityChange guard is needed here.
@@ -190,4 +202,6 @@ export default function DesktopWebbySalesProPlayer({
       </div>
     </div>
   );
-}
+});
+
+export default DesktopWebbySalesProPlayer;

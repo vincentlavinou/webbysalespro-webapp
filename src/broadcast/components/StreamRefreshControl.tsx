@@ -24,10 +24,10 @@ export function StreamRefreshControl({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex h-8 items-center gap-1.5 rounded-full border border-white/12 bg-black/45 px-3 text-[11px] font-medium text-white/80 shadow-sm backdrop-blur-md transition hover:bg-black/60 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/35"
+            className="flex h-7 items-center gap-1 rounded-full border border-white/12 bg-black/45 px-2.5 text-[10px] font-medium text-white/80 shadow-sm backdrop-blur-md transition hover:bg-black/60 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/35"
             aria-label="Open stream refresh options"
           >
-            <RefreshCcw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            <RefreshCcw className={`size-3 ${isRefreshing ? "animate-spin" : ""}`} />
             <span>Having trouble?</span>
           </button>
         </DropdownMenuTrigger>

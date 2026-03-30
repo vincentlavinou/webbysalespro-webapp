@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   Player,
   PlayerError,
+  PlayerState,
   Quality,
   TextMetadataCue,
 } from "amazon-ivs-player";
@@ -19,6 +20,9 @@ export type AndroidPlaybackMode =
   | "ended"
   | "unsupported"
   | "error";
+
+const RESTORE_COOLDOWN_MS = 3000;
+const FORCE_RELOAD_COOLDOWN_MS = 1500;
 
 type Options = {
   src: string;
@@ -42,12 +46,71 @@ export function useAndroidIvsPlayerCore({
 }: Options) {
   const playerRef = useRef<Player | null>(null);
   const detachRef = useRef<(() => void) | null>(null);
+  const lastRestoreRef = useRef(0);
+  const lastForcedReloadRef = useRef(0);
 
   const [mode, setMode] = useState<AndroidPlaybackMode>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [qualityName, setQualityName] = useState<string | null>(null);
   const [syncTimeMs, setSyncTimeMs] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+
+  const seekHtmlVideoToLive = useCallback((video: HTMLVideoElement) => {
+    try {
+      const seekable = video.seekable;
+      if (seekable.length > 0) {
+        video.currentTime = seekable.end(seekable.length - 1);
+        return true;
+      }
+    } catch {
+      // noop
+    }
+
+    try {
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        video.currentTime = video.duration;
+        return true;
+      }
+    } catch {
+      // noop
+    }
+
+    return false;
+  }, []);
+
+  const seekPlayerToLive = useCallback((player: Player) => {
+    try {
+      if (typeof player.getDuration === "function" && typeof player.seekTo === "function") {
+        const duration = player.getDuration();
+        if (Number.isFinite(duration) && duration > 0) {
+          player.seekTo(duration);
+          return true;
+        }
+      }
+    } catch {
+      // noop
+    }
+
+    return false;
+  }, []);
+
+  const reloadPlayer = useCallback(async () => {
+    const player = playerRef.current;
+    const video = videoRef.current;
+    if (!video) return;
+
+    setErrorMessage(null);
+    setMode("buffering");
+
+    if (player) {
+      player.load(src);
+    } else {
+      video.load();
+      seekHtmlVideoToLive(video);
+    }
+
+    await video.play();
+  }, [seekHtmlVideoToLive, src, videoRef]);
 
   useEffect(() => {
     let cancelled = false;
@@ -300,6 +363,60 @@ export function useAndroidIvsPlayerCore({
     };
   }, [onEnded, onPlaying, onTextMetadata, src, videoRef]);
 
+  const restoreToLive = useCallback(async (options?: {
+    forceReload?: boolean;
+    gracePeriodMs?: number;
+  }) => {
+    const player = playerRef.current;
+    const video = videoRef.current;
+    if (!video) return;
+
+    const now = Date.now();
+    const forceReload = options?.forceReload ?? false;
+
+    if (forceReload) {
+      if (now - lastForcedReloadRef.current < FORCE_RELOAD_COOLDOWN_MS) return;
+      lastForcedReloadRef.current = now;
+
+      try {
+        await reloadPlayer();
+      } catch (error) {
+        setErrorMessage(getErrorMessage(error, "Playback could not reload."));
+        setMode("blocked");
+      }
+      return;
+    }
+
+    if (now - lastRestoreRef.current < RESTORE_COOLDOWN_MS) return;
+    lastRestoreRef.current = now;
+
+    if (options?.gracePeriodMs && options.gracePeriodMs > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, options.gracePeriodMs));
+    }
+
+    try {
+      if (player) {
+        const playerState = player.getState?.() as PlayerState | undefined;
+        if (playerState === "PLAYING" || playerState === "BUFFERING" || playerState === "READY") {
+          seekPlayerToLive(player);
+          await video.play();
+          setErrorMessage(null);
+          return;
+        }
+      } else {
+        seekHtmlVideoToLive(video);
+        await video.play();
+        setErrorMessage(null);
+        return;
+      }
+
+      await reloadPlayer();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Playback could not resume."));
+      setMode("blocked");
+    }
+  }, [reloadPlayer, seekHtmlVideoToLive, seekPlayerToLive, videoRef]);
+
   const handleStartMuted = () => {
     const player = playerRef.current;
     if (!player) return;
@@ -360,5 +477,6 @@ export function useAndroidIvsPlayerCore({
     handleStartMuted,
     handleStartWithSound,
     handleUnmute,
+    restoreToLive,
   };
 }
