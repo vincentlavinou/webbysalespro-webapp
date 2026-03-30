@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { PlayerState } from "amazon-ivs-player";
 import { Expand, Minimize2, PictureInPicture2 } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
-import { usePlayerCore } from "./hooks/use-player-core";
+import { useIvsPlayerCore } from "./hooks/use-ivs-player-core";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
@@ -39,7 +39,7 @@ export default function IOSWebbySalesProPlayer({
   const shouldPreventPause = useCallback(() => true, []);
 
   // iOS: autoPlay=false — tap-to-play gate shown immediately
-  const ivs = usePlayerCore({
+  const ivs = useIvsPlayerCore({
     src,
     autoPlay: false,
     videoRef,

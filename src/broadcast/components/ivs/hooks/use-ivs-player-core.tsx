@@ -1,4 +1,4 @@
-// components/ivs/hooks/use-player-core.tsx
+// components/ivs/hooks/use-ivs-player-core.tsx
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -56,7 +56,7 @@ type StatsState = {
   state?: string;
 };
 
-export function usePlayerCore({
+export function useIvsPlayerCore({
   src,
   autoPlay,
   videoRef,

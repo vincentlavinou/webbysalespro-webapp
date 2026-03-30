@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { PlayerState } from "amazon-ivs-player";
 import { PictureInPicture2, Minimize2 } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
-import { usePlayerCore } from "./hooks/use-player-core";
+import { useIvsPlayerCore } from "./hooks/use-ivs-player-core";
 import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
 import { useMediaSession } from "./hooks/use-media-session";
 import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
@@ -36,7 +36,7 @@ export default function DesktopWebbySalesProPlayer({
   const shouldPreventPause = useCallback(() => true, []);
 
   // Desktop: autoPlay=true — attempt autoplay with sound; click-to-play on block
-  const ivs = usePlayerCore({
+  const ivs = useIvsPlayerCore({
     src,
     autoPlay: true,
     videoRef,
