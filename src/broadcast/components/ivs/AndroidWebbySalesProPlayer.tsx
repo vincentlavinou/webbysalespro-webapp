@@ -98,7 +98,7 @@ export default function AndroidWebbySalesProPlayer({
   // ─── Derived display state ────────────────────────────────────────────────
 
   const { mode, playerState } = ivs;
-  const isBuffering = (mode === "playing" || mode === "playing-muted") && playerState === PlayerState.BUFFERING;
+  // const isBuffering = (mode === "playing" || mode === "playing-muted") && playerState === PlayerState.BUFFERING;
   const shouldBlur = mode !== "playing" && mode !== "playing-muted";
   const showUnmuteNudge = mode === "playing-muted" && ivs.isMuted;
 
