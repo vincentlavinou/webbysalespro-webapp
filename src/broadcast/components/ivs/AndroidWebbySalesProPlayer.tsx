@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { PlayerState } from "amazon-ivs-player";
 import { Expand } from "lucide-react";
 import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
 import { useAndroidIvsPlayerCore } from "./hooks/use-android-ivs-player-core";
@@ -97,7 +98,7 @@ export default function AndroidWebbySalesProPlayer({
   // ─── Derived display state ────────────────────────────────────────────────
 
   const { mode, playerState } = ivs;
-  const isBuffering = (mode === "playing" || mode === "playing-muted") && playerState === "BUFFERING";
+  const isBuffering = (mode === "playing" || mode === "playing-muted") && playerState === PlayerState.BUFFERING;
   const shouldBlur = mode !== "playing" && mode !== "playing-muted";
   const showUnmuteNudge = mode === "playing-muted" && ivs.isMuted;
 
