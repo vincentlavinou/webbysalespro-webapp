@@ -29,6 +29,12 @@ const JITTER = 0.25;
 const RESTORE_COOLDOWN_MS = 3000;
 const FORCE_RELOAD_COOLDOWN_MS = 1500;
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  return fallback;
+}
+
 type Options = {
   src: string;
   autoPlay: boolean;
@@ -68,6 +74,7 @@ export function usePlayerCore({
   const backoffRef = useRef<number>(START_BACKOFF);
   const lastRestoreRef = useRef<number>(0);
   const lastForcedReloadRef = useRef<number>(0);
+  const manualPlayInFlightRef = useRef(false);
 
   const hasPlayedRef = useRef(false);
 
@@ -76,6 +83,7 @@ export function usePlayerCore({
   const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
   const [isMuted, setIsMuted] = useState(false);
   const [playerVersion, setPlayerVersion] = useState(0);
+  const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
 
   // ─── Retry helpers ────────────────────────────────────────────────────────
 
@@ -106,11 +114,20 @@ export function usePlayerCore({
 
       try {
         p.load(src);
+        setLastErrorMessage(null);
         if (autoPlay && v) {
-          await v.play().catch(() => setMode("gate"));
+          await v.play().catch((error) => {
+            const message = getErrorMessage(error, "Browser blocked playback.");
+            console.warn("IVS autoplay failed:", message, error);
+            setLastErrorMessage(message);
+            setMode("gate");
+          });
         }
         backoffRef.current = START_BACKOFF;
-      } catch {
+      } catch (error) {
+        const message = getErrorMessage(error, "Failed to load the playback URL.");
+        console.warn("IVS retry load failed:", message, error);
+        setLastErrorMessage(message);
         scheduleRetry();
       }
     }, delay);
@@ -148,7 +165,13 @@ export function usePlayerCore({
       lastForcedReloadRef.current = now;
       clearRetry();
       backoffRef.current = START_BACKOFF;
-      try { p.load(src); } catch {
+      try {
+        p.load(src);
+        setLastErrorMessage(null);
+      } catch (error) {
+        const message = getErrorMessage(error, "Failed to reload the playback URL.");
+        console.warn("IVS force reload failed:", message, error);
+        setLastErrorMessage(message);
         scheduleRetry();
         setMode("gate");
         return;
@@ -156,7 +179,10 @@ export function usePlayerCore({
       try {
         await v.play();
         // mode will be set to "playing" by onPlayingInternal
-      } catch {
+      } catch (error) {
+        const message = getErrorMessage(error, "Browser blocked playback.");
+        console.warn("IVS force reload play failed:", message, error);
+        setLastErrorMessage(message);
         setMode("gate");
       }
       return;
@@ -169,13 +195,29 @@ export function usePlayerCore({
 
     if (state === IvsPlayerState.PLAYING) {
       if (v.paused) {
-        try { await v.play(); } catch { setMode("gate"); }
+        try {
+          await v.play();
+          setLastErrorMessage(null);
+        } catch (error) {
+          const message = getErrorMessage(error, "Browser blocked playback.");
+          console.warn("IVS restore play failed from PLAYING:", message, error);
+          setLastErrorMessage(message);
+          setMode("gate");
+        }
       }
       return;
     }
 
     if (state === IvsPlayerState.BUFFERING || state === IvsPlayerState.READY) {
-      try { await v.play(); return; } catch {}
+      try {
+        await v.play();
+        setLastErrorMessage(null);
+        return;
+      } catch (error) {
+        const message = getErrorMessage(error, "Browser blocked playback.");
+        console.warn("IVS restore play failed from READY/BUFFERING:", message, error);
+        setLastErrorMessage(message);
+      }
     }
 
     // IVS is IDLE — can happen transiently during fullscreen transitions.
@@ -191,7 +233,14 @@ export function usePlayerCore({
         recovered === IvsPlayerState.READY
       ) {
         if (!v.paused) return; // already playing — stream recovered on its own
-        try { await v.play(); return; } catch {
+        try {
+          await v.play();
+          setLastErrorMessage(null);
+          return;
+        } catch (error) {
+          const message = getErrorMessage(error, "Browser blocked playback.");
+          console.warn("IVS recovered stream could not resume playback:", message, error);
+          setLastErrorMessage(message);
           // IVS recovered but video element needs a user gesture — show gate,
           // don't reload the healthy stream.
           setMode("gate");
@@ -205,15 +254,23 @@ export function usePlayerCore({
     backoffRef.current = START_BACKOFF;
     try {
       p.load(src);
-    } catch {
+      setLastErrorMessage(null);
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to reload the playback URL.");
+      console.warn("IVS restore load failed:", message, error);
+      setLastErrorMessage(message);
       scheduleRetry();
       setMode("gate");
       return;
     }
     try {
       await v.play();
+      setLastErrorMessage(null);
       // mode set to "playing" by onPlayingInternal
-    } catch {
+    } catch (error) {
+      const message = getErrorMessage(error, "Browser blocked playback.");
+      console.warn("IVS restore play failed:", message, error);
+      setLastErrorMessage(message);
       setMode("gate");
     }
   }, [src, videoRef, clearRetry, scheduleRetry]);
@@ -223,7 +280,8 @@ export function usePlayerCore({
   const handleManualPlay = useCallback(async () => {
     const p = playerRef.current;
     const v = videoRef.current;
-    if (!p || !v) return;
+    if (!p || !v || manualPlayInFlightRef.current) return;
+    manualPlayInFlightRef.current = true;
 
     // Dismiss the gate immediately while play is initiating — prevents the iOS
     // race where p.load() briefly re-triggers "gate" state during startup.
@@ -233,17 +291,28 @@ export function usePlayerCore({
     backoffRef.current = START_BACKOFF;
     try {
       p.load(src);
-    } catch {
+      setLastErrorMessage(null);
+    } catch (error) {
+      const message = getErrorMessage(error, "Failed to load the playback URL.");
+      console.warn("IVS manual load failed:", message, error);
+      setLastErrorMessage(message);
       scheduleRetry();
       setMode("gate");
+      manualPlayInFlightRef.current = false;
       return;
     }
 
     try {
       await v.play();
+      setLastErrorMessage(null);
       // onPlayingInternal will transition mode → "playing"
-    } catch {
+    } catch (error) {
+      const message = getErrorMessage(error, "Browser blocked playback.");
+      console.warn("IVS manual play failed:", message, error);
+      setLastErrorMessage(message);
       setMode("gate");
+    } finally {
+      manualPlayInFlightRef.current = false;
     }
   }, [videoRef, src, clearRetry, scheduleRetry]);
 
@@ -302,10 +371,12 @@ export function usePlayerCore({
   useEffect(() => {
     disposedRef.current = false;
     hasPlayedRef.current = false;
+    manualPlayInFlightRef.current = false;
     setMode("idle");
     setIsMuted(false);
     setPlayerState("INIT");
     setStats({});
+    setLastErrorMessage(null);
 
     let cleanup: (() => void) | undefined;
 
@@ -343,6 +414,8 @@ export function usePlayerCore({
         setMode(v.muted ? "playing-muted" : "playing");
         updateStats();
         hasPlayedRef.current = true;
+        manualPlayInFlightRef.current = false;
+        setLastErrorMessage(null);
         onPlaying?.();
         if (v) setSharedAudioContext(v);
         setIsMuted(v.muted);
@@ -356,6 +429,9 @@ export function usePlayerCore({
 
       const onErrorInternal = (e: PlayerError) => {
         updateStats();
+        const message = e?.message || `${e?.source ?? "IVS"} error ${e?.code ?? ""}`.trim();
+        console.warn("IVS player error:", e);
+        setLastErrorMessage(message);
         onError?.(e);
         if (e?.code === 404 && e?.source === "MasterPlaylist") {
           scheduleRetry();
@@ -374,15 +450,27 @@ export function usePlayerCore({
       p.addEventListener(PlayerEventType.ERROR, onErrorInternal);
       p.addEventListener(PlayerEventType.TEXT_METADATA_CUE, onMeta);
 
-      try { p.load(src); } catch { scheduleRetry(); }
+      try {
+        p.load(src);
+        setLastErrorMessage(null);
+      } catch (error) {
+        const message = getErrorMessage(error, "Failed to load the playback URL.");
+        console.warn("IVS initial load failed:", message, error);
+        setLastErrorMessage(message);
+        scheduleRetry();
+      }
 
       if (autoPlay) {
         // Desktop: try autoplay with sound. Browser blocks it → show click-to-play.
         // Never fall back to muted autoplay.
         try {
           await v.play();
+          setLastErrorMessage(null);
           // mode → "playing" via onPlayingInternal
-        } catch {
+        } catch (error) {
+          const message = getErrorMessage(error, "Browser blocked playback.");
+          console.warn("IVS autoplay play failed:", message, error);
+          setLastErrorMessage(message);
           setMode("gate");
         }
       } else {
@@ -418,6 +506,7 @@ export function usePlayerCore({
     stats,
     playerState,
     isMuted,
+    lastErrorMessage,
     hasPlayedRef,
     updateStats,
     scheduleRetry,
