@@ -157,14 +157,14 @@ export default function AndroidWebbySalesProPlayer({
         )}
 
         {/* Loading / buffering overlay */}
-        {(mode === "idle" || isBuffering) && (
+        {/* {(mode === "idle" || isBuffering) && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
             <p className="text-xs font-medium uppercase tracking-wide text-white/80">
               {isBuffering ? "Connecting to live webinar…" : "Preparing live webinar…"}
             </p>
           </div>
-        )}
+        )} */}
 
         {/* Ended overlay */}
         {mode === "ended" && (
