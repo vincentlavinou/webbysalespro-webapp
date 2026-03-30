@@ -6,8 +6,9 @@ import type {
   PlayerError,
   PlayerState,
   TextMetadataCue,
+  VideoJSEvents,
 } from "amazon-ivs-player";
-import { PlayerEventType } from "amazon-ivs-player";
+import { registerIVSTech } from "amazon-ivs-player";
 import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
 import type { PlayerMode } from "./use-ivs-player-core";
 
@@ -28,6 +29,30 @@ type StatsState = {
   resolution?: string;
   state?: string;
 };
+
+type VideoJsError = {
+  message?: string;
+  code?: number;
+};
+
+type VideoJsPlayer = {
+  src(source?: string): unknown;
+  play(): Promise<void> | void;
+  pause(): void;
+  dispose(): void;
+  on(event: string, handler: (...args: unknown[]) => void): void;
+  off(event: string, handler: (...args: unknown[]) => void): void;
+  error(): VideoJsError | null;
+  getIVSPlayer(): Player;
+  getIVSEvents(): VideoJSEvents;
+};
+
+type VideoJsFactory = (
+  element: HTMLVideoElement,
+  options: Record<string, unknown>,
+) => VideoJsPlayer;
+
+let isVideoJsIvsTechRegistered = false;
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
@@ -55,9 +80,11 @@ export function useAndroidIvsPlayerCore({
   shouldPreventPause,
 }: Options) {
   const playerRef = useRef<Player | null>(null);
+  const videoJsPlayerRef = useRef<VideoJsPlayer | null>(null);
   const disposedRef = useRef(false);
   const hasPlayedRef = useRef(false);
   const manualPlayInFlightRef = useRef(false);
+  const sourceLoadedRef = useRef(false);
   const startupWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startupPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -139,10 +166,20 @@ export function useAndroidIvsPlayerCore({
     } catch {}
   }, []);
 
+  const loadSource = useCallback((reason: string) => {
+    const player = videoJsPlayerRef.current;
+    if (!player || disposedRef.current) return;
+
+    logAndroidIvs("videojs:loadSource", { reason, src });
+    player.src(src);
+    sourceLoadedRef.current = true;
+  }, [src]);
+
   const restoreToLive = useCallback(async (options?: { forceReload?: boolean }) => {
     const player = playerRef.current;
+    const videoJsPlayer = videoJsPlayerRef.current;
     const video = videoRef.current;
-    if (!player || !video || disposedRef.current) return;
+    if (!player || !video || !videoJsPlayer || disposedRef.current) return;
 
     try {
       const state = player.getState();
@@ -152,10 +189,9 @@ export function useAndroidIvsPlayerCore({
         paused: video.paused,
         readyState: video.readyState,
       });
-      if (options?.forceReload || state === "Idle") {
+      if (options?.forceReload || state === "Idle" || !sourceLoadedRef.current) {
         setMode("idle");
-        logAndroidIvs("restoreToLive:loadSource", { src });
-        player.load(src);
+        loadSource(options?.forceReload ? "restoreToLive:forceReload" : "restoreToLive");
       }
 
       await video.play();
@@ -179,12 +215,13 @@ export function useAndroidIvsPlayerCore({
       setLastErrorMessage(message);
       setMode("gate");
     }
-  }, [clearStartupPoll, clearStartupWatchdog, src, videoRef]);
+  }, [clearStartupPoll, clearStartupWatchdog, loadSource, videoRef]);
 
   const handleManualPlay = useCallback(async () => {
     const player = playerRef.current;
+    const videoJsPlayer = videoJsPlayerRef.current;
     const video = videoRef.current;
-    if (!player || !video || manualPlayInFlightRef.current) return;
+    if (!player || !video || !videoJsPlayer || manualPlayInFlightRef.current) return;
 
     manualPlayInFlightRef.current = true;
     armStartupWatchdog("manualPlay");
@@ -199,9 +236,8 @@ export function useAndroidIvsPlayerCore({
     setMode("idle");
 
     try {
-      if (state === "Idle") {
-        logAndroidIvs("manualPlay:loadSource", { src });
-        player.load(src);
+      if (state === "Idle" || !sourceLoadedRef.current) {
+        loadSource("manualPlay");
       } else {
         logAndroidIvs("manualPlay:skipLoad", { playerState: state });
       }
@@ -227,7 +263,7 @@ export function useAndroidIvsPlayerCore({
     } finally {
       manualPlayInFlightRef.current = false;
     }
-  }, [armStartupWatchdog, clearStartupPoll, src, videoRef]);
+  }, [armStartupWatchdog, clearStartupPoll, loadSource, videoRef]);
 
   const tapToUnmute = useCallback(() => {
     const video = videoRef.current;
@@ -367,6 +403,7 @@ export function useAndroidIvsPlayerCore({
     disposedRef.current = false;
     hasPlayedRef.current = false;
     manualPlayInFlightRef.current = false;
+    sourceLoadedRef.current = false;
     setMode("idle");
     setStats({});
     setPlayerState("INIT");
@@ -374,6 +411,7 @@ export function useAndroidIvsPlayerCore({
     setLastErrorMessage(null);
 
     let player: Player | null = null;
+    let videoJsPlayer: VideoJsPlayer | null = null;
     let removeListeners = () => {};
 
     (async () => {
@@ -381,7 +419,10 @@ export function useAndroidIvsPlayerCore({
       if (!video) return;
 
       try {
-        const ivs = await import("amazon-ivs-player");
+        const [videoJsModule, ivs] = await Promise.all([
+          import("video.js"),
+          import("amazon-ivs-player"),
+        ]);
         if (disposedRef.current) return;
 
         if (!ivs.isPlayerSupported) {
@@ -391,23 +432,38 @@ export function useAndroidIvsPlayerCore({
           return;
         }
 
-        player = ivs.create({
-          wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
-          wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
-        });
+        const videojs = (videoJsModule.default ?? videoJsModule) as unknown as VideoJsFactory;
+        if (!isVideoJsIvsTechRegistered) {
+          registerIVSTech(videojs, {
+            wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
+            wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
+          });
+          isVideoJsIvsTechRegistered = true;
+        }
 
+        videoJsPlayer = videojs(video, {
+          autoplay: autoPlay,
+          controls: false,
+          playsinline: true,
+          preload: "auto",
+          techOrder: ["AmazonIVS", "html5"],
+        });
+        player = videoJsPlayer.getIVSPlayer();
+
+        videoJsPlayerRef.current = videoJsPlayer;
         playerRef.current = player;
-        player.attachHTMLVideoElement(video);
         logAndroidIvs("init:attachedVideo", {
           autoplay: autoPlay,
           readyState: video.readyState,
           muted: video.muted,
         });
-        player.setAutoplay(autoPlay);
+
         player.setAutoQualityMode(true);
         player.setLiveLowLatencyEnabled(true);
         player.setRebufferToLive(true);
         setPlayerVersion(current => current + 1);
+
+        const ivsEvents = videoJsPlayer.getIVSEvents();
 
         const handleReady = () => {
           logAndroidIvs("ivs:READY", { playerState: player?.getState() });
@@ -504,32 +560,40 @@ export function useAndroidIvsPlayerCore({
           } catch {}
         };
 
-        player.addEventListener(ivs.PlayerState.READY, handleReady);
-        player.addEventListener(ivs.PlayerState.BUFFERING, handleBuffering);
-        player.addEventListener(ivs.PlayerState.IDLE, handleIdle);
-        player.addEventListener(ivs.PlayerState.PLAYING, handlePlaying);
-        player.addEventListener(ivs.PlayerState.ENDED, handleEnded);
-        player.addEventListener(PlayerEventType.ERROR, handleError);
-        player.addEventListener(PlayerEventType.TEXT_METADATA_CUE, handleMetadata);
-
-        removeListeners = () => {
-          player?.removeEventListener(ivs.PlayerState.READY, handleReady);
-          player?.removeEventListener(ivs.PlayerState.BUFFERING, handleBuffering);
-          player?.removeEventListener(ivs.PlayerState.IDLE, handleIdle);
-          player?.removeEventListener(ivs.PlayerState.PLAYING, handlePlaying);
-          player?.removeEventListener(ivs.PlayerState.ENDED, handleEnded);
-          player?.removeEventListener(PlayerEventType.ERROR, handleError);
-          player?.removeEventListener(PlayerEventType.TEXT_METADATA_CUE, handleMetadata);
+        const handleVideoJsError = () => {
+          const error = videoJsPlayer?.error();
+          const message = error?.message || `Video.js error ${error?.code ?? ""}`.trim();
+          logAndroidIvs("videojs:ERROR", {
+            message,
+            code: error?.code ?? null,
+          });
+          setLastErrorMessage(message);
+          if (!hasPlayedRef.current) setMode("gate");
         };
 
-        logAndroidIvs("init:loadSource", { src });
+        player.addEventListener(ivsEvents.PlayerState.READY, handleReady);
+        player.addEventListener(ivsEvents.PlayerState.BUFFERING, handleBuffering);
+        player.addEventListener(ivsEvents.PlayerState.IDLE, handleIdle);
+        player.addEventListener(ivsEvents.PlayerState.PLAYING, handlePlaying);
+        player.addEventListener(ivsEvents.PlayerState.ENDED, handleEnded);
+        player.addEventListener(ivsEvents.PlayerEventType.ERROR, handleError);
+        player.addEventListener(ivsEvents.PlayerEventType.TEXT_METADATA_CUE, handleMetadata);
+        videoJsPlayer.on("error", handleVideoJsError);
+
+        removeListeners = () => {
+          player?.removeEventListener(ivsEvents.PlayerState.READY, handleReady);
+          player?.removeEventListener(ivsEvents.PlayerState.BUFFERING, handleBuffering);
+          player?.removeEventListener(ivsEvents.PlayerState.IDLE, handleIdle);
+          player?.removeEventListener(ivsEvents.PlayerState.PLAYING, handlePlaying);
+          player?.removeEventListener(ivsEvents.PlayerState.ENDED, handleEnded);
+          player?.removeEventListener(ivsEvents.PlayerEventType.ERROR, handleError);
+          player?.removeEventListener(ivsEvents.PlayerEventType.TEXT_METADATA_CUE, handleMetadata);
+          videoJsPlayer?.off("error", handleVideoJsError);
+        };
+
         setPlayerState("INIT");
-        if (autoPlay) {
-          player.load(src);
-          setMode("idle");
-        } else {
-          setMode("gate");
-        }
+        loadSource("init");
+        setMode(autoPlay ? "idle" : "gate");
 
         if (autoPlay) {
           try {
@@ -570,13 +634,14 @@ export function useAndroidIvsPlayerCore({
       removeListeners();
 
       try {
-        player?.pause();
-        player?.delete();
+        videoJsPlayer?.pause();
+        videoJsPlayer?.dispose();
       } catch {}
 
       playerRef.current = null;
+      videoJsPlayerRef.current = null;
     };
-  }, [autoPlay, clearStartupPoll, clearStartupWatchdog, onEnded, onPlaying, onTextMetadata, src, updateStats, videoRef]);
+  }, [autoPlay, clearStartupPoll, clearStartupWatchdog, loadSource, onEnded, onPlaying, onTextMetadata, src, updateStats, videoRef]);
 
   return {
     playerRef,

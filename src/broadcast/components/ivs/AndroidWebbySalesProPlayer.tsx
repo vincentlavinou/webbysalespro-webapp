@@ -141,7 +141,7 @@ export default function AndroidWebbySalesProPlayer({
             playsInline
             preload="auto"
             aria-label={ariaLabel}
-            className={`h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
+            className={`video-js h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
             style={{ userSelect: "none", touchAction: "manipulation" }}
           />
         </div>
