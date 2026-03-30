@@ -12,6 +12,7 @@ export const offersForSessionSchema = z.object({
 export const offerVisibilityMetadataSchema = z.object({
   type: z.literal("webinar:offer:visibility"),
   payload: z.object({
+    event_key: z.string().optional(),
     session_id: z.string(),
     id: z.string(), // offer_session.id
     status: z.enum(["scheduled", "live", "cooldown", "sold_out", "closed"]),
@@ -23,6 +24,7 @@ export const offerVisibilityMetadataSchema = z.object({
 export const offerScarcityUpdateMetadataSchema = z.object({
   type: z.literal("session:offer:scarcity:update"),
   payload: z.object({
+    event_key: z.string().optional(),
     session_id: z.string(),
     offer_session_id: z.string(),
     mode: z.enum(["real", "manual", "none"]),
@@ -36,6 +38,7 @@ export const offerScarcityUpdateMetadataSchema = z.object({
 export const purchaseAnnouncementMetadataSchema = z.object({
   type: z.literal("session:offer:cta_announcement"),
   payload: z.object({
+    event_key: z.string().optional(),
     session_id: z.string(),
     offer_session_id: z.string(),
     cta_entry_id: z.string(),

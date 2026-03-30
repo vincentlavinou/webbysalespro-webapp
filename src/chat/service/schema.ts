@@ -13,6 +13,7 @@ const pinnedAnnouncementSchema = z.object({
 export const chatConfigUpdateSchema = z.object({
     type: z.literal("chat:config:update"),
     payload: z.object({
+        event_key: z.string().optional(),
         session_id: z.string(),
         chat_session_id: z.string(),
         is_enabled: z.boolean(),

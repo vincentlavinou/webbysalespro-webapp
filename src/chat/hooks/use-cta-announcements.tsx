@@ -206,6 +206,7 @@ export function useCtaAnnouncements(sessionId?: string) {
     eventType: 'session:offer:cta_announcement',
     schema: purchaseAnnouncementMetadataSchema,
     sessionId,
+    getEventKey: (evt) => evt.payload.event_key ?? evt.payload.cta_entry_id,
     onEvent: (event) => {
       const { content, source, ttl_seconds } = event.payload;
       const id = `cta-announcement-${++ctaCounter}`;

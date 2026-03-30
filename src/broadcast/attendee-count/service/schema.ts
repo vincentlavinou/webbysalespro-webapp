@@ -3,6 +3,7 @@ import { z } from "zod";
 export const attendeeCountMetadataSchema = z.object({
   type: z.literal("webinar:attendee_count:update"),
   payload: z.object({
+    event_key: z.string().optional(),
     session_id: z.string(),
     is_attendee_count_visible: z.boolean(),
     count: z.number().int(),

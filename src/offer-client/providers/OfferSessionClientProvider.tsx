@@ -51,6 +51,9 @@ export function OfferSessionClientProvider({
         eventType: "webinar:offer:visibility",
         sessionId: sessionId,
         schema: offerVisibilityMetadataSchema,
+        getEventKey: (evt) => evt.payload.event_key,
+        getStateScope: (evt) => evt.payload.id,
+        compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
         onEvent: (event) => {
             setOffers((prev) => {
                 return prev.map((os) => os.id === event.payload.id ? { ...os, status: event.payload.status } : os)
@@ -62,6 +65,9 @@ export function OfferSessionClientProvider({
         eventType: "session:offer:scarcity:update",
         sessionId: sessionId,
         schema: offerScarcityUpdateMetadataSchema,
+        getEventKey: (evt) => evt.payload.event_key,
+        getStateScope: (evt) => evt.payload.offer_session_id,
+        compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
         onEvent: (event) => {
             setOffers((prev) => {
                 return prev.map((os) =>

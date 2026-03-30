@@ -306,6 +306,9 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
         eventType: "chat:config:update",
         schema: chatConfigUpdateSchema,
         sessionId,
+        getEventKey: (evt) => evt.payload.event_key,
+        getStateScope: (evt) => evt.payload.chat_session_id,
+        compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
         onEvent: (event) => {
             console.debug(event)
             setChatConfig(event.payload);

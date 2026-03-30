@@ -27,6 +27,9 @@ export function AttendeeCountProvider({ children, initialCount, initialVisible, 
     eventType: "webinar:attendee_count:update",
     schema: attendeeCountMetadataSchema,
     sessionId,
+    getEventKey: (evt) => evt.payload.event_key,
+    getStateScope: (evt) => evt.payload.session_id,
+    compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
     onEvent: handleEvent,
   });
 
