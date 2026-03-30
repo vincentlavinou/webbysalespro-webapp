@@ -10,7 +10,19 @@ const webinarApiUrl = process.env.WEBINAR_BASE_API_URL
     ?? process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL
     ?? 'https://api.webisalespro.com/api'
 
+const webinarAppUrl = (
+    process.env.WEBINAR_APP_URL
+    ?? process.env.NEXT_PUBLIC_WEBINAR_APP_URL
+    ?? process.env.APP_URL
+    ?? process.env.NEXT_PUBLIC_APP_URL
+    ?? 'https://events.webisalespro.com'
+).replace(/\/+$/, '')
+
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
+
+function createRedirectUrl(pathname: string) {
+    return new URL(pathname, webinarAppUrl)
+}
 
 export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl
@@ -18,9 +30,7 @@ export async function GET(request: NextRequest) {
     const webinarId = searchParams.get('webinar_id')
 
     if (!rawJoinToken || !webinarId) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/'
-        url.search = ''
+        const url = createRedirectUrl('/')
         return NextResponse.redirect(url)
     }
 
@@ -31,16 +41,12 @@ export async function GET(request: NextRequest) {
             { cache: 'no-store' }
         )
         if (!response.ok) {
-            const url = request.nextUrl.clone()
-            url.pathname = `/${webinarId}/register`
-            url.search = ''
+            const url = createRedirectUrl(`/${webinarId}/register`)
             return NextResponse.redirect(url)
         }
         data = await response.json() as JoinResolveResponse
     } catch {
-        const url = request.nextUrl.clone()
-        url.pathname = `/${webinarId}/register`
-        url.search = ''
+        const url = createRedirectUrl(`/${webinarId}/register`)
         return NextResponse.redirect(url)
     }
 
@@ -67,23 +73,17 @@ export async function GET(request: NextRequest) {
     })
 
     if (status === WebinarSessionStatus.CANCELED) {
-        const url = request.nextUrl.clone()
-        url.pathname = `/${webinarId}/register`
-        url.search = ''
+        const url = createRedirectUrl(`/${webinarId}/register`)
         return NextResponse.redirect(url)
     }
 
     if (status === WebinarSessionStatus.COMPLETED) {
-        const url = request.nextUrl.clone()
-        url.pathname = `/${sessionId}/completed`
-        url.search = ''
+        const url = createRedirectUrl(`/${sessionId}/completed`)
         return NextResponse.redirect(url)
     }
 
     if (status === WebinarSessionStatus.IN_PROGRESS) {
-        const url = request.nextUrl.clone()
-        url.pathname = `/${sessionId}/live`
-        url.search = ''
+        const url = createRedirectUrl(`/${sessionId}/live`)
         return NextResponse.redirect(url)
     }
 
@@ -98,14 +98,10 @@ export async function GET(request: NextRequest) {
     }).minus({ minutes: waitingRoomMinutes })
 
     if (waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
-        const url = request.nextUrl.clone()
-        url.pathname = `/${sessionId}/early-access-room`
-        url.search = ''
+        const url = createRedirectUrl(`/${sessionId}/early-access-room`)
         return NextResponse.redirect(url)
     }
 
-    const url = request.nextUrl.clone()
-    url.pathname = `/${sessionId}/waiting-room`
-    url.search = ''
+    const url = createRedirectUrl(`/${sessionId}/waiting-room`)
     return NextResponse.redirect(url)
 }
