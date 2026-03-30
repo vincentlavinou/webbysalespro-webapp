@@ -103,7 +103,6 @@ export default function IOSWebbySalesProPlayer({
             <button
               type="button"
               onClick={() => {
-                revealMobileChrome();
                 if (pip.isInPiP) {
                   pip.exitPiP();
                 } else {
