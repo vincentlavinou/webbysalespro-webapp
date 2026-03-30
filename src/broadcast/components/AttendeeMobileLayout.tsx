@@ -60,7 +60,7 @@ export default function AttendeeMobileLayout({
     useState<ViewportSize>(readLayoutViewport);
 
   const {
-    enterImmersive,
+    advanceLayout,
     exitImmersive,
     isImmersive,
     layoutState,
@@ -244,9 +244,15 @@ export default function AttendeeMobileLayout({
             >
               <button
                 type="button"
-                onClick={isImmersive ? exitImmersive : enterImmersive}
+                onClick={isImmersive ? exitImmersive : advanceLayout}
                 className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
-                aria-label={isImmersive ? "Exit immersive mode" : "Enter immersive mode"}
+                aria-label={
+                  isImmersive
+                    ? "Exit immersive mode"
+                    : isSplitLayout
+                      ? "Enter immersive mode"
+                      : "Enter split mode"
+                }
               >
                 {isImmersive ? (
                   <Minimize2 className="h-4 w-4" />

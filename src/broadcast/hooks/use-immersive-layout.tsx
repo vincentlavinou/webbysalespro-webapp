@@ -9,11 +9,13 @@ type ViewportSize = {
   height: number;
 };
 
-const PORTRAIT_EXIT_DELAY_MS = 2000;
+const PORTRAIT_EXIT_DELAY_MS = 750;
 
 export function useImmersiveLayout({ width, height }: ViewportSize) {
-  const [isImmersive, setIsImmersive] = useState(false);
-  const [immersiveEnteredInPortrait, setImmersiveEnteredInPortrait] = useState(false);
+  const [forcedLayoutState, setForcedLayoutState] =
+    useState<ImmersiveLayoutState | null>(null);
+  const [immersiveEnteredInPortrait, setImmersiveEnteredInPortrait] =
+    useState(false);
   const [immersiveSawLandscape, setImmersiveSawLandscape] = useState(false);
   const portraitExitTimerRef = useRef<number | null>(null);
 
@@ -29,19 +31,33 @@ export function useImmersiveLayout({ width, height }: ViewportSize) {
     }
   }, []);
 
+  const resetImmersiveTracking = useCallback(() => {
+    setImmersiveEnteredInPortrait(false);
+    setImmersiveSawLandscape(false);
+  }, []);
+
+  const enterSplit = useCallback(() => {
+    clearPortraitExitTimer();
+    resetImmersiveTracking();
+    setForcedLayoutState("split");
+  }, [clearPortraitExitTimer, resetImmersiveTracking]);
+
   const enterImmersive = useCallback(() => {
     clearPortraitExitTimer();
     setImmersiveEnteredInPortrait(!isPhysicalLandscape);
     setImmersiveSawLandscape(isPhysicalLandscape);
-    setIsImmersive(true);
+    setForcedLayoutState("immersive");
   }, [clearPortraitExitTimer, isPhysicalLandscape]);
 
   const exitImmersive = useCallback(() => {
     clearPortraitExitTimer();
-    setImmersiveEnteredInPortrait(false);
-    setImmersiveSawLandscape(false);
-    setIsImmersive(false);
-  }, [clearPortraitExitTimer]);
+    resetImmersiveTracking();
+    setForcedLayoutState(isPhysicalLandscape ? "split" : null);
+  }, [clearPortraitExitTimer, isPhysicalLandscape, resetImmersiveTracking]);
+
+  const layoutState: ImmersiveLayoutState =
+    forcedLayoutState ?? (isPhysicalLandscape ? "split" : "regular");
+  const isImmersive = layoutState === "immersive";
 
   useEffect(() => {
     if (!isImmersive) {
@@ -57,30 +73,46 @@ export function useImmersiveLayout({ width, height }: ViewportSize) {
 
     portraitExitTimerRef.current = window.setTimeout(() => {
       portraitExitTimerRef.current = null;
-      setIsImmersive(false);
+      setForcedLayoutState(null);
+      resetImmersiveTracking();
     }, PORTRAIT_EXIT_DELAY_MS);
 
     return () => {
       clearPortraitExitTimer();
     };
-  }, [clearPortraitExitTimer, isImmersive, isPhysicalLandscape]);
+  }, [
+    clearPortraitExitTimer,
+    isImmersive,
+    isPhysicalLandscape,
+    resetImmersiveTracking,
+  ]);
 
-  const layoutState: ImmersiveLayoutState = isImmersive
-    ? "immersive"
-    : isPhysicalLandscape
-      ? "split"
-      : "regular";
+  const advanceLayout = useCallback(() => {
+    if (layoutState === "regular") {
+      enterSplit();
+      return;
+    }
+
+    if (layoutState === "split") {
+      enterImmersive();
+      return;
+    }
+
+    exitImmersive();
+  }, [enterImmersive, enterSplit, exitImmersive, layoutState]);
 
   return {
+    advanceLayout,
     enterImmersive,
+    enterSplit,
     exitImmersive,
     isImmersive,
     isPhysicalLandscape,
+    layoutState,
     shouldRotatePortraitImmersive:
       isImmersive &&
       immersiveEnteredInPortrait &&
       !isPhysicalLandscape &&
       !immersiveSawLandscape,
-    layoutState,
   };
 }
