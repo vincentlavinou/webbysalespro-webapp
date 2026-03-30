@@ -1,660 +1,364 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   Player,
   PlayerError,
-  PlayerState,
+  Quality,
   TextMetadataCue,
-  VideoJSEvents,
 } from "amazon-ivs-player";
-import { registerIVSTech } from "amazon-ivs-player";
-import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
-import type { PlayerMode } from "./use-ivs-player-core";
+
+export type AndroidPlaybackMode =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "buffering"
+  | "playing"
+  | "playing-muted"
+  | "blocked"
+  | "ended"
+  | "unsupported"
+  | "error";
 
 type Options = {
   src: string;
-  autoPlay: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onTextMetadata?: (text: string) => void;
   onEnded?: () => void;
   onPlaying?: () => void;
-  keepAlive?: boolean;
-  shouldPreventPause?: () => boolean;
 };
-
-type StatsState = {
-  latency?: number;
-  bitrate?: number;
-  resolution?: string;
-  state?: string;
-};
-
-type VideoJsError = {
-  message?: string;
-  code?: number;
-};
-
-type VideoJsPlayer = {
-  src(source?: string): unknown;
-  play(): Promise<void> | void;
-  pause(): void;
-  dispose(): void;
-  on(event: string, handler: (...args: unknown[]) => void): void;
-  off(event: string, handler: (...args: unknown[]) => void): void;
-  error(): VideoJsError | null;
-  getIVSPlayer(): Player;
-  getIVSEvents(): VideoJSEvents;
-};
-
-type VideoJsFactory = (
-  element: HTMLVideoElement,
-  options: Record<string, unknown>,
-) => VideoJsPlayer;
-
-let isVideoJsIvsTechRegistered = false;
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
-  if (typeof error === "string" && error) return error;
   return fallback;
-}
-
-function logAndroidIvs(event: string, details?: Record<string, unknown>) {
-  if (details) {
-    console.log("[Android IVS]", event, details);
-    return;
-  }
-
-  console.log("[Android IVS]", event);
 }
 
 export function useAndroidIvsPlayerCore({
   src,
-  autoPlay,
   videoRef,
   onTextMetadata,
   onEnded,
   onPlaying,
-  keepAlive = false,
-  shouldPreventPause,
 }: Options) {
   const playerRef = useRef<Player | null>(null);
-  const videoJsPlayerRef = useRef<VideoJsPlayer | null>(null);
-  const disposedRef = useRef(false);
-  const hasPlayedRef = useRef(false);
-  const manualPlayInFlightRef = useRef(false);
-  const sourceLoadedRef = useRef(false);
-  const startupWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startupPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const detachRef = useRef<(() => void) | null>(null);
 
-  const [mode, setMode] = useState<PlayerMode>("idle");
-  const [stats, setStats] = useState<StatsState>({});
-  const [playerState, setPlayerState] = useState<PlayerState | "INIT">("INIT");
-  const [isMuted, setIsMuted] = useState(false);
-  const [playerVersion, setPlayerVersion] = useState(0);
-  const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
-
-  const clearStartupWatchdog = useCallback(() => {
-    if (!startupWatchdogRef.current) return;
-    clearTimeout(startupWatchdogRef.current);
-    startupWatchdogRef.current = null;
-  }, []);
-
-  const clearStartupPoll = useCallback(() => {
-    if (!startupPollRef.current) return;
-    clearInterval(startupPollRef.current);
-    startupPollRef.current = null;
-  }, []);
-
-  const armStartupWatchdog = useCallback((reason: string) => {
-    clearStartupWatchdog();
-    clearStartupPoll();
-    startupPollRef.current = setInterval(() => {
-      const player = playerRef.current;
-      const video = videoRef.current;
-      logAndroidIvs("watchdog:startupPoll", {
-        reason,
-        manualPlayInFlight: manualPlayInFlightRef.current,
-        hasPlayed: hasPlayedRef.current,
-        playerState: player?.getState?.(),
-        readyState: video?.readyState,
-        networkState: video?.networkState,
-        paused: video?.paused,
-        currentTime: video?.currentTime,
-        muted: video?.muted,
-        error: video?.error?.message || video?.error?.code || null,
-      });
-    }, 500);
-    startupWatchdogRef.current = setTimeout(() => {
-      const player = playerRef.current;
-      const video = videoRef.current;
-      logAndroidIvs("watchdog:startupStalled", {
-        reason,
-        manualPlayInFlight: manualPlayInFlightRef.current,
-        hasPlayed: hasPlayedRef.current,
-        mode,
-        playerState: player?.getState?.(),
-        readyState: video?.readyState,
-        networkState: video?.networkState,
-        paused: video?.paused,
-        currentTime: video?.currentTime,
-        muted: video?.muted,
-        error: video?.error?.message || video?.error?.code || null,
-      });
-    }, 4000);
-  }, [clearStartupPoll, clearStartupWatchdog, mode, videoRef]);
-
-  const updateStats = useCallback(() => {
-    const player = playerRef.current;
-    if (!player) return;
-
-    try {
-      const state = player.getState();
-      logAndroidIvs("updateStats", {
-        state,
-        latency: player.getLiveLatency(),
-        quality: player.getQuality()?.name ?? null,
-      });
-      setPlayerState(state);
-      setStats({
-        latency: player.getLiveLatency(),
-        bitrate: Math.round((player.getQuality()?.bitrate ?? 0) / 1000) || undefined,
-        resolution: `${player.getDisplayWidth()}x${player.getDisplayHeight()}`,
-        state,
-      });
-    } catch {}
-  }, []);
-
-  const loadSource = useCallback((reason: string) => {
-    const player = videoJsPlayerRef.current;
-    if (!player || disposedRef.current) return;
-
-    logAndroidIvs("videojs:loadSource", { reason, src });
-    player.src(src);
-    sourceLoadedRef.current = true;
-  }, [src]);
-
-  const restoreToLive = useCallback(async (options?: { forceReload?: boolean }) => {
-    const player = playerRef.current;
-    const videoJsPlayer = videoJsPlayerRef.current;
-    const video = videoRef.current;
-    if (!player || !video || !videoJsPlayer || disposedRef.current) return;
-
-    try {
-      const state = player.getState();
-      logAndroidIvs("restoreToLive:start", {
-        forceReload: Boolean(options?.forceReload),
-        playerState: state,
-        paused: video.paused,
-        readyState: video.readyState,
-      });
-      if (options?.forceReload || state === "Idle" || !sourceLoadedRef.current) {
-        setMode("idle");
-        loadSource(options?.forceReload ? "restoreToLive:forceReload" : "restoreToLive");
-      }
-
-      await video.play();
-      clearStartupPoll();
-      clearStartupWatchdog();
-      logAndroidIvs("restoreToLive:playResolved", {
-        playerState: player.getState(),
-        paused: video.paused,
-        readyState: video.readyState,
-      });
-      setLastErrorMessage(null);
-    } catch (error) {
-      const message = getErrorMessage(error, "Browser blocked playback.");
-      logAndroidIvs("restoreToLive:playRejected", {
-        message,
-        playerState: player.getState(),
-        paused: video.paused,
-        readyState: video.readyState,
-      });
-      console.warn("Android IVS restore failed:", message, error);
-      setLastErrorMessage(message);
-      setMode("gate");
-    }
-  }, [clearStartupPoll, clearStartupWatchdog, loadSource, videoRef]);
-
-  const handleManualPlay = useCallback(async () => {
-    const player = playerRef.current;
-    const videoJsPlayer = videoJsPlayerRef.current;
-    const video = videoRef.current;
-    if (!player || !video || !videoJsPlayer || manualPlayInFlightRef.current) return;
-
-    manualPlayInFlightRef.current = true;
-    armStartupWatchdog("manualPlay");
-    const state = player.getState();
-    logAndroidIvs("manualPlay:start", {
-      playerState: state,
-      paused: video.paused,
-      readyState: video.readyState,
-      networkState: video.networkState,
-    });
-
-    setMode("idle");
-
-    try {
-      if (state === "Idle" || !sourceLoadedRef.current) {
-        loadSource("manualPlay");
-      } else {
-        logAndroidIvs("manualPlay:skipLoad", { playerState: state });
-      }
-      await video.play();
-      logAndroidIvs("manualPlay:playResolved", {
-        playerState: player.getState(),
-        paused: video.paused,
-        readyState: video.readyState,
-      });
-      clearStartupPoll();
-      setLastErrorMessage(null);
-    } catch (error) {
-      const message = getErrorMessage(error, "Browser blocked playback.");
-      logAndroidIvs("manualPlay:playRejected", {
-        message,
-        playerState: player.getState(),
-        paused: video.paused,
-        readyState: video.readyState,
-      });
-      console.warn("Android IVS manual play failed:", message, error);
-      setLastErrorMessage(message);
-      setMode("gate");
-    } finally {
-      manualPlayInFlightRef.current = false;
-    }
-  }, [armStartupWatchdog, clearStartupPoll, loadSource, videoRef]);
-
-  const tapToUnmute = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    try {
-      video.muted = false;
-    } catch {}
-
-    setIsMuted(video.muted);
-    setMode(video.muted ? "playing-muted" : "playing");
-    logAndroidIvs("tapToUnmute", { muted: video.muted });
-  }, [videoRef]);
+  const [mode, setMode] = useState<AndroidPlaybackMode>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [qualityName, setQualityName] = useState<string | null>(null);
+  const [syncTimeMs, setSyncTimeMs] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    let cancelled = false;
 
-    const syncMutedState = () => {
-      logAndroidIvs("video:volumechange", { muted: video.muted, volume: video.volume });
-      setIsMuted(video.muted);
-      setMode(current => {
-        if (current === "playing" && video.muted) return "playing-muted";
-        if (current === "playing-muted" && !video.muted) return "playing";
-        return current;
-      });
+    const cleanup = () => {
+      detachRef.current?.();
+      detachRef.current = null;
+
+      if (playerRef.current) {
+        try {
+          playerRef.current.delete();
+        } catch {
+          // noop
+        }
+        playerRef.current = null;
+      }
     };
 
-    const onPause = () => {
-      logAndroidIvs("video:pause", {
-        paused: video.paused,
-        readyState: video.readyState,
-        currentTime: video.currentTime,
-      });
-      if (disposedRef.current) return;
-      if (!keepAlive) return;
-      if (!(shouldPreventPause?.() ?? true)) return;
-      if (!hasPlayedRef.current) return;
-      video.play().catch(() => {});
-    };
-
-    const onPlay = () => {
-      logAndroidIvs("video:play", {
-        paused: video.paused,
-        readyState: video.readyState,
-        currentTime: video.currentTime,
-      });
-    };
-
-    const onPlaying = () => {
-      clearStartupPoll();
-      clearStartupWatchdog();
-      logAndroidIvs("video:playing", {
-        paused: video.paused,
-        readyState: video.readyState,
-        currentTime: video.currentTime,
-      });
-    };
-
-    const onWaiting = () => {
-      logAndroidIvs("video:waiting", {
-        paused: video.paused,
-        readyState: video.readyState,
-        currentTime: video.currentTime,
-      });
-    };
-
-    const onLoadedMetadata = () => {
-      logAndroidIvs("video:loadedmetadata", {
-        readyState: video.readyState,
-        videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight,
-      });
-    };
-
-    const onError = () => {
-      logAndroidIvs("video:error", {
-        code: video.error?.code ?? null,
-        message: video.error?.message ?? null,
-        readyState: video.readyState,
-        networkState: video.networkState,
-      });
-    };
-
-    const onStalled = () => {
-      logAndroidIvs("video:stalled", {
-        readyState: video.readyState,
-        networkState: video.networkState,
-        currentTime: video.currentTime,
-      });
-    };
-
-    const onSuspend = () => {
-      logAndroidIvs("video:suspend", {
-        readyState: video.readyState,
-        networkState: video.networkState,
-        currentTime: video.currentTime,
-      });
-    };
-
-    const onProgress = () => {
-      logAndroidIvs("video:progress", {
-        readyState: video.readyState,
-        networkState: video.networkState,
-        currentTime: video.currentTime,
-        buffered: video.buffered.length ? video.buffered.end(video.buffered.length - 1) : 0,
-      });
-    };
-
-    video.addEventListener("volumechange", syncMutedState);
-    video.addEventListener("pause", onPause);
-    video.addEventListener("play", onPlay);
-    video.addEventListener("playing", onPlaying);
-    video.addEventListener("waiting", onWaiting);
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
-    video.addEventListener("error", onError);
-    video.addEventListener("stalled", onStalled);
-    video.addEventListener("suspend", onSuspend);
-    video.addEventListener("progress", onProgress);
-
-    return () => {
-      video.removeEventListener("volumechange", syncMutedState);
-      video.removeEventListener("pause", onPause);
-      video.removeEventListener("play", onPlay);
-      video.removeEventListener("playing", onPlaying);
-      video.removeEventListener("waiting", onWaiting);
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
-      video.removeEventListener("error", onError);
-      video.removeEventListener("stalled", onStalled);
-      video.removeEventListener("suspend", onSuspend);
-      video.removeEventListener("progress", onProgress);
-    };
-  }, [clearStartupPoll, clearStartupWatchdog, keepAlive, shouldPreventPause, videoRef]);
-
-  useEffect(() => {
-    logAndroidIvs("hook:mount", { src });
-    disposedRef.current = false;
-    hasPlayedRef.current = false;
-    manualPlayInFlightRef.current = false;
-    sourceLoadedRef.current = false;
-    setMode("idle");
-    setStats({});
-    setPlayerState("INIT");
-    setIsMuted(false);
-    setLastErrorMessage(null);
-
-    let player: Player | null = null;
-    let videoJsPlayer: VideoJsPlayer | null = null;
-    let removeListeners = () => {};
-
-    (async () => {
+    const setupPlayer = async () => {
       const video = videoRef.current;
-      if (!video) return;
+      if (!video || !src) return;
+
+      cleanup();
+
+      setMode("loading");
+      setErrorMessage(null);
+      setQualityName(null);
+      setSyncTimeMs(null);
+      setIsMuted(true);
 
       try {
-        const [videoJsModule, ivs] = await Promise.all([
-          import("video.js"),
-          import("amazon-ivs-player"),
-        ]);
-        if (disposedRef.current) return;
+        const IVSPlayer = await import("amazon-ivs-player");
+        if (cancelled) return;
 
-        if (!ivs.isPlayerSupported) {
-          logAndroidIvs("init:unsupported");
-          console.warn("IVS Player not supported on this Android browser.");
+        if (!IVSPlayer.isPlayerSupported) {
           setMode("unsupported");
           return;
         }
 
-        const videojs = (videoJsModule.default ?? videoJsModule) as unknown as VideoJsFactory;
-        if (!isVideoJsIvsTechRegistered) {
-          registerIVSTech(videojs, {
-            wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
-            wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
-          });
-          isVideoJsIvsTechRegistered = true;
-        }
-
-        videoJsPlayer = videojs(video, {
-          autoplay: autoPlay,
-          controls: false,
-          playsinline: true,
-          preload: "auto",
-          techOrder: ["AmazonIVS", "html5"],
+        const player = IVSPlayer.create({
+          wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
+          wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
         });
-        player = videoJsPlayer.getIVSPlayer();
 
-        videoJsPlayerRef.current = videoJsPlayer;
         playerRef.current = player;
-        logAndroidIvs("init:attachedVideo", {
-          autoplay: autoPlay,
-          readyState: video.readyState,
-          muted: video.muted,
-        });
 
+        video.autoplay = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.setAttribute("playsinline", "");
+        video.setAttribute("webkit-playsinline", "");
+        video.preload = "auto";
+
+        player.attachHTMLVideoElement(video);
+
+        player.setAutoplay(true);
+        player.setMuted(true);
         player.setAutoQualityMode(true);
         player.setLiveLowLatencyEnabled(true);
-        player.setRebufferToLive(true);
-        setPlayerVersion(current => current + 1);
 
-        const ivsEvents = videoJsPlayer.getIVSEvents();
-
-        const handleReady = () => {
-          logAndroidIvs("ivs:READY", { playerState: player?.getState() });
-          updateStats();
-
-          if (manualPlayInFlightRef.current) {
-            logAndroidIvs("ivs:READY:manualPlayInFlight", {
-              paused: video.paused,
-              readyState: video.readyState,
-            });
-
-            setMode(video.muted ? "playing-muted" : "playing");
-
-            if (video.paused) {
-              void video.play().catch((error) => {
-                const message = getErrorMessage(error, "Browser blocked playback.");
-                logAndroidIvs("ivs:READY:playRejected", {
-                  message,
-                  playerState: player?.getState(),
-                  paused: video.paused,
-                  readyState: video.readyState,
-                });
-                setLastErrorMessage(message);
-                setMode("gate");
-                manualPlayInFlightRef.current = false;
-              });
-            }
-            return;
-          }
-
-          setMode(current => (current === "idle" ? "gate" : current));
-        };
-
-        const handleBuffering = () => {
-          clearStartupWatchdog();
-          logAndroidIvs("ivs:BUFFERING", { playerState: player?.getState() });
-          setMode(video.muted ? "playing-muted" : "playing");
-          setPlayerState(ivs.PlayerState.BUFFERING);
-          updateStats();
-        };
-
-        const handleIdle = () => {
-          logAndroidIvs("ivs:IDLE", { playerState: player?.getState() });
-          setPlayerState(ivs.PlayerState.IDLE);
-          updateStats();
-        };
-
-        const handlePlaying = () => {
-          clearStartupWatchdog();
-          logAndroidIvs("ivs:PLAYING", {
-            playerState: player?.getState(),
-            paused: video.paused,
-            readyState: video.readyState,
-            muted: video.muted,
-          });
-          hasPlayedRef.current = true;
-          manualPlayInFlightRef.current = false;
-          setLastErrorMessage(null);
-          setIsMuted(video.muted);
-          setMode(video.muted ? "playing-muted" : "playing");
-          updateStats();
-          onPlaying?.();
-          setSharedAudioContext(video);
-        };
-
-        const handleEnded = () => {
-          clearStartupWatchdog();
-          logAndroidIvs("ivs:ENDED", { playerState: player?.getState() });
-          setMode("ended");
-          updateStats();
-          onEnded?.();
-        };
-
-        const handleError = (error: PlayerError) => {
-          clearStartupWatchdog();
-          updateStats();
-          const message = error?.message || `${error?.source ?? "IVS"} error ${error?.code ?? ""}`.trim();
-          logAndroidIvs("ivs:ERROR", {
-            message,
-            code: error?.code,
-            source: error?.source,
-            type: error?.type,
-            playerState: player?.getState(),
-          });
-          console.warn("Android IVS player error:", error);
-          setLastErrorMessage(message);
-          if (!hasPlayedRef.current) setMode("gate");
-        };
-
-        const handleMetadata = (payload: TextMetadataCue) => {
-          logAndroidIvs("ivs:TEXT_METADATA_CUE", { text: payload.text });
-          try {
-            onTextMetadata?.(payload.text);
-          } catch {}
-        };
-
-        const handleVideoJsError = () => {
-          const error = videoJsPlayer?.error();
-          const message = error?.message || `Video.js error ${error?.code ?? ""}`.trim();
-          logAndroidIvs("videojs:ERROR", {
-            message,
-            code: error?.code ?? null,
-          });
-          setLastErrorMessage(message);
-          if (!hasPlayedRef.current) setMode("gate");
-        };
-
-        player.addEventListener(ivsEvents.PlayerState.READY, handleReady);
-        player.addEventListener(ivsEvents.PlayerState.BUFFERING, handleBuffering);
-        player.addEventListener(ivsEvents.PlayerState.IDLE, handleIdle);
-        player.addEventListener(ivsEvents.PlayerState.PLAYING, handlePlaying);
-        player.addEventListener(ivsEvents.PlayerState.ENDED, handleEnded);
-        player.addEventListener(ivsEvents.PlayerEventType.ERROR, handleError);
-        player.addEventListener(ivsEvents.PlayerEventType.TEXT_METADATA_CUE, handleMetadata);
-        videoJsPlayer.on("error", handleVideoJsError);
-
-        removeListeners = () => {
-          player?.removeEventListener(ivsEvents.PlayerState.READY, handleReady);
-          player?.removeEventListener(ivsEvents.PlayerState.BUFFERING, handleBuffering);
-          player?.removeEventListener(ivsEvents.PlayerState.IDLE, handleIdle);
-          player?.removeEventListener(ivsEvents.PlayerState.PLAYING, handlePlaying);
-          player?.removeEventListener(ivsEvents.PlayerState.ENDED, handleEnded);
-          player?.removeEventListener(ivsEvents.PlayerEventType.ERROR, handleError);
-          player?.removeEventListener(ivsEvents.PlayerEventType.TEXT_METADATA_CUE, handleMetadata);
-          videoJsPlayer?.off("error", handleVideoJsError);
-        };
-
-        setPlayerState("INIT");
-        loadSource("init");
-        setMode(autoPlay ? "idle" : "gate");
-
-        if (autoPlay) {
-          try {
-            await video.play();
-            logAndroidIvs("init:autoplayResolved", {
-              playerState: player.getState(),
-              paused: video.paused,
-              readyState: video.readyState,
-            });
-          } catch (error) {
-            const message = getErrorMessage(error, "Browser blocked playback.");
-            logAndroidIvs("init:autoplayRejected", {
-              message,
-              playerState: player.getState(),
-              paused: video.paused,
-              readyState: video.readyState,
-            });
-            console.warn("Android IVS autoplay failed:", message, error);
-            setLastErrorMessage(message);
-            setMode("gate");
-          }
+        if (typeof player.setRebufferToLive === "function") {
+          player.setRebufferToLive(true);
         }
 
+        const updateMutedState = () => {
+          const muted = video.muted;
+          setIsMuted(muted);
+
+          setMode((current) => {
+            if (
+              current === "ended" ||
+              current === "error" ||
+              current === "blocked"
+            ) {
+              return current;
+            }
+
+            return muted ? "playing-muted" : "playing";
+          });
+        };
+
+        const onReady = () => {
+          setErrorMessage(null);
+          setMode("ready");
+          console.log("[IVS] READY");
+        };
+
+        const onPlayingInternal = () => {
+          setErrorMessage(null);
+          setIsMuted(video.muted);
+          setMode(video.muted ? "playing-muted" : "playing");
+          onPlaying?.();
+          console.log("[IVS] PLAYING");
+        };
+
+        const onBuffering = () => {
+          setMode((current) => {
+            if (
+              current === "blocked" ||
+              current === "ended" ||
+              current === "error"
+            ) {
+              return current;
+            }
+
+            return "buffering";
+          });
+          console.log("[IVS] BUFFERING");
+        };
+
+        const onEndedInternal = () => {
+          setMode("ended");
+          onEnded?.();
+          console.log("[IVS] ENDED");
+        };
+
+        const onPlaybackBlocked = () => {
+          setMode("blocked");
+          setErrorMessage("Autoplay was blocked on this device/browser.");
+          console.warn("[IVS] PLAYBACK_BLOCKED");
+        };
+
+        const onAudioBlocked = () => {
+          setMode("blocked");
+          setIsMuted(true);
+          setErrorMessage("Playback with sound was blocked until user interaction.");
+          console.warn("[IVS] AUDIO_BLOCKED");
+        };
+
+        const onMutedChanged = () => {
+          updateMutedState();
+          console.log("[IVS] MUTED_CHANGED", { muted: video.muted });
+        };
+
+        const onQualityChanged = (quality?: Quality) => {
+          setQualityName(quality?.name ?? null);
+          console.log("[IVS] QUALITY_CHANGED", quality?.name);
+        };
+
+        const onSyncTimeUpdate = (syncTime: number) => {
+          setSyncTimeMs(syncTime);
+        };
+
+        const onMetadataInternal = (cue: TextMetadataCue) => {
+          onTextMetadata?.(cue.text);
+          console.log("[IVS] TEXT_METADATA_CUE", cue.text);
+        };
+
+        const onError = (error: PlayerError) => {
+          const message =
+            error?.message ||
+            `${error?.source ?? "IVS"} error ${error?.code ?? ""}`.trim() ||
+            "Unknown IVS playback error.";
+
+          setErrorMessage(message);
+          setMode("error");
+          console.error("[IVS] ERROR", error);
+        };
+
+        player.addEventListener(IVSPlayer.PlayerState.READY, onReady);
+        player.addEventListener(IVSPlayer.PlayerState.PLAYING, onPlayingInternal);
+        player.addEventListener(IVSPlayer.PlayerState.BUFFERING, onBuffering);
+        player.addEventListener(IVSPlayer.PlayerState.ENDED, onEndedInternal);
+        player.addEventListener(IVSPlayer.PlayerEventType.REBUFFERING, onBuffering);
+        player.addEventListener(
+          IVSPlayer.PlayerEventType.PLAYBACK_BLOCKED,
+          onPlaybackBlocked
+        );
+        player.addEventListener(
+          IVSPlayer.PlayerEventType.AUDIO_BLOCKED,
+          onAudioBlocked
+        );
+        player.addEventListener(
+          IVSPlayer.PlayerEventType.MUTED_CHANGED,
+          onMutedChanged
+        );
+        player.addEventListener(
+          IVSPlayer.PlayerEventType.QUALITY_CHANGED,
+          onQualityChanged
+        );
+        player.addEventListener(
+          IVSPlayer.PlayerEventType.SYNC_TIME_UPDATE,
+          onSyncTimeUpdate
+        );
+        player.addEventListener(
+          IVSPlayer.PlayerEventType.TEXT_METADATA_CUE,
+          onMetadataInternal
+        );
+        player.addEventListener(IVSPlayer.PlayerEventType.ERROR, onError);
+
+        detachRef.current = () => {
+          player.removeEventListener(IVSPlayer.PlayerState.READY, onReady);
+          player.removeEventListener(
+            IVSPlayer.PlayerState.PLAYING,
+            onPlayingInternal
+          );
+          player.removeEventListener(
+            IVSPlayer.PlayerState.BUFFERING,
+            onBuffering
+          );
+          player.removeEventListener(IVSPlayer.PlayerState.ENDED, onEndedInternal);
+          player.removeEventListener(
+            IVSPlayer.PlayerEventType.REBUFFERING,
+            onBuffering
+          );
+          player.removeEventListener(
+            IVSPlayer.PlayerEventType.PLAYBACK_BLOCKED,
+            onPlaybackBlocked
+          );
+          player.removeEventListener(
+            IVSPlayer.PlayerEventType.AUDIO_BLOCKED,
+            onAudioBlocked
+          );
+          player.removeEventListener(
+            IVSPlayer.PlayerEventType.MUTED_CHANGED,
+            onMutedChanged
+          );
+          player.removeEventListener(
+            IVSPlayer.PlayerEventType.QUALITY_CHANGED,
+            onQualityChanged
+          );
+          player.removeEventListener(
+            IVSPlayer.PlayerEventType.SYNC_TIME_UPDATE,
+            onSyncTimeUpdate
+          );
+          player.removeEventListener(
+            IVSPlayer.PlayerEventType.TEXT_METADATA_CUE,
+            onMetadataInternal
+          );
+          player.removeEventListener(IVSPlayer.PlayerEventType.ERROR, onError);
+        };
+
+        player.load(src);
       } catch (error) {
-        const message = getErrorMessage(error, "Failed to initialize the IVS player.");
-        logAndroidIvs("init:failed", { message });
-        console.warn("Android IVS initialization failed:", message, error);
-        setLastErrorMessage(message);
-        setMode("unsupported");
+        const message = getErrorMessage(
+          error,
+          "Failed to initialize the IVS player."
+        );
+        setErrorMessage(message);
+        setMode("error");
+        console.error("[IVS] setup error", error);
       }
-    })();
+    };
+
+    void setupPlayer();
 
     return () => {
-      logAndroidIvs("hook:unmount", { src });
-      disposedRef.current = true;
-      clearStartupPoll();
-      clearStartupWatchdog();
-      removeListeners();
-
-      try {
-        videoJsPlayer?.pause();
-        videoJsPlayer?.dispose();
-      } catch {}
-
-      playerRef.current = null;
-      videoJsPlayerRef.current = null;
+      cancelled = true;
+      cleanup();
     };
-  }, [autoPlay, clearStartupPoll, clearStartupWatchdog, loadSource, onEnded, onPlaying, onTextMetadata, src, updateStats, videoRef]);
+  }, [onEnded, onPlaying, onTextMetadata, src, videoRef]);
+
+  const handleStartMuted = () => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    try {
+      player.setMuted(true);
+      setIsMuted(true);
+      setErrorMessage(null);
+      player.play();
+      setMode("buffering");
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Playback could not start."));
+      setMode("blocked");
+    }
+  };
+
+  const handleStartWithSound = () => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    try {
+      player.setMuted(false);
+      setIsMuted(false);
+      setErrorMessage(null);
+      player.play();
+      setMode("buffering");
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "Playback could not start with sound.")
+      );
+      setMode("blocked");
+    }
+  };
+
+  const handleUnmute = () => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    try {
+      player.setMuted(false);
+      setIsMuted(false);
+      setErrorMessage(null);
+      player.play();
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "Playback could not resume with sound.")
+      );
+    }
+  };
 
   return {
     playerRef,
-    playerVersion,
     mode,
-    stats,
-    playerState,
+    errorMessage,
+    qualityName,
+    syncTimeMs,
     isMuted,
-    lastErrorMessage,
-    hasPlayedRef,
-    updateStats,
-    restoreToLive,
-    handleManualPlay,
-    tapToUnmute,
+    handleStartMuted,
+    handleStartWithSound,
+    handleUnmute,
   };
 }
