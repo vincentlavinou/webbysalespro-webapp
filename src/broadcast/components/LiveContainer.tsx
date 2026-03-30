@@ -25,6 +25,8 @@ export function LiveContainer({ sessionId, webinarTitle, offers, clientRedirectT
   const [broadcastToken, setBroadcastToken] = useState<BroadcastServiceToken | null>(null);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [playerRefreshKey, setPlayerRefreshKey] = useState(0);
+  const [isRefreshingStream, setIsRefreshingStream] = useState(false);
   useWebinar();
   const { markRoom } = useSessionPresence();
   const router = useRouter();
@@ -61,6 +63,22 @@ export function LiveContainer({ sessionId, webinarTitle, offers, clientRedirectT
       cancelled = true;
     };
   }, [sessionId, retryCount, markRoom]);
+
+  const refreshStream = async () => {
+    if (isRefreshingStream) return;
+
+    setIsRefreshingStream(true);
+
+    try {
+      const token = await createBroadcastServiceToken(sessionId);
+      setBroadcastToken(token);
+    } catch {
+      notifyErrorUiMessage("Unable to refresh the stream token. Retrying the player.");
+    } finally {
+      setPlayerRefreshKey((count) => count + 1);
+      setIsRefreshingStream(false);
+    }
+  };
 
   if (clientRedirectTo) {
     return <WaitingRoomShimmer title="Redirecting…" />;
@@ -107,9 +125,12 @@ export function LiveContainer({ sessionId, webinarTitle, offers, clientRedirectT
           email={broadcastToken.email || ''}
         >
           <AttendeePlayerClient
+            key={`${sessionId}-${playerRefreshKey}`}
             sessionId={sessionId}
             broadcastToken={broadcastToken as AttendeeBroadcastServiceToken}
             title={webinarTitle}
+            onRefreshStream={refreshStream}
+            isRefreshingStream={isRefreshingStream}
           />
         </OfferSessionClientProvider>
       </VideoInjectionPlayerProvider>

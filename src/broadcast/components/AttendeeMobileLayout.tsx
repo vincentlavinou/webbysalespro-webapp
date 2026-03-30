@@ -15,10 +15,13 @@ import { AttendeeCountBadge } from "../attendee-count/components";
 import { useImmersiveLayout } from "../hooks/use-immersive-layout";
 import { AttendeeBroadcastServiceToken } from "../service/type";
 import WebbySalesProPlayer from "./ivs/WebbySalesProPlayer";
+import { StreamRefreshControl } from "./StreamRefreshControl";
 
 interface AttendeeMobileLayoutProps {
   broadcast: AttendeeBroadcastServiceToken;
   title?: string;
+  onRefreshStream?: () => Promise<void> | void;
+  isRefreshingStream?: boolean;
 }
 
 type ViewportSize = {
@@ -69,6 +72,8 @@ function getKeyboardInset(
 export default function AttendeeMobileLayout({
   broadcast,
   title,
+  onRefreshStream,
+  isRefreshingStream = false,
 }: AttendeeMobileLayoutProps) {
   const { view: offerView } = useOfferSessionClient();
   const showOfferSheet =
@@ -276,6 +281,18 @@ export default function AttendeeMobileLayout({
           >
             {playerContent}
           </div>
+
+          {broadcast.stream && onRefreshStream && (
+            <StreamRefreshControl
+              className={
+                isImmersive
+                  ? "pointer-events-auto fixed left-1/2 top-3 z-50 -translate-x-1/2"
+                  : "pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
+              }
+              onRefresh={onRefreshStream}
+              isRefreshing={isRefreshingStream}
+            />
+          )}
 
           {broadcast.stream && (
             <div

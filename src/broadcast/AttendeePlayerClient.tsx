@@ -11,6 +11,8 @@ interface AttendeePlayerClientProps {
     getRequestHeaders?: () => Promise<RequestHeaders | undefined>
     broadcastToken: AttendeeBroadcastServiceToken
     title?: string,
+    onRefreshStream?: () => Promise<void> | void,
+    isRefreshingStream?: boolean,
 }
 
 export function AttendeePlayerClient(props: AttendeePlayerClientProps) {
@@ -26,6 +28,8 @@ export function AttendeePlayerClient(props: AttendeePlayerClientProps) {
                     <AttendeePlayerLayout
                         broadcast={props.broadcastToken}
                         title={props.title}
+                        onRefreshStream={props.onRefreshStream}
+                        isRefreshingStream={props.isRefreshingStream}
                         />
             </BroadcastUserProvider>
         </BroadcastConfigurationProvider>

@@ -5,11 +5,14 @@ import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import WebbySalesProPlayer from "./ivs/WebbySalesProPlayer";
 import { AttendeeCountBadge } from "../attendee-count/components";
+import { StreamRefreshControl } from "./StreamRefreshControl";
 
 interface AttendeeDesktopLayoutProps {
     broadcast: AttendeeBroadcastServiceToken;
     title?: string;
     compact?: boolean;
+    onRefreshStream?: () => Promise<void> | void;
+    isRefreshingStream?: boolean;
 }
 
 
@@ -17,6 +20,8 @@ export const AttendeeDesktopLayout = ({
     broadcast,
     title,
     compact = false,
+    onRefreshStream,
+    isRefreshingStream = false,
 }: AttendeeDesktopLayoutProps) => {
     return (
         <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${compact ? "px-2 py-2" : "px-2 py-2 md:px-4 md:py-4"}`}>
@@ -36,6 +41,13 @@ export const AttendeeDesktopLayout = ({
                                         .map((m: WebinarMedia) => ({ src: m.file_url }))}
                                 />
                                 <AttendeeCountBadge />
+                                {onRefreshStream && (
+                                  <StreamRefreshControl
+                                    className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
+                                    onRefresh={onRefreshStream}
+                                    isRefreshing={isRefreshingStream}
+                                  />
+                                )}
                             </>
                         ) : (
                             <div className="w-full h-full bg-black/80 grid place-items-center text-white">
