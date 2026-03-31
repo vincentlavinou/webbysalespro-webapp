@@ -20,6 +20,7 @@ import { webinarAppUrl, type Webinar } from "@/webinar/service";
 import { registerForWebinarAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { allowsManualSessionSelection } from "@/webinar/service/guards";
+import { extractJoinToken, extractJoinUrl } from "@/webinar/service/join";
 
 interface DefaultRegistrationFormProps {
   webinar: Webinar;
@@ -111,21 +112,14 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         ? registeredSession.status === WebinarSessionStatus.IN_PROGRESS
         : hasLiveSession;
 
-      const joinUrl = data.grants?.[0]?.join_url
+      const joinUrl = extractJoinUrl(data)
       if (!joinUrl) {
         toast.error("Registration succeeded but no join link was returned. Please check your email.");
         setIsNavigating(false);
         return;
       }
 
-      // Extract the raw join token from the join_url the backend returned
-      let rawJoinToken: string | null = null;
-      try {
-        const parsed = new URL(joinUrl, window.location.origin);
-        rawJoinToken = parsed.searchParams.get('t');
-      } catch {
-        rawJoinToken = null;
-      }
+      const rawJoinToken = extractJoinToken(data);
 
       if (!rawJoinToken) {
         toast.error("Registration succeeded but the join link was invalid. Please check your email.");

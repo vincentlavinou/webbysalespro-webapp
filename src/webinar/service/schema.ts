@@ -9,3 +9,8 @@ export const registerForWebinarInput = z.object({
     email: z.string().email("Enter a valid email"),
     phone: z.string().optional().nullable(),
 });
+
+export const anonymousRegisterForWebinarInput = z.object({
+    webinar_id: z.string(),
+    anonymous_registrant_id: z.string().uuid().optional(),
+});

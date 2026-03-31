@@ -157,7 +157,10 @@ export type RegisterAttendeeResponse = {
 }
 
 export type RegisterV2Grant = {
-    join_url: string
+    join_url?: string
+    join_token?: {
+        token: string
+    }
 }
 
 export type RegisterV2Response = {

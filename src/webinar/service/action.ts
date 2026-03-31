@@ -8,7 +8,7 @@ import { handleStatus } from "@/lib/http";
 import { ApiError } from "@/lib/error";
 import { resolveAttendeeLocation } from "@/lib/geo";
 import { z } from "zod";
-import { registerForWebinarInput } from "./schema";
+import { anonymousRegisterForWebinarInput, registerForWebinarInput } from "./schema";
 import { cache } from "react";
 
 export async function getWebinars(query?: QueryWebinar) {
@@ -156,6 +156,7 @@ export const getWebinarFromSession = actionClient
     })
 
 export type RegisterForWebinarInput = z.infer<typeof registerForWebinarInput>;
+export type AnonymousRegisterForWebinarInput = z.infer<typeof anonymousRegisterForWebinarInput>;
 
 type AttendeeRequestBody = {
     session_id?: string;
@@ -243,3 +244,25 @@ export const registerForWebinarAction = actionClient
             return result
         }
     );
+
+export const anonymousRegisterForWebinarAction = actionClient
+    .inputSchema(anonymousRegisterForWebinarInput)
+    .action(async ({ parsedInput }) => {
+        const headers: HeadersInit = {};
+
+        if (parsedInput.anonymous_registrant_id) {
+            headers["X-Anonymous-Registrant-ID"] = parsedInput.anonymous_registrant_id;
+        }
+
+        const response = await fetch(
+            `${webinarApiUrl}/v2/webinars/${parsedInput.webinar_id}/registrants/anonymous/`,
+            {
+                method: "POST",
+                headers,
+                cache: "no-store",
+            }
+        );
+
+        const checkedResponse = await handleStatus(response);
+        return await checkedResponse.json() as RegisterV2Response;
+    });
