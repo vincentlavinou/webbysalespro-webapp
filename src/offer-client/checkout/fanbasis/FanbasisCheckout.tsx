@@ -68,6 +68,10 @@ export function FanBasisCheckout() {
   const isProduction = selectedOffer?.offer.is_production ?? false;
   const accentColor = selectedOffer?.offer.display?.accent_color?.trim() ?? '';
 
+  const enabledMethods = payload.payment_config?.enabled_methods ?? [];
+  const showCardOption = enabledMethods.length === 0 || enabledMethods.includes('card');
+  const showFinancingOption = enabledMethods.length === 0 || enabledMethods.includes('financing');
+
   const canUseCardCheckout =
     !!payload.fanbasis_creator_id &&
     !!payload.fanbasis_product_id &&
@@ -206,36 +210,40 @@ export function FanBasisCheckout() {
       ) : (
         /* Payment options */
         <div className="px-3 pb-3 space-y-2">
-          <button
-            type="button"
-            onClick={handleCardClick}
-            disabled={!canUseCardCheckout}
-            className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
-          >
-            <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="flex-1 text-sm font-medium text-foreground">Credit/Debit Card</span>
-            {!canUseCardCheckout && (
-              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                Coming soon
-              </span>
-            )}
-          </button>
+          {showCardOption && (
+            <button
+              type="button"
+              onClick={handleCardClick}
+              disabled={!canUseCardCheckout}
+              className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+            >
+              <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1 text-sm font-medium text-foreground">Credit/Debit Card</span>
+              {!canUseCardCheckout && (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  Coming soon
+                </span>
+              )}
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={handleFinancingClick}
-            disabled={financing}
-            className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
-          >
-            {financing ? (
-              <Loader2 className="h-4 w-4 shrink-0 text-muted-foreground animate-spin" />
-            ) : (
-              <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-            )}
-            <span className="flex-1 text-sm font-medium text-foreground">
-              {financing ? 'Opening…' : 'More Financing Options'}
-            </span>
-          </button>
+          {showFinancingOption && (
+            <button
+              type="button"
+              onClick={handleFinancingClick}
+              disabled={financing}
+              className="w-full flex items-center gap-3 rounded-lg border border-border bg-background/40 hover:bg-accent/50 p-3 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+            >
+              {financing ? (
+                <Loader2 className="h-4 w-4 shrink-0 text-muted-foreground animate-spin" />
+              ) : (
+                <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="flex-1 text-sm font-medium text-foreground">
+                {financing ? 'Opening…' : 'More Financing Options'}
+              </span>
+            </button>
+          )}
         </div>
       )}
       </div>

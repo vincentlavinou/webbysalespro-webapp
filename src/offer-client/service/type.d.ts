@@ -12,6 +12,13 @@ export type FanbasisCheckoutDto = {
   fanbasis_product_id?: string;        // maps to productId in SDK
   fanbasis_creator_id?: string;        // backend to add — maps to creatorId in SDK
   checkout_session_secret?: string;    // backend to add — maps to checkoutSessionSecret in SDK
+  payment_config?: {
+    enabled_methods: string[];         // slugs of allowed payment methods; empty = show all
+  };
+  post_purchase_config?: {
+    redirect_url: string | null;       // if set, show a CTA button navigating here
+    continue_button_text: string;      // label for the redirect button
+  };
 }
 
 export type OfferMediaDto = {

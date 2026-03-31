@@ -1,9 +1,10 @@
 'use client'
-import { CheckCircle2, Mail, ShoppingBag, X } from "lucide-react";
+import { CheckCircle2, ExternalLink, Mail, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
+import type { FanbasisCheckoutDto } from "@/offer-client/service/type";
 
 type Props = {
   className?: string;
@@ -18,6 +19,10 @@ export default function OfferPurchaseSuccess({
     email,
     closeSheetAfterPurchase
   } = useOfferSessionClient()
+
+  const postPurchasePayload = purchasedOffer?.offer?.offer?.action_payload as FanbasisCheckoutDto | undefined;
+  const redirectUrl = postPurchasePayload?.post_purchase_config?.redirect_url ?? null;
+  const continueButtonText = postPurchasePayload?.post_purchase_config?.continue_button_text ?? 'Continue';
 
   const priceLabel = useMemo(() => {
     const offer = purchasedOffer?.offer?.offer
@@ -100,12 +105,25 @@ export default function OfferPurchaseSuccess({
       </div>
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <Button
-          className="w-full sm:w-auto"
-          onClick={closeSheetAfterPurchase}
-        >
-          Continue
-        </Button>
+        {redirectUrl ? (
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => {
+              closeSheetAfterPurchase();
+              window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            <ExternalLink className="mr-2 h-3.5 w-3.5" />
+            {continueButtonText}
+          </Button>
+        ) : (
+          <Button
+            className="w-full sm:w-auto"
+            onClick={closeSheetAfterPurchase}
+          >
+            Continue
+          </Button>
+        )}
       </div>
     </div>
   );
