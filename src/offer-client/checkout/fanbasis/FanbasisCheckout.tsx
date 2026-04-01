@@ -68,7 +68,7 @@ export function FanBasisCheckout() {
   const isProduction = selectedOffer?.offer.is_production ?? false;
   const accentColor = selectedOffer?.offer.display?.accent_color?.trim() ?? '';
 
-  const enabledMethods = selectedOffer?.offer?.payment_config?.enabled_methods ?? [];
+  const enabledMethods = selectedOffer?.offer?.payment_config?.enabled_methods?.map((method) => method.slug) ?? [];
   const showCardOption = enabledMethods.length === 0 || enabledMethods.includes('card');
   const showFinancingOption = enabledMethods.length === 0 || enabledMethods.includes('financing');
 

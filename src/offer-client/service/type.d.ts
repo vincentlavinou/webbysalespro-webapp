@@ -77,7 +77,11 @@ export type OfferMiniDto = {
   has_quantity: boolean;
   has_scarcity_config: boolean;
   payment_config?: {
-    enabled_methods: string[];         // slugs of allowed payment methods; empty = show all
+    enabled_methods: {
+      slug: string,
+      title: string,
+      description: string
+    }[]
   };
   post_purchase_config?: {
     redirect_url: string | null;       // if set, show a CTA button navigating here
