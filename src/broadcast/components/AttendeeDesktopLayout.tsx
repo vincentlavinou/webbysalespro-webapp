@@ -38,7 +38,12 @@ export const AttendeeDesktopLayout = ({
 
     return (
         <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${compact ? "px-2 py-2" : "px-2 py-2 md:px-4 md:py-4"}`}>
-            <div className={`flex flex-1 min-h-0 overflow-hidden gap-2 ${compact ? "flex-col" : "flex-col lg:flex-row"}`}>
+            {title && (
+            <div className="mb-2 shrink-0 truncate text-sm font-semibold text-foreground">
+                {title}
+            </div>
+        )}
+        <div className={`flex flex-1 min-h-0 overflow-hidden gap-2 ${compact ? "flex-col" : "flex-col lg:flex-row"}`}>
 
                 <div className={`flex min-h-0 w-full flex-col ${compact ? "flex-none" : "lg:flex-1"}`}>
                     <div className="relative z-10 bg-black">

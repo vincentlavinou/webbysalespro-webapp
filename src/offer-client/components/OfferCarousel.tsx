@@ -177,83 +177,51 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
           </div>
         </div>
 
-        {/* Row 2: price (+ CTA pill when no scarcity), Row 3: scarcity + progress */}
+        {/* Row 2: price + scarcity */}
         <div className="space-y-1.5">
           {effective != null ? (
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="font-semibold text-primary">
-                  {getCurrencySymbol(currency)}{formatAmount(Number(effective))}
-                </span>
-                {showCompareAt && compareAt != null && (
-                  <>
-                    <span className="text-[11px] text-muted-foreground line-through">
-                      {getCurrencySymbol(currency)}{formatAmount(Number(compareAt))}
-                    </span>
-                    {discountPct !== null && (
-                      <Badge
-                        variant="outline"
-                        className="border-emerald-500/40 bg-emerald-500/5 text-[10px] text-emerald-500"
-                      >
-                        Save {discountPct}%
-                      </Badge>
-                    )}
-                  </>
-                )}
-              </div>
-              {/* CTA pill on price row — only shown when there's no scarcity bar */}
-              {!hasScarcity && (
-                <span
-                  aria-hidden="true"
-                  className={[
-                    "pointer-events-none shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold",
-                    isSoldOut
-                      ? "bg-muted text-muted-foreground"
-                      : accentStyle ? "" : "bg-primary text-primary-foreground",
-                  ].join(" ")}
-                  style={isSoldOut ? undefined : accentStyle}
-                >
-                  {ctaLabel}
-                </span>
+            <div className="flex items-center gap-1.5 min-w-0 text-xs">
+              <span className="font-semibold text-primary">
+                {getCurrencySymbol(currency)}{formatAmount(Number(effective))}
+              </span>
+              {showCompareAt && compareAt != null && (
+                <>
+                  <span className="text-[11px] text-muted-foreground line-through">
+                    {getCurrencySymbol(currency)}{formatAmount(Number(compareAt))}
+                  </span>
+                  {discountPct !== null && (
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/40 bg-emerald-500/5 text-[10px] text-emerald-500"
+                    >
+                      Save {discountPct}%
+                    </Badge>
+                  )}
+                </>
               )}
             </div>
           ) : null}
 
           {hasScarcity && (
             <motion.div className="space-y-1" animate={scarcityControls}>
-              {/* Scarcity label row — CTA pill pulses here alongside the count/percentage */}
-              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                <span className="font-bold truncate">
-                  {scarcityDisplayType === "count"
-                    ? availableCount !== null
-                      ? `${availableCount} spot${availableCount !== 1 ? "s" : ""} left`
-                      : "Spots filling up"
-                    : percentSold !== null
-                    ? [
-                        totalSlots != null ? `${totalSlots} spots` : "Spots filling up",
-                        `${Math.round(percentSold)}% claimed`,
-                        totalSlots != null
-                          ? `${Math.max(0, Math.round(totalSlots * (1 - percentSold / 100)))} left`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")
-                    : totalSlots != null
-                    ? `${totalSlots} spots`
-                    : "Spots filling up"}
-                </span>
-                <span
-                  aria-hidden="true"
-                  className={[
-                    "pointer-events-none shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold",
-                    isSoldOut
-                      ? "bg-muted text-muted-foreground"
-                      : accentStyle ? "" : "bg-primary text-primary-foreground",
-                  ].join(" ")}
-                  style={isSoldOut ? undefined : accentStyle}
-                >
-                  {ctaLabel}
-                </span>
+              <div className="text-[10px] text-muted-foreground font-bold truncate">
+                {scarcityDisplayType === "count"
+                  ? availableCount !== null
+                    ? `${availableCount} spot${availableCount !== 1 ? "s" : ""} left`
+                    : "Spots filling up"
+                  : percentSold !== null
+                  ? [
+                      totalSlots != null ? `${totalSlots} spots` : "Spots filling up",
+                      `${Math.round(percentSold)}% claimed`,
+                      totalSlots != null
+                        ? `${Math.max(0, Math.round(totalSlots * (1 - percentSold / 100)))} left`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : totalSlots != null
+                  ? `${totalSlots} spots`
+                  : "Spots filling up"}
               </div>
               <Progress
                 value={Math.max(0, Math.min(100, percentSold ?? 0))}
@@ -263,6 +231,20 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
               />
             </motion.div>
           )}
+        </div>
+
+        {/* Row 3: Full-width CTA */}
+        <div
+          aria-hidden="true"
+          className={[
+            "pointer-events-none w-full rounded-lg py-2 text-center text-sm font-bold tracking-wide transition",
+            isSoldOut
+              ? "bg-muted text-muted-foreground"
+              : accentStyle ? "" : "bg-primary text-primary-foreground",
+          ].join(" ")}
+          style={isSoldOut ? undefined : accentStyle}
+        >
+          {ctaLabel}
         </div>
       </div>
     </button>

@@ -1,18 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ImmersiveLayoutState = "regular" | "split" | "immersive";
-
-type ViewportSize = {
-  width: number;
-  height: number;
-};
 
 const PORTRAIT_EXIT_DELAY_MS = 750;
 const SPLIT_ENTER_PORTRAIT_GRACE_MS = 3000;
 
-export function useImmersiveLayout({ width, height }: ViewportSize) {
+export function useImmersiveLayout() {
   const [forcedLayoutState, setForcedLayoutState] =
     useState<ImmersiveLayoutState | null>(null);
   const [splitEnteredInPortrait, setSplitEnteredInPortrait] = useState(false);
@@ -24,10 +19,17 @@ export function useImmersiveLayout({ width, height }: ViewportSize) {
   const portraitExitTimerRef = useRef<number | null>(null);
   const previousLayoutStateRef = useRef<ImmersiveLayoutState>("regular");
 
-  const isPhysicalLandscape = useMemo(() => {
-    if (width <= 0 || height <= 0) return false;
-    return width > height;
-  }, [width, height]);
+  const [isPhysicalLandscape, setIsPhysicalLandscape] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(orientation: landscape)").matches;
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape)");
+    const handler = (e: MediaQueryListEvent) => setIsPhysicalLandscape(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const clearSplitExitTimer = useCallback(() => {
     if (splitExitTimerRef.current) {

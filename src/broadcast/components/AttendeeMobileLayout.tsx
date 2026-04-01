@@ -40,8 +40,8 @@ function readLayoutViewport(): ViewportSize {
   }
 
   return {
-    width: Math.round(screen.width),
-    height: Math.round(screen.height),
+    width: Math.round(window.innerWidth),
+    height: Math.round(window.innerHeight),
   };
 }
 
@@ -67,7 +67,7 @@ export default function AttendeeMobileLayout({
     layoutState,
     shouldRotatePortraitImmersive,
     shouldRotatePortraitSplit,
-  } = useImmersiveLayout(viewportSize);
+  } = useImmersiveLayout();
 
   const isSplitLayout = layoutState === "split";
   const shouldRotateImmersivePlayer = shouldRotatePortraitImmersive;
