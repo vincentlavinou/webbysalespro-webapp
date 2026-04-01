@@ -15,9 +15,11 @@ export default function OfferPurchaseSuccess({
 
   const {
     purchasedOffer,
-    email,
+    user,
     closeSheetAfterPurchase
   } = useOfferSessionClient()
+
+  const email = user?.email
 
   const redirectUrl = purchasedOffer?.offer?.offer?.post_purchase_config?.redirect_url ?? null;
   const continueButtonText = purchasedOffer?.offer?.offer?.post_purchase_config?.continue_button_text ?? 'Continue';
