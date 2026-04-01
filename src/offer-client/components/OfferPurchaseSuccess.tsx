@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
-import type { FanbasisCheckoutDto } from "@/offer-client/service/type";
 
 type Props = {
   className?: string;
@@ -20,9 +19,8 @@ export default function OfferPurchaseSuccess({
     closeSheetAfterPurchase
   } = useOfferSessionClient()
 
-  const postPurchasePayload = purchasedOffer?.offer?.offer?.action_payload as FanbasisCheckoutDto | undefined;
-  const redirectUrl = postPurchasePayload?.post_purchase_config?.redirect_url ?? null;
-  const continueButtonText = postPurchasePayload?.post_purchase_config?.continue_button_text ?? 'Continue';
+  const redirectUrl = purchasedOffer?.offer?.offer?.post_purchase_config?.redirect_url ?? null;
+  const continueButtonText = purchasedOffer?.offer?.offer?.post_purchase_config?.continue_button_text ?? 'Continue';
 
   const priceLabel = useMemo(() => {
     const offer = purchasedOffer?.offer?.offer
