@@ -24,9 +24,10 @@ const HEARTBEAT_TIMEOUT_MS = 45_000;
 interface Props {
     sessionId: string;
     children: React.ReactNode;
+    disableSse?: boolean;
 }
 
-export const WebinarProvider = ({ children, sessionId }: Props) => {
+export const WebinarProvider = ({ children, sessionId, disableSse = false }: Props) => {
     const [session, setSession] = useState<SeriesSession | undefined>(undefined);
     const [broadcastServiceToken, setBroadcastServiceToken] =
         useState<BroadcastServiceToken | undefined>(undefined);
@@ -170,6 +171,7 @@ export const WebinarProvider = ({ children, sessionId }: Props) => {
     );
 
     const sseEnabled =
+        !disableSse &&
         !!attendeeToken &&
         !!broadcastServiceToken &&
         mountedRef.current &&

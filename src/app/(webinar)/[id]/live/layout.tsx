@@ -26,7 +26,7 @@ export default async function LiveLayout({ children, params }: LiveLayoutProps) 
 
   return (
     <AttendeeSessionProvider initial={attendeeSession}>
-      <WebinarProvider sessionId={sessionId}>
+      <WebinarProvider sessionId={sessionId} disableSse>
         {children}
       </WebinarProvider>
     </AttendeeSessionProvider>
