@@ -40,8 +40,8 @@ function readLayoutViewport(): ViewportSize {
   }
 
   return {
-    width: Math.round(window.innerWidth),
-    height: Math.round(window.innerHeight),
+    width: Math.round(screen.width),
+    height: Math.round(screen.height),
   };
 }
 
