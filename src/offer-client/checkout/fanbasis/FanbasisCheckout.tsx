@@ -56,7 +56,7 @@ const FanbasisCardCheckout = memo(function FanbasisCardCheckout({
 });
 
 export function FanBasisCheckout() {
-  const { selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
+  const { user, selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
     useOfferSessionClient();
 
   const { resolvedTheme } = useTheme();
@@ -143,11 +143,19 @@ export function FanBasisCheckout() {
     if (!selectedOffer || financing) return;
     const url = payload.url;
     if (!url) return;
+
+    const params = new URLSearchParams();
+    if (user?.first_name) params.set('first_name', user.first_name);
+    if (user?.last_name) params.set('last_name', user.last_name);
+    if (user?.email) params.set('email', user.email);
+    const query = params.toString();
+    const fullUrl = query ? `${url}${url.includes('?') ? '&' : '?'}${query}` : url;
+
     setFinancing(true);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(fullUrl, '_blank', 'noopener,noreferrer');
     void recordEvent('checkout_started');
     setTimeout(() => setFinancing(false), 4000);
-  }, [financing, payload.url, recordEvent, selectedOffer]);
+  }, [financing, payload.url, recordEvent, selectedOffer, user]);
 
   return (
     <div

@@ -1,11 +1,12 @@
 'use client'
 import { createContext } from "react"
+import { BroadcastUser } from "@/broadcast/service/type";
 import { OfferSessionDto, OfferView } from "../service/type";
 
 
 interface OfferSessionClientContextType {
     sessionId: string;
-    email: string;
+    user: BroadcastUser;
     view: OfferView;
     offers: OfferSessionDto[];
     selectedOffer?: OfferSessionDto;
@@ -23,7 +24,7 @@ interface OfferSessionClientContextType {
 
 export const OfferSessionClientContext = createContext<OfferSessionClientContextType>({
     sessionId: "",
-    email: "",
+    user: { user_id: "" },
     view: 'offers-hidden',
     offers: [],
     isPurchasingOffer: false,

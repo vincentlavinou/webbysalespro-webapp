@@ -51,7 +51,7 @@ function LoadingPaymentCard() {
 }
 
 export function StripeCheckout() {
-  const { email, sessionId, selectedOffer, handleCheckoutSuccess } =
+  const { user, sessionId, selectedOffer, handleCheckoutSuccess } =
     useOfferSessionClient();
 
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
@@ -84,7 +84,7 @@ export function StripeCheckout() {
   return (
     <div className="h-[70vh] min-h-0">
       <Elements stripe={stripePromise} options={{ clientSecret }}>
-        <StripeCheckoutForm email={email} onSuccess={handleCheckoutSuccess} />
+        <StripeCheckoutForm email={user.email} onSuccess={handleCheckoutSuccess} />
       </Elements>
     </div>
   );

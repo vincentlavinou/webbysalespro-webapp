@@ -28,6 +28,13 @@ export type StreamConfig = {
     config: StreamAttendeeConfig | StreamParticipantConfig
 }
 
+export type BroadcastUser = {
+    user_id: string
+    email?: string
+    first_name?: string
+    last_name?: string
+}
+
 export type BroadcastServiceToken = {
     stream: StreamConfig
     role: "host" | "presenter" | "attendee"
@@ -35,6 +42,8 @@ export type BroadcastServiceToken = {
     region: string
     user_id: string
     email?: string
+    first_name?: string
+    last_name?: string
     webinar: Webinar
     session: SeriesSession
 }
@@ -52,6 +61,8 @@ export type AttendeeBroadcastServiceToken = {
     region: string
     user_id: string
     email?: string
+    first_name?: string
+    last_name?: string
     webinar: Webinar
     session: SeriesSession
 }

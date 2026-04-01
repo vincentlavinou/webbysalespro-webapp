@@ -21,8 +21,7 @@ export function AttendeePlayerClient(props: AttendeePlayerClientProps) {
             getRequestHeaders={props.getRequestHeaders}
             seriesId={props.broadcastToken.series}>
             <BroadcastUserProvider
-                userId={props.broadcastToken.user_id}
-                email={props.broadcastToken.email}>
+                user={{ user_id: props.broadcastToken.user_id, email: props.broadcastToken.email, first_name: props.broadcastToken.first_name, last_name: props.broadcastToken.last_name }}>
                     <AttendeePlayerLayout
                         broadcast={props.broadcastToken}
                         title={props.title}

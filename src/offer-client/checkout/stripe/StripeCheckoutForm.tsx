@@ -8,7 +8,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 interface StripeCheckoutFormProps {
-  email: string;
+  email?: string;
   onSuccess: (paymentIntentId: string) => void;
 }
 
@@ -34,7 +34,7 @@ export function StripeCheckoutForm({ email, onSuccess }: StripeCheckoutFormProps
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        payment_method_data: { billing_details: { email } },
+        ...(email ? { payment_method_data: { billing_details: { email } } } : {}),
       },
       redirect: 'if_required',
     });

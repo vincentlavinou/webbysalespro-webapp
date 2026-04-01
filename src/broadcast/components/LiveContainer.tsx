@@ -104,7 +104,7 @@ export function LiveContainer({ sessionId, webinarTitle, offers, clientRedirectT
         <OfferSessionClientProvider
           sessionId={sessionId}
           initialOffers={offers}
-          email={broadcastToken.email || ''}
+          user={{ user_id: broadcastToken.user_id, email: broadcastToken.email, first_name: broadcastToken.first_name, last_name: broadcastToken.last_name }}
         >
           <AttendeePlayerClient
             sessionId={sessionId}

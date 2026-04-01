@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BroadcastUser } from "@/broadcast/service/type";
 import { OfferSessionClientContext } from "../contexts/OfferSessionClientContext"
 import { OfferSessionDto, OfferView } from "../service/type";
 import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback";
@@ -27,14 +28,14 @@ interface OfferSessionClientProviderProps {
     children: React.ReactNode
     sessionId: string,
     initialOffers: OfferSessionDto[],
-    email: string,
+    user: BroadcastUser,
 }
 
 export function OfferSessionClientProvider({
     children,
     sessionId,
     initialOffers,
-    email,
+    user,
 }: OfferSessionClientProviderProps) {
     const { recordEvent } = useWebinar();
     const [offers, setOffers] = useState(initialOffers)
@@ -201,7 +202,7 @@ export function OfferSessionClientProvider({
         <OfferSessionClientContext.Provider value={{
             sessionId,
             view,
-            email,
+            user,
             isPurchasingOffer: isCheckingOut,
             offers: offers,
             selectedOffer,
