@@ -98,6 +98,16 @@ export function OfferSessionClientProvider({
     }, [sessionId]);
 
     useEffect(() => {
+        const handleStreamRefresh = () => {
+            getOfferSessionsForAttendee({ sessionId }).then((result) => {
+                if (result?.data) setOffers(result.data);
+            });
+        };
+        window.addEventListener("webinar:stream:refresh", handleStreamRefresh);
+        return () => window.removeEventListener("webinar:stream:refresh", handleStreamRefresh);
+    }, [sessionId]);
+
+    useEffect(() => {
         const hasVisibleOffer = offers.some(
             (os) => !["closed", "scheduled"].includes(os.status)
         );

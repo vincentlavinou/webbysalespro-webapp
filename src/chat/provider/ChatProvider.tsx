@@ -302,6 +302,16 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
         });
     }, [sessionId]);
 
+    useEffect(() => {
+        const handleStreamRefresh = () => {
+            getAttendeeChatSession({ sessionId }).then((result) => {
+                if (result?.data) setChatConfig(result.data);
+            });
+        };
+        window.addEventListener("webinar:stream:refresh", handleStreamRefresh);
+        return () => window.removeEventListener("webinar:stream:refresh", handleStreamRefresh);
+    }, [sessionId]);
+
     usePlaybackMetadataEvent({
         eventType: "chat:config:update",
         schema: chatConfigUpdateSchema,

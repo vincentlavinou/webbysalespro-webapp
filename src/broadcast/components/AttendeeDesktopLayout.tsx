@@ -30,6 +30,7 @@ export const AttendeeDesktopLayout = ({
         setIsRefreshingStream(true);
         try {
             await playerRef.current?.restoreToLive({ forceReload: true });
+            window.dispatchEvent(new CustomEvent("webinar:stream:refresh"));
             notifySuccessUiMessage("Reconnected to stream");
         } finally {
             setIsRefreshingStream(false);

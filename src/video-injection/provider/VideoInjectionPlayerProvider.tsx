@@ -46,6 +46,30 @@ export function VideoInjectionPlayerProvider({
     };
   }, [sessionId]);
 
+  // Re-hydrate when the attendee manually refreshes the stream
+  useEffect(() => {
+    const handleStreamRefresh = async () => {
+      const state = await getVideoInjectionState(sessionId);
+      if (state.active) {
+        setIsActive(true);
+        setPlaybackUrl(state.playback_url ?? null);
+        setTitle(state.title ?? null);
+        setDurationMs(state.duration_ms ?? null);
+        setElapsedSeconds(state.elapsed_seconds ?? 0);
+        setVideoInjectionId(state.video_injection_id ?? null);
+      } else {
+        setIsActive(false);
+        setPlaybackUrl(null);
+        setTitle(null);
+        setDurationMs(null);
+        setElapsedSeconds(null);
+        setVideoInjectionId(null);
+      }
+    };
+    window.addEventListener("webinar:stream:refresh", handleStreamRefresh);
+    return () => window.removeEventListener("webinar:stream:refresh", handleStreamRefresh);
+  }, [sessionId]);
+
   // Listen for natural video end from the player component
   useEffect(() => {
     const handleVideoEnded = () => {
