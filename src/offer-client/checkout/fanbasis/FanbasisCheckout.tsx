@@ -33,7 +33,10 @@ function parseFanbasisErrorEvent(message: string): string {
 interface FanbasisCardCheckoutProps {
   cardError: string | null;
   checkoutConfig: CheckoutConfig;
-  onSuccess: (data: {transactionId: string}) => void;
+  onSuccess: (data: {
+    transactionId: string,
+    metadata: unknown
+  }) => void;
   onError: (error: Error) => void;
 }
 
@@ -120,7 +123,8 @@ export function FanBasisCheckout() {
     setCardError(null);
   }, []);
 
-  const handleCardSuccess = useCallback((data: {transactionId: string}) => {
+  const handleCardSuccess = useCallback((data: {transactionId: string, metadata: unknown}) => {
+    console.log(JSON.stringify(data.metadata))
     handleCheckoutSuccess(data.transactionId);
   }, [handleCheckoutSuccess]);
 
