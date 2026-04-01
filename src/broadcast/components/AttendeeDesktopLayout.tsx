@@ -1,6 +1,9 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AttendeeBroadcastServiceToken } from "../service/type";
+import { WebinarSessionStatus } from "@/webinar/service/enum";
+import { getSessionAction } from "@/webinar/service/action";
 import { WebinarChat } from "@/chat/component";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
@@ -23,19 +26,27 @@ export const AttendeeDesktopLayout = ({
 }: AttendeeDesktopLayoutProps) => {
     const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
     const [isRefreshingStream, setIsRefreshingStream] = useState(false);
+    const router = useRouter();
 
     const handleRefreshStream = useCallback(async () => {
         if (isRefreshingStream) return;
 
         setIsRefreshingStream(true);
         try {
-            await playerRef.current?.restoreToLive({ forceReload: true });
+            const [sessionResult] = await Promise.all([
+                getSessionAction({ id: broadcast.session.id }),
+                playerRef.current?.restoreToLive({ forceReload: true }),
+            ]);
             window.dispatchEvent(new CustomEvent("webinar:stream:refresh"));
             notifySuccessUiMessage("Reconnected to stream");
+
+            if (sessionResult?.data?.status === WebinarSessionStatus.COMPLETED) {
+                router.push(`/${broadcast.session.id}/completed`);
+            }
         } finally {
             setIsRefreshingStream(false);
         }
-    }, [isRefreshingStream]);
+    }, [isRefreshingStream, broadcast.session.id, router]);
 
     return (
         <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${compact ? "px-2 py-2" : "px-2 py-2 md:px-4 md:py-4"}`}>

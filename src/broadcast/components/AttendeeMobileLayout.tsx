@@ -13,7 +13,10 @@ import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import { AttendeeCountBadge } from "../attendee-count/components";
 import { useImmersiveLayout } from "../hooks/use-immersive-layout";
+import { useRouter } from "next/navigation";
 import { AttendeeBroadcastServiceToken } from "../service/type";
+import { WebinarSessionStatus } from "@/webinar/service/enum";
+import { getSessionAction } from "@/webinar/service/action";
 import WebbySalesProPlayer, {
   type WebbySalesProPlayerHandle,
 } from "./ivs/WebbySalesProPlayer";
@@ -55,6 +58,7 @@ export default function AttendeeMobileLayout({
 
   const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   const [isRefreshingStream, setIsRefreshingStream] = useState(false);
   const [viewportSize, setViewportSize] =
@@ -144,13 +148,20 @@ export default function AttendeeMobileLayout({
 
     setIsRefreshingStream(true);
     try {
-      await playerRef.current?.restoreToLive({ forceReload: true });
+      const [sessionResult] = await Promise.all([
+        getSessionAction({ id: broadcast.session.id }),
+        playerRef.current?.restoreToLive({ forceReload: true }),
+      ]);
       window.dispatchEvent(new CustomEvent("webinar:stream:refresh"));
       notifySuccessUiMessage("Reconnected to stream");
+
+      if (sessionResult?.data?.status === WebinarSessionStatus.COMPLETED) {
+        router.push(`/${broadcast.session.id}/completed`);
+      }
     } finally {
       setIsRefreshingStream(false);
     }
-  }, [isRefreshingStream]);
+  }, [isRefreshingStream, broadcast.session.id, router]);
 
   const playerContent = broadcast.stream ? (
     <>
