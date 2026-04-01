@@ -11,7 +11,6 @@ import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-cl
 import { notifySuccessUiMessage } from "@/lib/notify";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
-import { useDeviceType } from "./ivs/hooks/use-device-type";
 import { AttendeeCountBadge } from "../attendee-count/components";
 import { useImmersiveLayout } from "../hooks/use-immersive-layout";
 import { AttendeeBroadcastServiceToken } from "../service/type";
@@ -46,30 +45,6 @@ function readLayoutViewport(): ViewportSize {
   };
 }
 
-function getKeyboardInset(
-  deviceType: ReturnType<typeof useDeviceType>,
-  viewportHeight: number,
-  visualViewport?: VisualViewport | null,
-) {
-  if (!visualViewport) {
-    return 0;
-  }
-
-  if (deviceType === "ios") {
-    const visualViewportBottom = Math.round(
-      visualViewport.height + visualViewport.offsetTop,
-    );
-
-    return Math.max(0, viewportHeight - visualViewportBottom);
-  }
-
-  if (deviceType === "android") {
-    return Math.max(0, viewportHeight - Math.round(visualViewport.height));
-  }
-
-  return 0;
-}
-
 export default function AttendeeMobileLayout({
   broadcast,
   title,
@@ -78,18 +53,12 @@ export default function AttendeeMobileLayout({
   const showOfferSheet =
     offerView === "offer-checkingout" || offerView === "offer-purchased";
 
-  const playerSectionRef = useRef<HTMLElement | null>(null);
   const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
-  const footerRef = useRef<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const [playerSectionHeight, setPlayerSectionHeight] = useState(0);
-  const [footerHeight, setFooterHeight] = useState(0);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isRefreshingStream, setIsRefreshingStream] = useState(false);
   const [viewportSize, setViewportSize] =
     useState<ViewportSize>(readLayoutViewport);
-  const deviceType = useDeviceType();
 
   const {
     advanceLayout,
@@ -104,71 +73,30 @@ export default function AttendeeMobileLayout({
   const shouldRotateImmersivePlayer = shouldRotatePortraitImmersive;
   const shouldRotateSplitLayout = shouldRotatePortraitSplit;
 
-  useEffect(() => {
-    const measure = () => {
-      setPlayerSectionHeight(playerSectionRef.current?.offsetHeight ?? 0);
-      setFooterHeight(footerRef.current?.offsetHeight ?? 0);
-    };
-
-    measure();
-
-    const playerObserver = playerSectionRef.current
-      ? new ResizeObserver(measure)
-      : null;
-    const footerObserver = footerRef.current ? new ResizeObserver(measure) : null;
-
-    if (playerSectionRef.current) {
-      playerObserver?.observe(playerSectionRef.current);
-    }
-
-    if (footerRef.current) {
-      footerObserver?.observe(footerRef.current);
-    }
-
-    window.addEventListener("resize", measure);
-
-    return () => {
-      playerObserver?.disconnect();
-      footerObserver?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-
+  // Track viewport size for split/immersive layout calculations only.
+  // Keyboard avoidance is handled natively by h-[100dvh] + flex layout.
   useEffect(() => {
     const vv = window.visualViewport;
 
     const updateViewport = () => {
-      const layoutViewport = readLayoutViewport();
-
-      setViewportSize((current) => {
-        if (
-          current.width === layoutViewport.width &&
-          current.height === layoutViewport.height
-        ) {
-          return current;
-        }
-
-        return layoutViewport;
-      });
-
-      setKeyboardHeight((current) => {
-        const nextHeight = getKeyboardInset(deviceType, layoutViewport.height, vv);
-        return current === nextHeight ? current : nextHeight;
-      });
+      const next = readLayoutViewport();
+      setViewportSize((current) =>
+        current.width === next.width && current.height === next.height
+          ? current
+          : next,
+      );
     };
 
     updateViewport();
 
     vv?.addEventListener("resize", updateViewport);
-    vv?.addEventListener("scroll", updateViewport);
     window.addEventListener("resize", updateViewport);
 
     return () => {
       vv?.removeEventListener("resize", updateViewport);
-      vv?.removeEventListener("scroll", updateViewport);
       window.removeEventListener("resize", updateViewport);
     };
-  }, [deviceType]);
+  }, []);
 
   const splitViewportWidth = shouldRotateSplitLayout
     ? viewportSize.height
@@ -176,11 +104,7 @@ export default function AttendeeMobileLayout({
   const splitViewportHeight = shouldRotateSplitLayout
     ? viewportSize.width
     : viewportSize.height;
-  const contentHeight = isSplitLayout
-    ? splitViewportHeight
-    : Math.max(0, viewportSize.height - playerSectionHeight);
 
-  const chatPaddingBottom = footerHeight + keyboardHeight;
   const immersiveViewportWidth = shouldRotateImmersivePlayer
     ? viewportSize.height
     : viewportSize.width;
@@ -203,9 +127,17 @@ export default function AttendeeMobileLayout({
     scrollToBottom();
   }, []);
 
+  // Scroll to bottom whenever the chat area resizes — covers keyboard open/close
+  // and layout transitions without any manual keyboard height tracking.
   useEffect(() => {
-    requestAnimationFrame(scrollToBottom);
-  }, [footerHeight, isSplitLayout, keyboardHeight]);
+    const el = scrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() =>
+      requestAnimationFrame(scrollToBottom),
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const handleRefreshStream = useCallback(async () => {
     if (isRefreshingStream) return;
@@ -243,7 +175,9 @@ export default function AttendeeMobileLayout({
   );
 
   return (
-    <div className="relative h-[100svh] overflow-hidden bg-neutral-900 text-neutral-100">
+    // h-[100dvh]: shrinks when the keyboard opens on iOS 15.4+ and Android Chrome 108+,
+    // so the flex layout naturally keeps the footer above the keyboard.
+    <div className="relative h-[100dvh] overflow-hidden bg-neutral-900 text-neutral-100">
       <div
         className={
           isImmersive
@@ -266,7 +200,6 @@ export default function AttendeeMobileLayout({
         }
       >
         <section
-          ref={playerSectionRef}
           className={
             isImmersive
               ? "fixed inset-0 z-40 flex items-center justify-center bg-black transition-[background-color,opacity] duration-300 ease-out"
@@ -287,7 +220,9 @@ export default function AttendeeMobileLayout({
               isImmersive
                 ? {
                     width: immersivePlayerWidth || undefined,
-                    transform: shouldRotateImmersivePlayer ? "rotate(90deg)" : undefined,
+                    transform: shouldRotateImmersivePlayer
+                      ? "rotate(90deg)"
+                      : undefined,
                     transformOrigin: "center center",
                   }
                 : undefined
@@ -349,12 +284,13 @@ export default function AttendeeMobileLayout({
                     ? "relative flex min-h-0 flex-1 flex-col border-l border-white/10 bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
                     : "relative flex min-h-0 flex-1 flex-col bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
                 }
-                style={{ height: contentHeight }}
+                style={
+                  isSplitLayout ? { height: splitViewportHeight } : undefined
+                }
               >
                 <main
                   ref={scrollRef}
                   className="flex-1 overflow-y-auto overscroll-contain touch-pan-y"
-                  style={{ paddingBottom: chatPaddingBottom }}
                 >
                   <ChatMessages scrollRef={scrollRef} autoStick={true} />
                 </main>
@@ -378,11 +314,7 @@ export default function AttendeeMobileLayout({
                   )}
                 </AnimatePresence>
 
-                <footer
-                  ref={footerRef}
-                  className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur"
-                  style={{ bottom: keyboardHeight }}
-                >
+                <footer className="shrink-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur">
                   <ChatComposer />
                 </footer>
               </section>
