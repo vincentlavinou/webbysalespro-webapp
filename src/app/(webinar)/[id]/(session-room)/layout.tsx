@@ -11,7 +11,7 @@ interface SessionRoomLayoutProps {
 }
 
 export default async function SessionRoomLayout({ children, params }: SessionRoomLayoutProps) {
-  const sessionId = (await params).id
+  const routeSessionId = (await params).id
 
   const attendeeSession = await getAttendeeSessionCookie()
   if (!attendeeSession) {
@@ -20,7 +20,7 @@ export default async function SessionRoomLayout({ children, params }: SessionRoo
 
   return (
     <AttendeeSessionProvider initial={attendeeSession}>
-      <WebinarProvider sessionId={sessionId}>
+      <WebinarProvider sessionId={attendeeSession.sessionId || routeSessionId}>
         <div className="relative min-h-screen flex flex-col">
           {/* Background */}
           <div className="fixed inset-0 -z-10">

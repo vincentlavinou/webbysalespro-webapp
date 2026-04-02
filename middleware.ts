@@ -30,36 +30,45 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl, 301);
   }
 
-  // If a join token arrives on a room path (e.g. /[sessionId]/live?t=...&webinar_id=...)
-  // forward it to /join/live which resolves the token, sets the cookie, and redirects correctly.
-  // Flow: room → /join/live → room (with cookie)  ✓
-  // Loop guard: room → /join/live → room (no cookie, _join_redirect set) → register
+  // Room URLs are not canonical entry points. If a token lands on /live, /waiting-room,
+  // /early-access-room, or /completed, always restart from /join/live so the backend can
+  // resolve the token into the correct webinar/session pair and mint a fresh attendee cookie.
   const t = nextUrl.searchParams.get("t");
   const webinarId = nextUrl.searchParams.get("webinar_id");
   const hasRoomSuffix = ROOM_PATH_SUFFIXES.some((s) => nextUrl.pathname.endsWith(s));
   const hasCookie = request.cookies.has(SESSION_COOKIE);
   const alreadyTriedJoin = request.cookies.has(JOIN_REDIRECT_COOKIE);
 
-  // Always route join-link URLs through /join/live — the token resolves the real
-  // sessionId which may differ from the [id] segment in the original join URL.
-  if (t && webinarId && hasRoomSuffix) {
+  if (hasRoomSuffix && webinarId && !t) {
+    const registerUrl = nextUrl.clone();
+    registerUrl.pathname = `/${webinarId}/register`;
+    registerUrl.search = "";
+    const res = NextResponse.redirect(registerUrl);
+    res.cookies.delete(SESSION_COOKIE);
+    res.cookies.delete(JOIN_REDIRECT_COOKIE);
+    return res;
+  }
+
+  // Flow: room → /join/live → room (with fresh cookie) ✓
+  // Loop guard: room → /join/live → room (no attendee cookie, _join_redirect set) → register
+  if (hasRoomSuffix && t && webinarId) {
     // Loop guard: only block on alreadyTriedJoin when there is no session cookie.
     // With a cookie the user has a valid session so there is no loop risk —
     // let it through to /join/live to re-resolve and land on the correct session.
     if (alreadyTriedJoin && !hasCookie) {
-      // Forwarded through /join/live but still no session — send to register.
       const registerUrl = nextUrl.clone();
       registerUrl.pathname = `/${webinarId}/register`;
       registerUrl.search = "";
       const res = NextResponse.redirect(registerUrl);
+      res.cookies.delete(SESSION_COOKIE);
       res.cookies.delete(JOIN_REDIRECT_COOKIE);
       return res;
     }
 
-    // Forward to join handler and mark that we've tried.
     const joinUrl = nextUrl.clone();
     joinUrl.pathname = "/join/live";
     const res = NextResponse.redirect(joinUrl);
+    res.cookies.delete(SESSION_COOKIE);
     res.cookies.set(JOIN_REDIRECT_COOKIE, "1", {
       httpOnly: true,
       sameSite: "lax",

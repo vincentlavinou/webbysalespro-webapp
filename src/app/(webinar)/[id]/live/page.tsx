@@ -21,12 +21,22 @@ interface Props {
 
 export default async function AttendeeLivePage({ params, searchParams }: Props) {
     const resolvedSearch = await searchParams
-    const sessionId = (await params).id
+    const routeSessionId = (await params).id
 
     // Verify cookie exists before server actions run (redirects instead of 401 crash)
     const attendeeSession = await getAttendeeSessionCookie()
     if (!attendeeSession) {
         redirect('/')
+    }
+
+    const sessionId = attendeeSession.sessionId
+    if (routeSessionId !== sessionId) {
+        const params = new URLSearchParams()
+        if (resolvedSearch.ready) {
+            params.set('ready', resolvedSearch.ready)
+        }
+        const suffix = params.toString() ? `?${params.toString()}` : ''
+        redirect(`/${sessionId}/live${suffix}`)
     }
 
     const [session, webinar] = await Promise.all([

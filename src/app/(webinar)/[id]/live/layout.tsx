@@ -17,7 +17,7 @@ interface LiveLayoutProps {
 }
 
 export default async function LiveLayout({ children, params }: LiveLayoutProps) {
-  const sessionId = (await params).id
+  const routeSessionId = (await params).id
 
   const attendeeSession = await getAttendeeSessionCookie()
   if (!attendeeSession) {
@@ -26,7 +26,7 @@ export default async function LiveLayout({ children, params }: LiveLayoutProps) 
 
   return (
     <AttendeeSessionProvider initial={attendeeSession}>
-      <WebinarProvider sessionId={sessionId} disableSse>
+      <WebinarProvider sessionId={attendeeSession.sessionId || routeSessionId} disableSse>
         {children}
       </WebinarProvider>
     </AttendeeSessionProvider>
