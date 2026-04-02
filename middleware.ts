@@ -37,14 +37,17 @@ export function middleware(request: NextRequest) {
   const t = nextUrl.searchParams.get("t");
   const webinarId = nextUrl.searchParams.get("webinar_id");
   const hasRoomSuffix = ROOM_PATH_SUFFIXES.some((s) => nextUrl.pathname.endsWith(s));
+  const hasCookie = request.cookies.has(SESSION_COOKIE);
   const alreadyTriedJoin = request.cookies.has(JOIN_REDIRECT_COOKIE);
 
   // Always route join-link URLs through /join/live — the token resolves the real
   // sessionId which may differ from the [id] segment in the original join URL.
-  // A cookie alone cannot substitute for that resolution step.
   if (t && webinarId && hasRoomSuffix) {
-    if (alreadyTriedJoin) {
-      // Already forwarded through /join/live but still no session — send to register.
+    // Loop guard: only block on alreadyTriedJoin when there is no session cookie.
+    // With a cookie the user has a valid session so there is no loop risk —
+    // let it through to /join/live to re-resolve and land on the correct session.
+    if (alreadyTriedJoin && !hasCookie) {
+      // Forwarded through /join/live but still no session — send to register.
       const registerUrl = nextUrl.clone();
       registerUrl.pathname = `/${webinarId}/register`;
       registerUrl.search = "";
