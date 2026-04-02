@@ -64,7 +64,6 @@ export const AttendeeDesktopLayout = ({
                                 <WebbySalesProPlayer
                                     ref={playerRef}
                                     src={broadcast.stream.config.playback_url}
-                                    poster="/poster.jpg"
                                     ariaLabel="Live Webinar Player"
                                     title={broadcast.webinar.title}
                                     artwork={broadcast.webinar.media
