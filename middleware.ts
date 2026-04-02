@@ -37,10 +37,12 @@ export function middleware(request: NextRequest) {
   const t = nextUrl.searchParams.get("t");
   const webinarId = nextUrl.searchParams.get("webinar_id");
   const hasRoomSuffix = ROOM_PATH_SUFFIXES.some((s) => nextUrl.pathname.endsWith(s));
-  const hasCookie = request.cookies.has(SESSION_COOKIE);
   const alreadyTriedJoin = request.cookies.has(JOIN_REDIRECT_COOKIE);
 
-  if (t && webinarId && hasRoomSuffix && !hasCookie) {
+  // Always route join-link URLs through /join/live — the token resolves the real
+  // sessionId which may differ from the [id] segment in the original join URL.
+  // A cookie alone cannot substitute for that resolution step.
+  if (t && webinarId && hasRoomSuffix) {
     if (alreadyTriedJoin) {
       // Already forwarded through /join/live but still no session — send to register.
       const registerUrl = nextUrl.clone();
@@ -51,7 +53,7 @@ export function middleware(request: NextRequest) {
       return res;
     }
 
-    // First attempt: forward to join handler and mark that we've tried.
+    // Forward to join handler and mark that we've tried.
     const joinUrl = nextUrl.clone();
     joinUrl.pathname = "/join/live";
     const res = NextResponse.redirect(joinUrl);

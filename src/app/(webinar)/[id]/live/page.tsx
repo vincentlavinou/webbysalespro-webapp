@@ -1,6 +1,6 @@
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { getSessionAction, getWebinarFromSession } from "@/webinar/service/action";
 import { LiveContainer } from "@/broadcast/components/LiveContainer";
 import { getOfferSessionsForAttendee } from "@/offer-client/service/action";
@@ -34,16 +34,8 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
         getWebinarFromSession({ id: sessionId }),
     ])
 
-    if (!isSessionPayload(session.data)) {
-        notFound()
-    }
-
-    if (!isWebinarPayload(webinar.data)) {
-        notFound()
-    }
-
-    if (session.data.status === WebinarSessionStatus.CANCELED) {
-        notFound()
+    if (!isSessionPayload(session.data) || !isWebinarPayload(webinar.data) || session.data.status === WebinarSessionStatus.CANCELED) {
+        redirect(`/${attendeeSession.webinarId}/register`)
     }
 
     // Determine client-side redirect target (avoids mid-stream server redirect which breaks hydration)
