@@ -28,9 +28,9 @@
     "@sanity/vision": "^3.90.0",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.5.0",
+    "amazon-ivs-chat-messaging": "^1.1.1",
     "amazon-ivs-player": "^1.50.0",
     "amazon-ivs-web-broadcast": "^1.33.0",
-    "amazon-ivs-chat-messaging": "^1.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.6",
@@ -68,6 +68,6 @@
     "eslint-config-next": "15.3.3",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.3",
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   }
 }

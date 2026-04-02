@@ -10,7 +10,7 @@ export type BroadcastUserProviderProps = {
 export function BroadcastUserProvider({ children, user }: BroadcastUserProviderProps) {
 
     return <BroadcastUserContext.Provider value={{
-        userId: user.user_id,
+        attendanceId: user.user_id,
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,

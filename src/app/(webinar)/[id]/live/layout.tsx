@@ -1,8 +1,8 @@
 import type { Viewport } from "next";
-import { redirect } from "next/navigation";
 import { WebinarProvider } from "@/webinar/providers";
 import { AttendeeSessionProvider } from "@/attendee-session/provider/AttendeeSessionProvider";
 import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
+import { JoinTokenRedirect } from "../JoinTokenRedirect";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -21,7 +21,7 @@ export default async function LiveLayout({ children, params }: LiveLayoutProps) 
 
   const attendeeSession = await getAttendeeSessionCookie()
   if (!attendeeSession) {
-    redirect(`/`)
+    return <JoinTokenRedirect />
   }
 
   return (

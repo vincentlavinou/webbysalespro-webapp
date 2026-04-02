@@ -25,7 +25,7 @@ interface LocalMediaProviderProps {
 export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderProps) {
 
   const { strategy } = useMediaStrategy()
-  const { userId } = useBroadcastUser()
+  const { attendanceId } = useBroadcastUser()
   const [videoStream, setVideoStream] = useState<Media | undefined>(undefined);
   const [audioStream, setAudioStream] = useState<Media | undefined>(undefined);
   const { selectedVideoId, selectedAudioId, setAudioMuted, setVideoMuted, saveSelectedMedia } = useLocalMediaDevices();
@@ -221,7 +221,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     const bytes = new TextEncoder().encode(
       JSON.stringify({
         id: (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)),
-        userId,
+        attendanceId,
         timestamp: new Date().toISOString(),
         type,
         payload,
@@ -233,7 +233,7 @@ export function LocalMediaProvider({ children, stageRef }: LocalMediaProviderPro
     new Uint8Array(event).set(bytes);
 
     videoStream?.stageStream.insertSeiMessage(event, { repeatCount: 5 });
-  }, [videoStream, userId])
+  }, [videoStream, attendanceId])
 
 
   return (

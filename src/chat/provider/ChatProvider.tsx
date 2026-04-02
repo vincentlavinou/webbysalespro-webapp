@@ -26,7 +26,7 @@ export type ChatProviderProps = {
 
 export function ChatProvider({ children, initialChatConfig, currentUserRole = "attendee" }: ChatProviderProps) {
 
-    const { userId } = useBroadcastUser()
+    const { attendanceId } = useBroadcastUser()
     const { recordEvent } = useWebinar()
     const { sessionId } = useBroadcastConfiguration()
     const { region, tokenProvider } = useChatConfiguration()
@@ -119,12 +119,12 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
         }, delay);
     }, []);
 
-    const processMessage = (messages: ChatMessage[], role: "host" | "presenter" | "attendee", userId: string) => {
+    const processMessage = (messages: ChatMessage[], role: "host" | "presenter" | "attendee", attendanceId: string) => {
         const isHostTeam = role === "host" || role === "presenter";
 
         return messages.filter((message) => {
             const messageRecipient = message.attributes?.recipient;
-            const isSelf = message.sender.userId === userId;
+            const isSelf = message.sender.userId === attendanceId;
 
             if (messageRecipient === DefaultChatRecipient.EVERYONE || !messageRecipient) return true;
             if (isSelf) return true;
@@ -180,7 +180,7 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
                 setMessages((prev) => prev.filter((message) => message.id !== event.messageId));
             }),
             room.addListener('userDisconnect', (event: DisconnectUserEvent) => {
-                if(userId === event.userId) {
+                if(attendanceId === event.userId) {
                     manualDisconnectRef.current = true;
                     roomRef.current?.disconnect();
                     setConnected(false);
@@ -207,7 +207,7 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
             setConnected(false);
             setConnectionStatus("disconnected");
         };
-    }, [clearReconnectTimer, room, scheduleReconnect, userId]);
+    }, [clearReconnectTimer, room, scheduleReconnect, attendanceId]);
 
     useEffect(() => {
         connectRef.current = connect;
@@ -227,7 +227,7 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
             setMessages((prev) => [...prev, {
                 id: `local-blocked-${nextLocalMessageIdRef.current}`,
                 sender: {
-                    userId
+                    userId: attendanceId
                 },
                 content: content,
                 attributes: {
@@ -251,7 +251,7 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
         } catch (err) {
             console.error('[IVS Chat] Failed to send message', err);
         }
-    }, [connected, recordEvent, userId, currentUserRole]);
+    }, [connected, recordEvent, attendanceId, currentUserRole]);
 
     const disconnect = useCallback(() => {
         manualDisconnectRef.current = true;
@@ -282,9 +282,9 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
     }, [disconnect, clearReconnectTimer]);
 
     useEffect(() => {
-        const filteredMessages = processMessage(messages, currentUserRole, userId)
+        const filteredMessages = processMessage(messages, currentUserRole, attendanceId)
         setFilteredMessages(filteredMessages)
-    }, [messages, setFilteredMessages, currentUserRole, userId])
+    }, [messages, setFilteredMessages, currentUserRole, attendanceId])
 
     useEffect(() => {
         if (initialChatConfig) {

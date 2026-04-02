@@ -1,6 +1,7 @@
 'use client';
 
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
+import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
 import type { FanbasisCheckoutDto } from '@/offer-client/service/type';
 import { AutoCheckout, CheckoutConfig, CheckoutProvider } from '@fanbasis/checkout-react';
 import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
@@ -61,6 +62,7 @@ const FanbasisCardCheckout = memo(function FanbasisCardCheckout({
 export function FanBasisCheckout() {
   const { user, selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
     useOfferSessionClient();
+  const { attendanceId } = useBroadcastUser();
 
   const { resolvedTheme } = useTheme();
   const [financing, setFinancing] = useState(false);
@@ -88,6 +90,12 @@ export function FanBasisCheckout() {
       productId: payload.fanbasis_product_id!,
       checkoutSessionSecret: payload.checkout_session_secret!,
       environment: isProduction ? ('production' as const) : ('sandbox' as const),
+      metadata: {
+        attendance_id: attendanceId,
+        ...(user?.email     ? { email:      user.email }      : {}),
+        ...(user?.first_name ? { first_name: user.first_name } : {}),
+        ...(user?.last_name  ? { last_name:  user.last_name }  : {}),
+      },
       containerOptions: {
         width: '100%',
         height: '480px',
@@ -102,12 +110,16 @@ export function FanBasisCheckout() {
     } as CheckoutConfig;
   }, [
     accentColor,
+    attendanceId,
     canUseCardCheckout,
     isProduction,
     payload.checkout_session_secret,
     payload.fanbasis_creator_id,
     payload.fanbasis_product_id,
     resolvedTheme,
+    user?.email,
+    user?.first_name,
+    user?.last_name,
   ]);
 
   const handleClose = cancelCheckout;
@@ -124,8 +136,7 @@ export function FanBasisCheckout() {
   }, []);
 
   const handleCardSuccess = useCallback((data: {transactionId: string, metadata: unknown}) => {
-    console.log(JSON.stringify(data.metadata))
-    handleCheckoutSuccess(data.transactionId);
+    handleCheckoutSuccess(data.transactionId, false);
   }, [handleCheckoutSuccess]);
 
   const handleCardError = useCallback(async (error: Error) => {

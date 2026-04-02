@@ -1,9 +1,9 @@
 import Image from "next/image"
-import { redirect } from "next/navigation"
 import { WebinarFooter } from "@/webinar/components"
 import { WebinarProvider } from "@/webinar/providers"
 import { AttendeeSessionProvider } from "@/attendee-session/provider/AttendeeSessionProvider"
 import { getAttendeeSessionCookie } from "@/lib/attendee-cookie"
+import { JoinTokenRedirect } from "../JoinTokenRedirect"
 
 interface SessionRoomLayoutProps {
   children: React.ReactNode
@@ -15,8 +15,7 @@ export default async function SessionRoomLayout({ children, params }: SessionRoo
 
   const attendeeSession = await getAttendeeSessionCookie()
   if (!attendeeSession) {
-    // No session — user needs to re-enter via their join link
-    redirect(`/`)
+    return <JoinTokenRedirect />
   }
 
   return (

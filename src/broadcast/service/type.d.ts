@@ -101,7 +101,7 @@ export type Media = {
 
 export type LocalStreamEvent = {
     id: string,
-    userId: string
+    attendanceId: string
     timestamp: string,
     type: LocalStreamEventType
     payload: Record<string, unknown>
