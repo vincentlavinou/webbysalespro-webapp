@@ -5,7 +5,7 @@ const CANONICAL_HOST = "events.webbysalespro.com";
 const NETLIFY_HOST_SUFFIXES = [".netlify.app", ".netlify.com"];
 
 // Room paths that may receive a join token directly (e.g. from email links or backend-generated URLs).
-const ROOM_PATH_SUFFIXES = ["/live", "/waiting-room", "/early-access-room"];
+const ROOM_PATH_SUFFIXES = ["/live", "/waiting-room", "/early-access-room", "/completed"];
 
 const SESSION_COOKIE = "attendee_session";
 // Short-lived cookie set when we forward to /join/live — prevents an infinite
