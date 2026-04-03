@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { JoinResolveResponse } from '@/attendee-session/service/type'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
-import { getWebinar, webinarAppUrl } from '@/webinar/service'
+import { getWebinar } from '@/webinar/service'
 import { isWebinarPayload } from '@/webinar/service/guards'
 import { SeriesSession } from '@/webinar/service'
 import { DateTime } from 'luxon'
@@ -15,7 +15,8 @@ const SESSION_COOKIE = 'attendee_session'
 const JOIN_REDIRECT_COOKIE = '_join_redirect'
 
 function createRedirectUrl(request: NextRequest, pathname: string) {
-    const url = new URL(pathname, webinarAppUrl.replace(/\/+$/, ''))
+    const url = request.nextUrl.clone()
+    url.pathname = pathname
     url.search = ''
     return url
 }
