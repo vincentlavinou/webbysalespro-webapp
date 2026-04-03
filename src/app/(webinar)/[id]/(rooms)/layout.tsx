@@ -6,7 +6,6 @@ import { getSessionAction, getWebinarFromSession } from '@/webinar/service/actio
 import { isSessionPayload, isWebinarPayload } from '@/webinar/service/guards'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { resolveRoomSegment } from '@/lib/resolve-room-path'
-import { resolveWebinarIdFromSession } from '@/lib/resolve-webinar-id-from-session'
 
 interface RoomsLayoutProps {
     children: React.ReactNode
@@ -45,12 +44,6 @@ export default async function RoomsLayout({ children, params }: RoomsLayoutProps
         if (webinarId) {
             redirect(`/${webinarId}/general/join`)
         }
-
-        const resolvedWebinarId = await resolveWebinarIdFromSession(routeSessionId)
-        if (resolvedWebinarId) {
-            redirect(`/${resolvedWebinarId}/general/join`)
-        }
-
         redirect('/webinar-not-found')
     }
 
