@@ -1,12 +1,12 @@
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
-import { redirect } from "next/navigation";
 import { getSessionAction, getWebinarFromSession } from "@/webinar/service/action";
 import { LiveContainer } from "@/broadcast/components/LiveContainer";
 import { getOfferSessionsForAttendee } from "@/offer-client/service/action";
 import { isSessionPayload, isWebinarPayload } from "@/webinar/service/guards";
 import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
 import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
+import { HardRedirect } from "../HardRedirect";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,7 +37,7 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
             params.set('ready', resolvedSearch.ready)
         }
         const suffix = params.toString() ? `?${params.toString()}` : ''
-        redirect(`/${sessionId}/live${suffix}`)
+        return <HardRedirect to={`/${sessionId}/live${suffix}`} />
     }
 
     const [session, webinar] = await Promise.all([
@@ -46,7 +46,7 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
     ])
 
     if (!isSessionPayload(session.data) || !isWebinarPayload(webinar.data) || session.data.status === WebinarSessionStatus.CANCELED) {
-        redirect(`/${attendeeSession.webinarId}/register`)
+        return <HardRedirect to={`/${attendeeSession.webinarId}/register`} />
     }
 
     // Determine client-side redirect target (avoids mid-stream server redirect which breaks hydration)
