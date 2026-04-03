@@ -130,6 +130,10 @@ const sessionIdSchema = z.object({
     id: z.string(),
 })
 
+const sessionToWebinarSchema = z.object({
+    session_id: z.string(),
+})
+
 export const getSessionAction = actionClient.inputSchema(sessionIdSchema).action(async ({parsedInput}) => {
     const { getAttendeeAuthHeader } = await import('@/lib/attendee-request')
     const authHeader = await getAttendeeAuthHeader()
@@ -153,6 +157,17 @@ export const getWebinarFromSession = actionClient
         })
         const checkedResponse = await handleStatus(response)
         return await checkedResponse.json() as Webinar
+    })
+
+export const getPublicWebinarIdFromSessionAction = actionClient
+    .inputSchema(sessionToWebinarSchema)
+    .action(async ({ parsedInput }) => {
+        const response = await fetch(
+            `${webinarApiUrl}/v1/sessions/${parsedInput.session_id}/webinar/id/`,
+            { cache: 'no-store' }
+        )
+        const checkedResponse = await handleStatus(response)
+        return await checkedResponse.json() as { session_id: string; webinar_id: string }
     })
 
 export type RegisterForWebinarInput = z.infer<typeof registerForWebinarInput>;

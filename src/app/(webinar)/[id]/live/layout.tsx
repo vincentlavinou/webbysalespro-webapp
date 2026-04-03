@@ -21,7 +21,7 @@ export default async function LiveLayout({ children, params }: LiveLayoutProps) 
 
   const attendeeSession = await getAttendeeSessionCookie()
   if (!attendeeSession) {
-    return <JoinTokenRedirect />
+    return <JoinTokenRedirect sessionId={routeSessionId} />
   }
 
   return (

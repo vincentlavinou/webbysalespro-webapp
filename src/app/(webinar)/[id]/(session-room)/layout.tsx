@@ -15,7 +15,7 @@ export default async function SessionRoomLayout({ children, params }: SessionRoo
 
   const attendeeSession = await getAttendeeSessionCookie()
   if (!attendeeSession) {
-    return <JoinTokenRedirect />
+    return <JoinTokenRedirect sessionId={routeSessionId} />
   }
 
   return (

@@ -6,6 +6,7 @@ import { LiveContainer } from "@/broadcast/components/LiveContainer";
 import { getOfferSessionsForAttendee } from "@/offer-client/service/action";
 import { isSessionPayload, isWebinarPayload } from "@/webinar/service/guards";
 import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
+import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -26,7 +27,7 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
     // Verify cookie exists before server actions run (redirects instead of 401 crash)
     const attendeeSession = await getAttendeeSessionCookie()
     if (!attendeeSession) {
-        redirect('/')
+        return <WaitingRoomShimmer title="Redirecting…" />
     }
 
     const sessionId = attendeeSession.sessionId
