@@ -10,15 +10,20 @@ const webinarApiUrl = process.env.WEBINAR_BASE_API_URL
     ?? process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL
     ?? 'https://api.webisalespro.com/api'
 
+const webinarAppUrl = (
+    process.env.WEBINAR_APP_URL
+    ?? process.env.NEXT_PUBLIC_WEBINAR_APP_URL
+    ?? process.env.APP_URL
+    ?? process.env.NEXT_PUBLIC_APP_URL
+    ?? 'https://events.webisalespro.com'
+).replace(/\/+$/, '')
+
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 const SESSION_COOKIE = 'attendee_session'
 const JOIN_REDIRECT_COOKIE = '_join_redirect'
 
-function createRedirectUrl(request: NextRequest, pathname: string) {
-    const url = request.nextUrl.clone()
-    url.pathname = pathname
-    url.search = ''
-    return url
+function createRedirectUrl(pathname: string) {
+    return new URL(pathname, webinarAppUrl)
 }
 
 function createRedirectResponse(url: URL, attendeeSession?: {
@@ -69,8 +74,8 @@ export async function GET(request: NextRequest) {
 
     if (!rawJoinToken || !webinarId) {
         const url = webinarId
-            ? createRedirectUrl(request, `/${webinarId}/general/join`)
-            : createRedirectUrl(request, '/webinar-not-found')
+            ? createRedirectUrl(`/${webinarId}/general/join`)
+            : createRedirectUrl('/webinar-not-found')
         console.info('[join/live] missing join params', {
             requestedPath,
             requestedRoomSessionId,
@@ -88,7 +93,7 @@ export async function GET(request: NextRequest) {
             { cache: 'no-store' }
         )
         if (!response.ok) {
-            const url = createRedirectUrl(request, `/${webinarId}/general/join`)
+            const url = createRedirectUrl(`/${webinarId}/general/join`)
             console.info('[join/live] resolve failed', {
                 requestedPath,
                 requestedRoomSessionId,
@@ -100,7 +105,7 @@ export async function GET(request: NextRequest) {
         }
         data = await response.json() as JoinResolveResponse
     } catch {
-        const url = createRedirectUrl(request, `/${webinarId}/general/join`)
+        const url = createRedirectUrl(`/${webinarId}/general/join`)
         console.info('[join/live] resolve threw', {
             requestedPath,
             requestedRoomSessionId,
@@ -127,7 +132,7 @@ export async function GET(request: NextRequest) {
     try {
         hydratedSession = await getHydratedSession(sessionId, auth.join_session_token)
     } catch {
-        const url = createRedirectUrl(request, `/${webinarId}/general/join`)
+        const url = createRedirectUrl(`/${webinarId}/general/join`)
         console.info('[join/live] hydrate failed', {
             requestedPath,
             requestedRoomSessionId,
@@ -153,7 +158,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (status === WebinarSessionStatus.CANCELED) {
-        const url = createRedirectUrl(request, `/${webinarId}/register`)
+        const url = createRedirectUrl(`/${webinarId}/register`)
         console.info('[join/live] redirect canceled', {
             requestedPath,
             requestedRoomSessionId,
@@ -165,7 +170,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status === WebinarSessionStatus.COMPLETED) {
-        const url = createRedirectUrl(request, `/${sessionId}/completed`)
+        const url = createRedirectUrl(`/${sessionId}/completed`)
         console.info('[join/live] redirect completed', {
             requestedPath,
             requestedRoomSessionId,
@@ -177,7 +182,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status === WebinarSessionStatus.IN_PROGRESS) {
-        const url = createRedirectUrl(request, `/${sessionId}/live`)
+        const url = createRedirectUrl(`/${sessionId}/live`)
         console.info('[join/live] redirect live', {
             requestedPath,
             requestedRoomSessionId,
@@ -199,7 +204,7 @@ export async function GET(request: NextRequest) {
     }).minus({ minutes: waitingRoomMinutes })
 
     if (waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
-        const url = createRedirectUrl(request, `/${sessionId}/early-access-room`)
+        const url = createRedirectUrl(`/${sessionId}/early-access-room`)
         console.info('[join/live] redirect early-access-room', {
             requestedPath,
             requestedRoomSessionId,
@@ -211,7 +216,7 @@ export async function GET(request: NextRequest) {
         return createRedirectResponse(url, attendeeSession)
     }
 
-    const url = createRedirectUrl(request, `/${sessionId}/waiting-room`)
+    const url = createRedirectUrl(`/${sessionId}/waiting-room`)
     console.info('[join/live] redirect waiting-room', {
         requestedPath,
         requestedRoomSessionId,
