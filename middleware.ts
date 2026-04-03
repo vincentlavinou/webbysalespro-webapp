@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { webinarAppUrl } from "@/webinar/service";
 
 const CANONICAL_HOST = "events.webbysalespro.com";
 const NETLIFY_HOST_SUFFIXES = [".netlify.app", ".netlify.com"];
@@ -7,6 +8,12 @@ const NETLIFY_HOST_SUFFIXES = [".netlify.app", ".netlify.com"];
 // Room paths that may receive a join token directly (e.g. from email links or backend-generated URLs).
 const ROOM_PATH_SUFFIXES = ["/live", "/waiting-room", "/early-access-room", "/completed"];
 const SESSION_COOKIE = "attendee_session";
+
+function createAppRedirectUrl(pathname: string) {
+  const url = new URL(pathname, webinarAppUrl.replace(/\/+$/, ""));
+  url.search = "";
+  return url;
+}
 
 function isNetlifyHost(hostname: string) {
   return NETLIFY_HOST_SUFFIXES.some(
@@ -35,8 +42,9 @@ export function middleware(request: NextRequest) {
   const hasCookie = request.cookies.has(SESSION_COOKIE);
 
   if (hasRoomSuffix && t && webinarId && !hasCookie) {
-    const joinUrl = nextUrl.clone();
-    joinUrl.pathname = "/join/live";
+    const joinUrl = createAppRedirectUrl("/join/live");
+    joinUrl.searchParams.set("t", t);
+    joinUrl.searchParams.set("webinar_id", webinarId);
     return NextResponse.redirect(joinUrl);
   }
 

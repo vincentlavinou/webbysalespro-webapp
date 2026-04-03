@@ -7,10 +7,17 @@ import { isSessionPayload, isWebinarPayload } from '@/webinar/service/guards'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { resolveRoomSegment } from '@/lib/resolve-room-path'
 import { resolveWebinarIdFromSession } from '@/lib/resolve-webinar-id-from-session'
+import { webinarAppUrl } from '@/webinar/service'
 
 interface RoomsLayoutProps {
     children: React.ReactNode
     params: Promise<{ id: string }>
+}
+
+function createAppRedirectUrl(pathname: string) {
+    const url = new URL(pathname, webinarAppUrl.replace(/\/+$/, ''))
+    url.search = ''
+    return url.toString()
 }
 
 /**
@@ -40,18 +47,21 @@ export default async function RoomsLayout({ children, params }: RoomsLayoutProps
         const webinarId = headerStore.get('x-webinar-id')
 
         if (joinToken && webinarId) {
-            redirect(`/join/live?t=${encodeURIComponent(joinToken)}&webinar_id=${encodeURIComponent(webinarId)}`)
+            const url = new URL('/join/live', webinarAppUrl.replace(/\/+$/, ''))
+            url.searchParams.set('t', joinToken)
+            url.searchParams.set('webinar_id', webinarId)
+            redirect(url.toString())
         }
         if (webinarId) {
-            redirect(`/${webinarId}/general/join`)
+            redirect(createAppRedirectUrl(`/${webinarId}/general/join`))
         }
 
         const resolvedWebinarId = await resolveWebinarIdFromSession(routeSessionId)
         if (resolvedWebinarId) {
-            redirect(`/${resolvedWebinarId}/general/join`)
+            redirect(createAppRedirectUrl(`/${resolvedWebinarId}/general/join`))
         }
 
-        redirect('/webinar-not-found')
+        redirect(createAppRedirectUrl('/webinar-not-found'))
     }
 
     const sessionId = cookie.sessionId || routeSessionId
@@ -64,7 +74,7 @@ export default async function RoomsLayout({ children, params }: RoomsLayoutProps
     const session = isSessionPayload(sessionResult.data) ? sessionResult.data : undefined
 
     if (session?.status === WebinarSessionStatus.CANCELED) {
-        redirect(`/${cookie.webinarId}/register`)
+        redirect(createAppRedirectUrl(`/${cookie.webinarId}/register`))
     }
 
     const webinarSettings = isWebinarPayload(webinarResult.data)
@@ -78,7 +88,7 @@ export default async function RoomsLayout({ children, params }: RoomsLayoutProps
         const currentRoom = pathname.split('/').at(-1) ?? ''
 
         if (currentRoom !== canonicalRoom) {
-            redirect(`/${sessionId}/${canonicalRoom}`)
+            redirect(createAppRedirectUrl(`/${sessionId}/${canonicalRoom}`))
         }
     }
 
