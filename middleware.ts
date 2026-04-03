@@ -78,7 +78,9 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next()
+  res.headers.set('x-pathname', nextUrl.pathname)
+  return res
 }
 
 export const config = {
