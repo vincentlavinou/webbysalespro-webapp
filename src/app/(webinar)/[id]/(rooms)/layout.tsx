@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { AttendeeSessionProvider } from '@/attendee-session/provider/AttendeeSessionProvider'
 import { getAttendeeSessionCookie } from '@/lib/attendee-cookie'
+import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer'
 import { getSessionAction, getWebinarFromSession } from '@/webinar/service/action'
 import { isSessionPayload, isWebinarPayload } from '@/webinar/service/guards'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
@@ -34,17 +35,7 @@ export default async function RoomsLayout({ children, params }: RoomsLayoutProps
 
     const cookie = await getAttendeeSessionCookie()
     if (!cookie) {
-        const headerStore = await headers()
-        const joinToken = headerStore.get('x-join-token')
-        const webinarId = headerStore.get('x-webinar-id')
-
-        if (joinToken && webinarId) {
-            redirect(`/join/live?t=${encodeURIComponent(joinToken)}&webinar_id=${encodeURIComponent(webinarId)}`)
-        }
-        if (webinarId) {
-            redirect(`/${webinarId}/general/join`)
-        }
-        redirect('/webinar-not-found')
+        return <WaitingRoomShimmer title="Resolving your access..." />
     }
 
     const sessionId = cookie.sessionId || routeSessionId

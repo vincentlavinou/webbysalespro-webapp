@@ -48,9 +48,7 @@ export async function GET(request: NextRequest) {
     const requestedRoomSessionId = requestedPath.split('/').filter(Boolean)[0] ?? null
 
     if (!rawJoinToken || !webinarId) {
-        const url = webinarId
-            ? createRedirectUrl(`/${webinarId}/general/join`)
-            : createRedirectUrl('/webinar-not-found')
+        const url = createRedirectUrl('/')
         console.info('[join/live] missing join params', {
             requestedPath,
             requestedRoomSessionId,
@@ -68,7 +66,7 @@ export async function GET(request: NextRequest) {
             { cache: 'no-store' }
         )
         if (!response.ok) {
-            const url = createRedirectUrl(`/${webinarId}/general/join`)
+            const url = createRedirectUrl(`/${webinarId}/register`)
             console.info('[join/live] resolve failed', {
                 requestedPath,
                 requestedRoomSessionId,
@@ -80,7 +78,7 @@ export async function GET(request: NextRequest) {
         }
         data = await response.json() as JoinResolveResponse
     } catch {
-        const url = createRedirectUrl(`/${webinarId}/general/join`)
+        const url = createRedirectUrl(`/${webinarId}/register`)
         console.info('[join/live] resolve threw', {
             requestedPath,
             requestedRoomSessionId,
@@ -115,7 +113,7 @@ export async function GET(request: NextRequest) {
     try {
         hydratedSession = await getHydratedSession(sessionId, auth.join_session_token)
     } catch {
-        const url = createRedirectUrl(`/${webinarId}/general/join`)
+        const url = createRedirectUrl(`/${webinarId}/register`)
         console.info('[join/live] hydrate failed', {
             requestedPath,
             requestedRoomSessionId,

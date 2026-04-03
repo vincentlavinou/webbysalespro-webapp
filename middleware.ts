@@ -18,23 +18,7 @@ function isNetlifyHost(hostname: string) {
   );
 }
 
-const webinarApiUrl =
-  process.env.WEBINAR_BASE_API_URL ??
-  process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL ??
-  'https://api.webisalespro.com/api'
-
-async function resolveWebinarIdFromSession(sessionId: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${webinarApiUrl}/v1/sessions/${sessionId}/webinar/id/`, { cache: 'no-store' })
-    if (!res.ok) return null
-    const data = await res.json() as { session_id: string; webinar_id: string }
-    return data.webinar_id ?? null
-  } catch {
-    return null
-  }
-}
-
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { nextUrl } = request;
   const hostname = nextUrl.hostname.toLowerCase();
 
@@ -56,10 +40,10 @@ export async function middleware(request: NextRequest) {
   const alreadyTriedJoin = request.cookies.has(JOIN_REDIRECT_COOKIE);
 
   if (hasRoomSuffix && webinarId && !t) {
-    const joinUrl = nextUrl.clone();
-    joinUrl.pathname = `/${webinarId}/general/join`;
-    joinUrl.search = "";
-    const res = NextResponse.redirect(joinUrl);
+    const registerUrl = nextUrl.clone();
+    registerUrl.pathname = `/${webinarId}/register`;
+    registerUrl.search = "";
+    const res = NextResponse.redirect(registerUrl);
     res.cookies.delete(SESSION_COOKIE);
     res.cookies.delete(JOIN_REDIRECT_COOKIE);
     return res;
@@ -72,10 +56,10 @@ export async function middleware(request: NextRequest) {
     // With a cookie the user has a valid session so there is no loop risk —
     // let it through to /join/live to re-resolve and land on the correct session.
     if (alreadyTriedJoin && !hasCookie) {
-      const joinUrl = nextUrl.clone();
-      joinUrl.pathname = `/${webinarId}/general/join`;
-      joinUrl.search = "";
-      const res = NextResponse.redirect(joinUrl);
+      const registerUrl = nextUrl.clone();
+      registerUrl.pathname = `/${webinarId}/register`;
+      registerUrl.search = "";
+      const res = NextResponse.redirect(registerUrl);
       res.cookies.delete(SESSION_COOKIE);
       res.cookies.delete(JOIN_REDIRECT_COOKIE);
       return res;
@@ -94,23 +78,8 @@ export async function middleware(request: NextRequest) {
     return res;
   }
 
-  // Stale room URL: no cookie, no token, no webinar_id in the URL.
-  // Resolve the webinar from the session ID so we can send the user to general/join.
-  if (hasRoomSuffix && !hasCookie && !t && !webinarId) {
-    const sessionId = nextUrl.pathname.split('/').filter(Boolean)[0]
-    const resolvedWebinarId = await resolveWebinarIdFromSession(sessionId)
-    const target = nextUrl.clone()
-    target.search = ''
-    target.pathname = resolvedWebinarId
-      ? `/${resolvedWebinarId}/general/join`
-      : '/webinar-not-found'
-    return NextResponse.redirect(target)
-  }
-
   const res = NextResponse.next()
   res.headers.set('x-pathname', nextUrl.pathname)
-  if (t) res.headers.set('x-join-token', t)
-  if (webinarId) res.headers.set('x-webinar-id', webinarId)
   return res
 }
 
