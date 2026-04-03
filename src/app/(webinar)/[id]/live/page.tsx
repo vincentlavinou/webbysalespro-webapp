@@ -48,20 +48,20 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
         redirect(`/${attendeeSession.webinarId}/register`)
     }
 
-    // When ready=1 the client already confirmed the session is live.
-    // For direct /live requests without ready=1, redirect on the server before
-    // any live-only client bootstrapping runs.
+    // Determine client-side redirect target (avoids mid-stream server redirect which breaks hydration)
+    // When ready=1 the client already confirmed the session is live — skip waiting-room redirect.
+    let clientRedirectTo: string | undefined
     if (resolvedSearch.ready !== '1') {
         const waitingRoomOpensAt = DateTime.fromISO(session.data.scheduled_start, { zone: session.data.timezone })
             .minus({ minutes: webinar.data.settings?.waiting_room_start_time || 15 });
 
         if (session.data.status === WebinarSessionStatus.COMPLETED) {
-            redirect(`/${sessionId}/completed`)
+            clientRedirectTo = `/${sessionId}/completed`
         } else if (session.data.status === WebinarSessionStatus.SCHEDULED &&
             waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
-            redirect(`/${sessionId}/early-access-room`)
+            clientRedirectTo = `/${sessionId}/early-access-room`
         } else if (session.data.status === WebinarSessionStatus.SCHEDULED) {
-            redirect(`/${sessionId}/waiting-room`)
+            clientRedirectTo = `/${sessionId}/waiting-room`
         }
     }
 
@@ -78,6 +78,7 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
       sessionId={sessionId}
       webinarTitle={webinar.data.title}
       offers={offersData}
+      clientRedirectTo={clientRedirectTo}
     />
   );
 }

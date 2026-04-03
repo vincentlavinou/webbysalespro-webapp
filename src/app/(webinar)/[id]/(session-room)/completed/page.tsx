@@ -2,28 +2,15 @@ import { CheckCircle2 } from "lucide-react";
 import { getWebinarFromSession } from "@/webinar/service/action";
 import { isWebinarPayload } from "@/webinar/service/guards";
 import { WebinarDetailCard } from "@/webinar/components/WebinarDetailCard";
-import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
-import { JoinTokenRedirect } from "../../JoinTokenRedirect";
 
 interface CompletedPageProps {
   params: Promise<{ id: string }>;
 }
 
 export default async function CompletedPage(props: CompletedPageProps) {
-  const attendeeSession = await getAttendeeSessionCookie();
-  if (!attendeeSession) {
-    return <JoinTokenRedirect />;
-  }
-
   const sessionId = (await props.params).id;
-  let webinar = null;
-
-  try {
-    const webinarResult = await getWebinarFromSession({ id: attendeeSession.sessionId || sessionId });
-    webinar = webinarResult && isWebinarPayload(webinarResult.data) ? webinarResult.data : null;
-  } catch {
-    webinar = null;
-  }
+  const webinarResult = await getWebinarFromSession({ id: sessionId });
+  const webinar = webinarResult && isWebinarPayload(webinarResult.data) ? webinarResult.data : null;
 
   return (
     <div className="max-w-5xl mx-auto w-full px-4 py-8">
