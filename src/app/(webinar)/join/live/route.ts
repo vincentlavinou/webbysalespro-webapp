@@ -4,7 +4,6 @@ import { JoinResolveResponse } from '@/attendee-session/service/type'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { getWebinar } from '@/webinar/service'
 import { isWebinarPayload } from '@/webinar/service/guards'
-import { SeriesSession } from '@/webinar/service'
 import { DateTime } from 'luxon'
 
 const webinarApiUrl = process.env.WEBINAR_BASE_API_URL
@@ -25,37 +24,13 @@ function createRedirectUrl(pathname: string) {
     return new URL(pathname, webinarAppUrl)
 }
 
-async function getHydratedSession(sessionId: string, joinSessionToken: string) {
-    const response = await fetch(`${webinarApiUrl}/v1/sessions/${sessionId}/attendee-hydrate/`, {
-        headers: {
-            Authorization: `Bearer ${joinSessionToken}`,
-        },
-        cache: 'no-store',
-    })
-
-    if (!response.ok) {
-        throw new Error('Unable to hydrate attendee session')
-    }
-
-    return await response.json() as SeriesSession
-}
-
 export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl
     const rawJoinToken = searchParams.get('t')
     const webinarId = searchParams.get('webinar_id')
-    const requestedPath = request.nextUrl.pathname
-    const requestedRoomSessionId = requestedPath.split('/').filter(Boolean)[0] ?? null
 
     if (!rawJoinToken || !webinarId) {
         const url = createRedirectUrl('/')
-        console.info('[join/live] missing join params', {
-            requestedPath,
-            requestedRoomSessionId,
-            webinarId,
-            hasToken: Boolean(rawJoinToken),
-            redirectTo: url.toString(),
-        })
         return NextResponse.redirect(url)
     }
 
@@ -67,29 +42,17 @@ export async function GET(request: NextRequest) {
         )
         if (!response.ok) {
             const url = createRedirectUrl(`/${webinarId}/register`)
-            console.info('[join/live] resolve failed', {
-                requestedPath,
-                requestedRoomSessionId,
-                webinarId,
-                status: response.status,
-                redirectTo: url.toString(),
-            })
             return NextResponse.redirect(url)
         }
         data = await response.json() as JoinResolveResponse
     } catch {
         const url = createRedirectUrl(`/${webinarId}/register`)
-        console.info('[join/live] resolve threw', {
-            requestedPath,
-            requestedRoomSessionId,
-            webinarId,
-            redirectTo: url.toString(),
-        })
         return NextResponse.redirect(url)
     }
 
     const { effective_session, auth, attendance } = data
     const sessionId = effective_session.id
+    const status = effective_session.status as WebinarSessionStatus
     const joinUrl = `${request.nextUrl.pathname}${request.nextUrl.search}`
 
     // Set the persistent httpOnly cookie
@@ -109,68 +72,18 @@ export async function GET(request: NextRequest) {
         maxAge: COOKIE_MAX_AGE,
     })
 
-    let hydratedSession: SeriesSession
-    try {
-        hydratedSession = await getHydratedSession(sessionId, auth.join_session_token)
-    } catch {
-        const url = createRedirectUrl(`/${webinarId}/register`)
-        console.info('[join/live] hydrate failed', {
-            requestedPath,
-            requestedRoomSessionId,
-            webinarId,
-            resolvedSessionId: effective_session.id,
-            resolvedStatus: effective_session.status,
-            redirectTo: url.toString(),
-        })
-        return NextResponse.redirect(url)
-    }
-
-    const status = hydratedSession.status as WebinarSessionStatus
-
-    console.info('[join/live] token resolved', {
-        requestedPath,
-        requestedRoomSessionId,
-        webinarId,
-        resolvedSessionId: effective_session.id,
-        resolvedStatus: effective_session.status,
-        hydratedSessionId: hydratedSession.id,
-        hydratedStatus: hydratedSession.status,
-        attendanceId: attendance.id,
-    })
-
     if (status === WebinarSessionStatus.CANCELED) {
         const url = createRedirectUrl(`/${webinarId}/register`)
-        console.info('[join/live] redirect canceled', {
-            requestedPath,
-            requestedRoomSessionId,
-            webinarId,
-            hydratedSessionId: hydratedSession.id,
-            redirectTo: url.toString(),
-        })
         return NextResponse.redirect(url)
     }
 
     if (status === WebinarSessionStatus.COMPLETED) {
         const url = createRedirectUrl(`/${sessionId}/completed`)
-        console.info('[join/live] redirect completed', {
-            requestedPath,
-            requestedRoomSessionId,
-            webinarId,
-            hydratedSessionId: hydratedSession.id,
-            redirectTo: url.toString(),
-        })
         return NextResponse.redirect(url)
     }
 
     if (status === WebinarSessionStatus.IN_PROGRESS) {
         const url = createRedirectUrl(`/${sessionId}/live`)
-        console.info('[join/live] redirect live', {
-            requestedPath,
-            requestedRoomSessionId,
-            webinarId,
-            hydratedSessionId: hydratedSession.id,
-            redirectTo: url.toString(),
-        })
         return NextResponse.redirect(url)
     }
 
@@ -180,31 +93,15 @@ export async function GET(request: NextRequest) {
         ? (webinar.settings?.waiting_room_start_time ?? 15)
         : 15
 
-    const waitingRoomOpensAt = DateTime.fromISO(hydratedSession.scheduled_start, {
-        zone: hydratedSession.timezone,
+    const waitingRoomOpensAt = DateTime.fromISO(effective_session.scheduled_start, {
+        zone: effective_session.timezone,
     }).minus({ minutes: waitingRoomMinutes })
 
     if (waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) {
         const url = createRedirectUrl(`/${sessionId}/early-access-room`)
-        console.info('[join/live] redirect early-access-room', {
-            requestedPath,
-            requestedRoomSessionId,
-            webinarId,
-            hydratedSessionId: hydratedSession.id,
-            waitingRoomMinutes,
-            redirectTo: url.toString(),
-        })
         return NextResponse.redirect(url)
     }
 
     const url = createRedirectUrl(`/${sessionId}/waiting-room`)
-    console.info('[join/live] redirect waiting-room', {
-        requestedPath,
-        requestedRoomSessionId,
-        webinarId,
-        hydratedSessionId: hydratedSession.id,
-        waitingRoomMinutes,
-        redirectTo: url.toString(),
-    })
     return NextResponse.redirect(url)
 }
