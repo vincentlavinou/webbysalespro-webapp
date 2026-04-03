@@ -2,7 +2,7 @@ import type { Viewport } from "next";
 import { WebinarProvider } from "@/webinar/providers";
 import { AttendeeSessionProvider } from "@/attendee-session/provider/AttendeeSessionProvider";
 import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
-import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
+import { JoinTokenRedirect } from "../JoinTokenRedirect";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -21,7 +21,7 @@ export default async function LiveLayout({ children, params }: LiveLayoutProps) 
 
   const attendeeSession = await getAttendeeSessionCookie()
   if (!attendeeSession) {
-    return <WaitingRoomShimmer title="Resolving your access..." />
+    return <JoinTokenRedirect />
   }
 
   return (
