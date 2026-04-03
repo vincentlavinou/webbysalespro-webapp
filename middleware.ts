@@ -6,7 +6,6 @@ const NETLIFY_HOST_SUFFIXES = [".netlify.app", ".netlify.com"];
 
 // Room paths that may receive a join token directly (e.g. from email links or backend-generated URLs).
 const ROOM_PATH_SUFFIXES = ["/live", "/waiting-room", "/early-access-room", "/completed"];
-const SESSION_COOKIE = "attendee_session";
 
 function isNetlifyHost(hostname: string) {
   return NETLIFY_HOST_SUFFIXES.some(
@@ -32,9 +31,7 @@ export function middleware(request: NextRequest) {
   const t = nextUrl.searchParams.get("t");
   const webinarId = nextUrl.searchParams.get("webinar_id");
   const hasRoomSuffix = ROOM_PATH_SUFFIXES.some((s) => nextUrl.pathname.endsWith(s));
-  const hasCookie = request.cookies.has(SESSION_COOKIE);
-
-  if (hasRoomSuffix && t && webinarId && !hasCookie) {
+  if (hasRoomSuffix && t && webinarId) {
     const joinUrl = nextUrl.clone();
     joinUrl.pathname = "/join/live";
     return NextResponse.redirect(joinUrl);
