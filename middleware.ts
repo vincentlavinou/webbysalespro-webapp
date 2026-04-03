@@ -8,7 +8,6 @@ const NETLIFY_HOST_SUFFIXES = [".netlify.app", ".netlify.com"];
 // Room paths that may receive a join token directly (e.g. from email links or backend-generated URLs).
 const ROOM_PATH_SUFFIXES = ["/live", "/waiting-room", "/early-access-room", "/completed"];
 const SESSION_COOKIE = "attendee_session";
-const GENERAL_JOIN_SUFFIX = "/general/join";
 
 function createAppRedirectUrl(pathname: string) {
   const url = new URL(pathname, webinarAppUrl.replace(/\/+$/, ""));
@@ -40,7 +39,6 @@ export function middleware(request: NextRequest) {
   const t = nextUrl.searchParams.get("t");
   const webinarId = nextUrl.searchParams.get("webinar_id");
   const hasRoomSuffix = ROOM_PATH_SUFFIXES.some((s) => nextUrl.pathname.endsWith(s));
-  const isGeneralJoinPath = nextUrl.pathname.endsWith(GENERAL_JOIN_SUFFIX);
   const hasCookie = request.cookies.has(SESSION_COOKIE);
 
   if (hasRoomSuffix && t && webinarId && !hasCookie) {
@@ -48,11 +46,6 @@ export function middleware(request: NextRequest) {
     joinUrl.searchParams.set("t", t);
     joinUrl.searchParams.set("webinar_id", webinarId);
     return NextResponse.redirect(joinUrl);
-  }
-
-  if ((hasRoomSuffix || isGeneralJoinPath) && (t || webinarId)) {
-    const cleanUrl = createAppRedirectUrl(nextUrl.pathname);
-    return NextResponse.redirect(cleanUrl);
   }
 
   const res = NextResponse.next()
