@@ -3,7 +3,7 @@ import { getWebinarFromSession } from "@/webinar/service/action";
 import { isWebinarPayload } from "@/webinar/service/guards";
 import { WebinarDetailCard } from "@/webinar/components/WebinarDetailCard";
 import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
-import { JoinTokenRedirect } from "../../JoinTokenRedirect";
+import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
 
 interface CompletedPageProps {
   params: Promise<{ id: string }>;
@@ -12,7 +12,7 @@ interface CompletedPageProps {
 export default async function CompletedPage(props: CompletedPageProps) {
   const attendeeSession = await getAttendeeSessionCookie();
   if (!attendeeSession) {
-    return <JoinTokenRedirect />;
+    return <WaitingRoomShimmer title="Resolving your access..." />;
   }
 
   const sessionId = (await props.params).id;
