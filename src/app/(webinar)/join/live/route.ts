@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { JoinResolveResponse } from '@/attendee-session/service/type'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { getWebinar } from '@/webinar/service'
@@ -19,35 +20,9 @@ const webinarAppUrl = (
 ).replace(/\/+$/, '')
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
-const SESSION_COOKIE = 'attendee_session'
-const JOIN_REDIRECT_COOKIE = '_join_redirect'
 
 function createRedirectUrl(pathname: string) {
     return new URL(pathname, webinarAppUrl)
-}
-
-function createRedirectResponse(url: URL, attendeeSession?: {
-    joinSessionToken: string
-    expiresAt: string
-    attendanceId: string
-    sessionId: string
-    webinarId: string
-    joinUrl: string
-}) {
-    const response = NextResponse.redirect(url)
-
-    if (attendeeSession) {
-        response.cookies.set(SESSION_COOKIE, JSON.stringify(attendeeSession), {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: COOKIE_MAX_AGE,
-        })
-    }
-
-    response.cookies.delete(JOIN_REDIRECT_COOKIE)
-    return response
 }
 
 async function getHydratedSession(sessionId: string, joinSessionToken: string) {
@@ -119,14 +94,22 @@ export async function GET(request: NextRequest) {
     const sessionId = effective_session.id
     const joinUrl = `${request.nextUrl.pathname}${request.nextUrl.search}`
 
-    const attendeeSession = {
+    // Set the persistent httpOnly cookie
+    const cookieStore = await cookies()
+    cookieStore.set('attendee_session', JSON.stringify({
         joinSessionToken: auth.join_session_token,
         expiresAt: auth.expires_at,
         attendanceId: attendance.id,
         sessionId,
         webinarId,
         joinUrl,
-    }
+    }), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: COOKIE_MAX_AGE,
+    })
 
     let hydratedSession: SeriesSession
     try {
@@ -166,7 +149,7 @@ export async function GET(request: NextRequest) {
             hydratedSessionId: hydratedSession.id,
             redirectTo: url.toString(),
         })
-        return createRedirectResponse(url, attendeeSession)
+        return NextResponse.redirect(url)
     }
 
     if (status === WebinarSessionStatus.COMPLETED) {
@@ -178,7 +161,7 @@ export async function GET(request: NextRequest) {
             hydratedSessionId: hydratedSession.id,
             redirectTo: url.toString(),
         })
-        return createRedirectResponse(url, attendeeSession)
+        return NextResponse.redirect(url)
     }
 
     if (status === WebinarSessionStatus.IN_PROGRESS) {
@@ -190,7 +173,7 @@ export async function GET(request: NextRequest) {
             hydratedSessionId: hydratedSession.id,
             redirectTo: url.toString(),
         })
-        return createRedirectResponse(url, attendeeSession)
+        return NextResponse.redirect(url)
     }
 
     // SCHEDULED — decide between early-access-room and waiting-room
@@ -213,7 +196,7 @@ export async function GET(request: NextRequest) {
             waitingRoomMinutes,
             redirectTo: url.toString(),
         })
-        return createRedirectResponse(url, attendeeSession)
+        return NextResponse.redirect(url)
     }
 
     const url = createRedirectUrl(`/${sessionId}/waiting-room`)
@@ -225,5 +208,5 @@ export async function GET(request: NextRequest) {
         waitingRoomMinutes,
         redirectTo: url.toString(),
     })
-    return createRedirectResponse(url, attendeeSession)
+    return NextResponse.redirect(url)
 }
