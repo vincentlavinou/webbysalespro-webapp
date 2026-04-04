@@ -34,7 +34,7 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
     const [webinar, setWebinar] = useState<Webinar | undefined>(undefined);
     const [isRedirecting, setIsRedirecting] = useState(false);
 
-    const { attendanceId, joinSessionToken: attendeeToken } = useAttendeeSession();
+    const { attendanceId, joinSessionToken: attendeeToken, refresh: refreshJoinToken } = useAttendeeSession();
     const router = useRouter();
     const { execute: getSession } = useAction(getSessionAction, {
         onSuccess: async ({ data }) => {
@@ -193,6 +193,7 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
         onError: (err: Event) => {
             console.error("[SSE] Error in WebinarProvider", err);
         },
+        onTokenExpired: refreshJoinToken,
         heartbeatTimeoutMs: HEARTBEAT_TIMEOUT_MS,
     });
 

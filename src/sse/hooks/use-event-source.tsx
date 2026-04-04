@@ -19,6 +19,11 @@ export interface UseEventSourceOptions {
   onMessage?: EventHandler;                     // default 'message' event
   onOpen?: () => Promise<void>;
   onError?: (error: Event) => void;
+  /**
+   * Called when the server sends an `auth:expired` SSE event (token expired/invalid).
+   * Should refresh the auth token. The hook will reopen the connection afterwards.
+   */
+  onTokenExpired?: () => Promise<unknown>;
 
   // Timing overrides
   heartbeatTimeoutMs?: number;
@@ -33,6 +38,7 @@ export interface UseEventSourceOptions {
  * - Online/offline + tab visibility awareness
  * - Automatic reconnect when tab becomes visible again
  * - Optional resume via lastEventId
+ * - auth:expired handling: refreshes token then reconnects
  */
 export function useEventSource(options: UseEventSourceOptions) {
   const {
@@ -42,6 +48,7 @@ export function useEventSource(options: UseEventSourceOptions) {
     onMessage,
     onOpen,
     onError,
+    onTokenExpired,
     heartbeatTimeoutMs = DEFAULT_HEARTBEAT_TIMEOUT_MS,
     initialBackoffMs = INITIAL_BACKOFF_MS,
     maxBackoffMs = MAX_BACKOFF_MS,
@@ -57,6 +64,13 @@ export function useEventSource(options: UseEventSourceOptions) {
   const hasStartedRef = useRef(false);
   const openRef = useRef<() => void>(() => {});
   const reopenRef = useRef<() => void>(() => {});
+
+  // Keep these always-fresh in refs so closures inside `open` never go stale.
+  const buildUrlRef = useRef(buildUrl);
+  useEffect(() => { buildUrlRef.current = buildUrl; }, [buildUrl]);
+
+  const onTokenExpiredRef = useRef(onTokenExpired);
+  useEffect(() => { onTokenExpiredRef.current = onTokenExpired; }, [onTokenExpired]);
 
   const [isConnected, setIsConnected] = useState(false);
 
@@ -128,7 +142,8 @@ export function useEventSource(options: UseEventSourceOptions) {
     closeES();
     intentionallyClosedRef.current = false;
 
-    const url = buildUrl(lastEventIdRef.current);
+    // Use ref so this always picks up the latest URL even from a stale closure
+    const url = buildUrlRef.current(lastEventIdRef.current);
     if (!url) return;
 
     console.info("[SSE] Opening connection", url);
@@ -142,6 +157,32 @@ export function useEventSource(options: UseEventSourceOptions) {
       onAnyEventActivity();
       await onOpen?.();
       console.info("[SSE] Open");
+    });
+
+    // auth:expired — server closed the connection because the token is invalid/expired.
+    // Refresh the token then reopen; mark intentionally closed so onerror (fired when
+    // the server closes the connection) doesn't race us into a backoff reconnect.
+    es.addEventListener("auth:expired", async () => {
+      console.warn("[SSE] auth:expired — refreshing join token");
+      intentionallyClosedRef.current = true;
+      clearTimers();
+
+      const handler = onTokenExpiredRef.current;
+      if (!handler) {
+        console.warn("[SSE] auth:expired but no onTokenExpired handler — not reconnecting");
+        return;
+      }
+
+      await handler();
+
+      // Yield one macrotask so React re-renders with the new token,
+      // which updates buildUrlRef.current before we reconnect.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      if (!mountedRef.current) return;
+
+      backoffRef.current = initialBackoffMs;
+      openRef.current(); // open() resets intentionallyClosedRef to false
     });
 
     // Named events
@@ -176,7 +217,7 @@ export function useEventSource(options: UseEventSourceOptions) {
 
     scheduleHeartbeat();
   }, [
-    buildUrl,
+    // buildUrl is accessed via buildUrlRef — intentionally omitted to keep open stable
     clearTimers,
     closeES,
     eventHandlers,
