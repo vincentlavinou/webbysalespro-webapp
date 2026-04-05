@@ -16,6 +16,7 @@ const RECONNECT_START_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 10000;
 const RECONNECT_MAX_ATTEMPTS = 10;
 const MAX_CHAT_ITEMS = 100;
+const CHAT_SEND_INTERVAL_MS = Math.ceil(1000 / 3);
 
 export type ChatProviderProps = {
     children: React.ReactNode,
@@ -45,6 +46,8 @@ export function ChatProvider({ children, initialChatConfig }: ChatProviderProps)
     const manualDisconnectRef = useRef(false);
     const connectRef = useRef<(() => Promise<() => void>) | null>(null);
     const nextLocalMessageIdRef = useRef(0);
+    const lastChatSendAtRef = useRef(0);
+    const sendQueueRef = useRef<Promise<void>>(Promise.resolve());
 
     useEffect(() => {
         tokenProviderRef.current = tokenProvider;
@@ -211,9 +214,6 @@ export function ChatProvider({ children, initialChatConfig }: ChatProviderProps)
     }, [connect]);
 
     const sendMessage = useCallback(async (content: string, recipient: ChatRecipient = defaultRecipient(DefaultChatRecipient.EVERYONE)) => {
-        const room = roomRef.current;
-        if (!room || !connected) return;
-
         const validation = moderateText(content, {
             role: currentUserRole,
             profanityMode: "block",
@@ -237,19 +237,39 @@ export function ChatProvider({ children, initialChatConfig }: ChatProviderProps)
             return
         }
 
-        const request = new SendMessageRequest(content);
+        const queuedSend = sendQueueRef.current.then(async () => {
+            const room = roomRef.current;
+            if (!room || room.state !== "connected") return;
 
-        request.attributes = {
-            recipient: recipient.value
-        } as ChatMetadata
+            const elapsedMs = Date.now() - lastChatSendAtRef.current;
+            const waitMs = Math.max(0, CHAT_SEND_INTERVAL_MS - elapsedMs);
 
-        try {
-            await room.sendMessage(request);
-            await recordEvent("chat_message")
-        } catch (err) {
-            console.error('[IVS Chat] Failed to send message', err);
-        }
-    }, [connected, recordEvent, registrantId, currentUserRole]);
+            if (waitMs > 0) {
+                await new Promise((resolve) => setTimeout(resolve, waitMs));
+            }
+
+            const activeRoom = roomRef.current;
+            if (!activeRoom || activeRoom.state !== "connected") return;
+
+            lastChatSendAtRef.current = Date.now();
+
+            const request = new SendMessageRequest(content);
+
+            request.attributes = {
+                recipient: recipient.value
+            } as ChatMetadata
+
+            try {
+                await activeRoom.sendMessage(request);
+                await recordEvent("chat_message")
+            } catch (err) {
+                console.error('[IVS Chat] Failed to send message', err);
+            }
+        });
+
+        sendQueueRef.current = queuedSend.catch(() => {});
+        await queuedSend;
+    }, [recordEvent, registrantId, currentUserRole]);
 
     const disconnect = useCallback(() => {
         manualDisconnectRef.current = true;
