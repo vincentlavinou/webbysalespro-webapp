@@ -1,7 +1,7 @@
 'use client';
 
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
-import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
+import { usePlaybackUser } from '@/playback/hooks/use-playback-user';
 import type { FanbasisCheckoutDto } from '@/offer-client/service/type';
 import { AutoCheckout, CheckoutConfig, CheckoutProvider } from '@fanbasis/checkout-react';
 import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
@@ -62,7 +62,7 @@ const FanbasisCardCheckout = memo(function FanbasisCardCheckout({
 export function FanBasisCheckout() {
   const { user, selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
     useOfferSessionClient();
-  const { attendanceId } = useBroadcastUser();
+  const { attendanceId } = usePlaybackUser();
 
   const { resolvedTheme } = useTheme();
   const [financing, setFinancing] = useState(false);
