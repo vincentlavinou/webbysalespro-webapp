@@ -303,7 +303,7 @@ export default function AttendeeMobileLayout({
               >
                 <main
                   ref={scrollRef}
-                  className="flex-1 overflow-y-auto overscroll-contain touch-pan-y"
+                  className="flex-1 overflow-y-auto overscroll-y-auto touch-pan-y"
                 >
                   <ChatMessages scrollRef={scrollRef} autoStick={true} />
                 </main>
