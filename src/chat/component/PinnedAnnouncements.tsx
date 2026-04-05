@@ -18,8 +18,8 @@ export function PinnedAnnouncements({ announcements }: PinnedAnnouncementsProps)
                 <div key={item.id} className="flex items-start gap-2 text-sm">
                     <Pin className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
                     <div className="flex-1 min-w-0">
-                        <p className="text-foreground leading-snug break-words [overflow-wrap:anywhere]">
-                            <LinkifiedText className="break-words [overflow-wrap:anywhere]" text={item.content} />
+                        <p className="text-foreground leading-snug whitespace-normal break-words [overflow-wrap:anywhere] [word-break:break-word]">
+                            <LinkifiedText className="whitespace-normal break-words [overflow-wrap:anywhere] [word-break:break-word]" text={item.content} />
                         </p>
                         {item.cta_label && item.cta_url && (
                             <Link

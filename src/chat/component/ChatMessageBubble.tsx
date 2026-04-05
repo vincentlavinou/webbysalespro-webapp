@@ -59,8 +59,15 @@ export function ChatMessageBubble({
 
 
       {/* Message Content */}
-      <div className="flex-1">
-        <div className={cn("w-full min-w-0 text-sm leading-snug", isWarning ? "rounded-md bg-amber-100/70 px-2 py-1 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200" : "text-foreground")}>
+      <div className="flex-1 min-w-0">
+        <div
+          className={cn(
+            "w-full min-w-0 break-words [overflow-wrap:anywhere] text-sm leading-snug",
+            isWarning
+              ? "rounded-md bg-amber-100/70 px-2 py-1 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200"
+              : "text-foreground"
+          )}
+        >
           <span
             className={cn(
               "font-semibold whitespace-nowrap mr-1 inline-flex items-center gap-1",
@@ -86,7 +93,10 @@ export function ChatMessageBubble({
             )}
           </span>
           <LinkifiedText
-            className={cn("break-words [overflow-wrap:anywhere]", isWarning && "underline decoration-dotted")}
+            className={cn(
+              "whitespace-normal break-words [overflow-wrap:anywhere] [word-break:break-word]",
+              isWarning && "underline decoration-dotted"
+            )}
             text={content}
           />
         </div>
