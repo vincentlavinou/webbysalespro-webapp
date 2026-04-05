@@ -72,7 +72,7 @@ export function LinkifiedText({
             href={p.href}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="underline underline-offset-2 hover:opacity-90 break-all"
+            className="underline underline-offset-2 hover:opacity-90 break-words [overflow-wrap:anywhere]"
           >
             {p.value}
           </a>

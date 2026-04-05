@@ -85,7 +85,10 @@ export function ChatMessageBubble({
               </Tooltip>
             )}
           </span>
-          <LinkifiedText className={cn("break-all", isWarning && "underline decoration-dotted")} text={content} />
+          <LinkifiedText
+            className={cn("break-words [overflow-wrap:anywhere]", isWarning && "underline decoration-dotted")}
+            text={content}
+          />
         </div>
 
         {/* Reactions */}
