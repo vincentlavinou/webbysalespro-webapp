@@ -5,13 +5,12 @@ import { ChatConfigUpdate, ChatMetadata, ChatRecipient } from "../service/type";
 import { defaultRecipient } from "../service/utils";
 import { DefaultChatRecipient } from "../service/enum";
 import { useChatConfiguration } from "../hooks/use-chat-configuration";
-import { useBroadcastUser } from "@/broadcast/hooks/use-broadcast-user";
 import { useWebinar } from "@/webinar/hooks";
 import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback";
 import { chatConfigUpdateSchema } from "../service/schema";
-import { useBroadcastConfiguration } from "@/broadcast/hooks";
 import { moderateText } from "../service/moderation";
 import { getAttendeeChatSession } from "../service/action";
+import { useChatRuntime } from "../hooks/use-chat-runtime";
 
 const RECONNECT_START_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 10000;
@@ -21,14 +20,12 @@ const MAX_CHAT_ITEMS = 100;
 export type ChatProviderProps = {
     children: React.ReactNode,
     initialChatConfig?: ChatConfigUpdate | null
-    currentUserRole?: "host" | "presenter" | "attendee"
 }
 
-export function ChatProvider({ children, initialChatConfig, currentUserRole = "attendee" }: ChatProviderProps) {
+export function ChatProvider({ children, initialChatConfig }: ChatProviderProps) {
 
-    const { attendanceId } = useBroadcastUser()
+    const { attendanceId, currentUserRole, enabled, sessionId } = useChatRuntime()
     const { recordEvent } = useWebinar()
-    const { sessionId } = useBroadcastConfiguration()
     const { region, tokenProvider } = useChatConfiguration()
     const roomRef = useRef<ChatRoom | null>(null);
     const tokenProviderRef = useRef(tokenProvider);
@@ -270,6 +267,17 @@ export function ChatProvider({ children, initialChatConfig, currentUserRole = "a
             scheduleReconnect();
         });
     }, [clearReconnectTimer, scheduleReconnect]);
+
+    useEffect(() => {
+        if (!enabled) {
+            disconnect();
+            return;
+        }
+
+        connect().catch(() => {
+            scheduleReconnect();
+        });
+    }, [enabled, connect, disconnect, scheduleReconnect]);
 
     // Cleanup on unmount
     useEffect(() => {

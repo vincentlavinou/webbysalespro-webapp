@@ -1,8 +1,7 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BroadcastUser } from "@/broadcast/service/type";
 import { OfferSessionClientContext } from "../contexts/OfferSessionClientContext"
-import { OfferSessionDto, OfferView } from "../service/type";
+import { OfferClientUser, OfferSessionDto, OfferView } from "../service/type";
 import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback";
 import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "../service/schema";
 import { getOfferSessionsForAttendee } from "../service/action";
@@ -28,7 +27,7 @@ interface OfferSessionClientProviderProps {
     children: React.ReactNode
     sessionId: string,
     initialOffers: OfferSessionDto[],
-    user: BroadcastUser,
+    user: OfferClientUser,
 }
 
 export function OfferSessionClientProvider({

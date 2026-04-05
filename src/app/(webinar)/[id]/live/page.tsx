@@ -1,8 +1,7 @@
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { DateTime } from 'luxon';
 import { getSessionAction, getWebinarFromSession } from "@/webinar/service/action";
-import { LiveContainer } from "@/broadcast/components/LiveContainer";
-import { getOfferSessionsForAttendee } from "@/offer-client/service/action";
+import { PlaybackManager } from "@/playback";
 import { isSessionPayload, isWebinarPayload } from "@/webinar/service/guards";
 import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
 import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
@@ -20,7 +19,7 @@ interface Props {
     }>
 }
 
-export default async function AttendeeLivePage({ params, searchParams }: Props) {
+export default async function LivePage({ params, searchParams }: Props) {
     const resolvedSearch = await searchParams
     const routeSessionId = (await params).id
 
@@ -66,19 +65,10 @@ export default async function AttendeeLivePage({ params, searchParams }: Props) 
         }
     }
 
-    let offersData: import("@/offer-client/service/type").OfferSessionDto[] = []
-    try {
-        const offers = await getOfferSessionsForAttendee({ sessionId })
-        offersData = offers?.data ?? []
-    } catch {
-        // payment provider unavailable — render live without offers
-    }
-
     return (
-    <LiveContainer
+    <PlaybackManager
       sessionId={sessionId}
       webinarTitle={webinar.data.title}
-      offers={offersData}
       clientRedirectTo={clientRedirectTo}
     />
   );

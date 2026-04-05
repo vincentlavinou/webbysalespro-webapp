@@ -286,6 +286,8 @@ export default function AttendeeMobileLayout({
 
         {broadcast.stream && !isImmersive && (
           <WebinarChat
+            sessionId={broadcast.session.id}
+            attendanceId={broadcast.user_id}
             region={broadcast.stream.region}
             currentUserRole={broadcast.role}
             render={() => (

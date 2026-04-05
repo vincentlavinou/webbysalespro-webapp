@@ -5,8 +5,6 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useChat } from '@chat/hooks';
 import { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatMessageBubble } from './ChatMessageBubble';
-import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
-import { useBroadcastConfiguration } from '@/broadcast/hooks';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
 import { OfferCarouselPanel } from '@/offer-client/components/OfferCarouselPanel';
 import { useCtaAnnouncements, type CtaAnnouncement } from '@chat/hooks/use-cta-announcements';
@@ -18,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
 import { OfferChatBubble } from '@/offer-client/components/OfferChatBubble';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useChatRuntime } from '../hooks/use-chat-runtime';
 
 type ChatItem =
   | { kind: 'message'; data: ChatMessage; time: number }
@@ -30,10 +29,9 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
-  const { connect, filteredMessages, connected, chatConfig, connectionStatus, reconnectAttempt, reconnectDelayMs, reconnectNow } = useChat();
+  const { filteredMessages, chatConfig, connectionStatus, reconnectAttempt, reconnectDelayMs, reconnectNow } = useChat();
   const { view: offerView } = useOfferSessionClient();
-  const { attendanceId } = useBroadcastUser();
-  const { sessionId } = useBroadcastConfiguration();
+  const { attendanceId, sessionId, enabled } = useChatRuntime();
   const { announcements } = useCtaAnnouncements(sessionId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -56,10 +54,6 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
     ];
     return items.sort((a, b) => a.time - b.time);
   }, [filteredMessages, announcements]);
-
-  useEffect(() => {
-    if (!connected) connect();
-  }, [connected, connect]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -96,6 +90,12 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
               Retry now
             </Button>
           </div>
+        </div>
+      )}
+
+      {!enabled && (
+        <div className="border-b bg-muted px-3 py-2 text-xs text-muted-foreground">
+          Chat will connect when playback starts.
         </div>
       )}
 

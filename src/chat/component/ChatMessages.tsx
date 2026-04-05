@@ -1,17 +1,17 @@
 // ChatMessages.tsx
 'use client';
 
-import { useEffect, useMemo, RefObject } from 'react';
+import { useEffect, useMemo } from 'react';
+import type { RefObject } from 'react';
 import { useChat } from '@chat/hooks';
 import type { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
 import { OfferCarouselPanel } from '@/offer-client/components/OfferCarouselPanel';
 import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
-import { useBroadcastUser } from '@/broadcast/hooks/use-broadcast-user';
-import { useBroadcastConfiguration } from '@/broadcast/hooks';
 import { useCtaAnnouncements, type CtaAnnouncement } from '@chat/hooks/use-cta-announcements';
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
+import { useChatRuntime } from '../hooks/use-chat-runtime';
 
 type ChatItem =
   | { kind: 'message'; data: ChatMessage; time: number }
@@ -23,16 +23,10 @@ interface ChatMessagesProps {
 }
 
 export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
-  const { connect, filteredMessages, connected, chatConfig } = useChat();
+  const { filteredMessages, chatConfig } = useChat();
   const { view: offerView } = useOfferSessionClient();
-  const { attendanceId } = useBroadcastUser();
-  const { sessionId } = useBroadcastConfiguration();
+  const { attendanceId, sessionId, enabled } = useChatRuntime();
   const { announcements } = useCtaAnnouncements(sessionId);
-
-  // Connect once
-  useEffect(() => {
-    if (!connected) connect();
-  }, [connected, connect]);
 
   const chatItems = useMemo<ChatItem[]>(() => {
     const items: ChatItem[] = [
@@ -72,6 +66,10 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
       {chatDisabled ? (
         <div className="flex flex-col items-center justify-center h-full text-center px-6 py-8">
           <p className="text-sm text-muted-foreground">Chat is currently unavailable.</p>
+        </div>
+      ) : !enabled ? (
+        <div className="flex h-full flex-col items-center justify-center px-6 py-8 text-center">
+          <p className="text-sm text-muted-foreground">Chat will connect when playback starts.</p>
         </div>
       ) : chatItems.length === 0 ? (
         <div className="px-3 py-3 text-sm text-muted-foreground">

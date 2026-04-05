@@ -112,5 +112,12 @@ export interface OfferSessionDto {
 
 export type OfferView = "offers-hidden" | "offers-visible" | "offer-selected" | "offer-checkingout" | "offer-purchased"
 
+export type OfferClientUser = {
+  user_id: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 export type OfferVisibilityMetadata = z.infer<typeof offerVisibilityMetadataSchema>;
 export type OfferScarcityUpdateMetadata = z.infer<typeof offerScarcityUpdateMetadataSchema>;
