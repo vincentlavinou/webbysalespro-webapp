@@ -15,7 +15,7 @@ import { ChatConfigUpdate } from "./service/type";
 
 type ChatManagerProps = {
   sessionId: string;
-  attendanceId: string;
+  registrantId: string;
   region: string;
   currentUserRole?: "host" | "presenter" | "attendee";
   enabled: boolean;
@@ -26,7 +26,7 @@ const AUTH_ERROR_CODES = new Set(["ATD-001", "unauthorized"]);
 
 export function ChatManager({
   sessionId,
-  attendanceId,
+  registrantId,
   region,
   currentUserRole = "attendee",
   enabled,
@@ -107,7 +107,7 @@ export function ChatManager({
     <ChatConfigurationProvider region={region} tokenProvider={stableTokenProvider.current}>
       <ChatRuntimeProvider
         sessionId={sessionId}
-        attendanceId={attendanceId}
+        registrantId={registrantId}
         currentUserRole={currentUserRole}
         enabled={isRuntimeEnabled}
       >

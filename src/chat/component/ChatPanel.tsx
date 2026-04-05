@@ -31,7 +31,7 @@ interface ChatPanelProps {
 export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
   const { filteredMessages, chatConfig, connectionStatus, reconnectAttempt, reconnectDelayMs, reconnectNow } = useChat();
   const { view: offerView } = useOfferSessionClient();
-  const { attendanceId, sessionId, enabled } = useChatRuntime();
+  const { registrantId, sessionId, enabled } = useChatRuntime();
   const { announcements } = useCtaAnnouncements(sessionId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -137,7 +137,7 @@ export function ChatPanel({ hideComposer = false, className }: ChatPanelProps) {
                     <ChatMessageBubble
                       name={msg.sender.attributes?.name || 'unknown'}
                       content={msg.content}
-                      isSelf={msg.sender.userId === attendanceId}
+                      isSelf={msg.sender.userId === registrantId}
                       avatarBgColor={msg.sender.attributes?.avatar_bg_color}
                       isWarning={isBlocked}
                       warningMessage={blockedReason}

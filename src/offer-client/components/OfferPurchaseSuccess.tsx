@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
+import { usePlaybackUser } from "@/playback";
 
 type Props = {
   className?: string;
@@ -15,11 +16,10 @@ export default function OfferPurchaseSuccess({
 
   const {
     purchasedOffer,
-    user,
     closeSheetAfterPurchase
   } = useOfferSessionClient()
+  const { email } = usePlaybackUser();
 
-  const email = user?.email
 
   const redirectUrl = purchasedOffer?.offer?.offer?.post_purchase_config?.redirect_url ?? null;
   const continueButtonText = purchasedOffer?.offer?.offer?.post_purchase_config?.continue_button_text ?? 'Continue';

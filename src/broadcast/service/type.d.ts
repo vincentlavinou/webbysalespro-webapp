@@ -30,6 +30,8 @@ export type StreamConfig = {
 
 export type BroadcastUser = {
     user_id: string
+    registrant_id: string
+    attendance_id: string
     email?: string
     first_name?: string
     last_name?: string
@@ -41,6 +43,8 @@ export type BroadcastServiceToken = {
     series: string
     region: string
     user_id: string
+    registrant_id: string
+    attendance_id: string
     email?: string
     first_name?: string
     last_name?: string
@@ -60,6 +64,8 @@ export type AttendeeBroadcastServiceToken = {
     series: string
     region: string
     user_id: string
+    registrant_id: string
+    attendance_id: string
     email?: string
     first_name?: string
     last_name?: string

@@ -1,7 +1,6 @@
 'use client';
 
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
-import { usePlaybackUser } from '@/playback/hooks/use-playback-user';
 import type { FanbasisCheckoutDto } from '@/offer-client/service/type';
 import { AutoCheckout, CheckoutConfig, CheckoutProvider } from '@fanbasis/checkout-react';
 import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
@@ -62,7 +61,6 @@ const FanbasisCardCheckout = memo(function FanbasisCardCheckout({
 export function FanBasisCheckout() {
   const { user, selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
     useOfferSessionClient();
-  const { attendanceId } = usePlaybackUser();
 
   const { resolvedTheme } = useTheme();
   const [financing, setFinancing] = useState(false);
@@ -91,10 +89,10 @@ export function FanBasisCheckout() {
       checkoutSessionSecret: payload.checkout_session_secret!,
       environment: isProduction ? ('production' as const) : ('sandbox' as const),
       metadata: {
-        attendance_id: attendanceId,
-        ...(user?.email     ? { email:      user.email }      : {}),
-        ...(user?.first_name ? { first_name: user.first_name } : {}),
-        ...(user?.last_name  ? { last_name:  user.last_name }  : {}),
+        attendance_id: user.attendance_id,
+        ...(user.email     ? { email:      user.email }      : {}),
+        ...(user.first_name ? { first_name: user.first_name } : {}),
+        ...(user.last_name  ? { last_name:  user.last_name }  : {}),
       },
       containerOptions: {
         width: '100%',
@@ -110,7 +108,7 @@ export function FanBasisCheckout() {
     } as CheckoutConfig;
   }, [
     accentColor,
-    attendanceId,
+    user.attendance_id,
     canUseCardCheckout,
     isProduction,
     payload.checkout_session_secret,
@@ -160,9 +158,9 @@ export function FanBasisCheckout() {
     if (!url) return;
 
     const params = new URLSearchParams();
-    if (user?.first_name) params.set('first_name', user.first_name);
-    if (user?.last_name) params.set('last_name', user.last_name);
-    if (user?.email) params.set('email', user.email);
+    if (user.first_name) params.set('first_name', user.first_name);
+    if (user.last_name) params.set('last_name', user.last_name);
+    if (user.email) params.set('email', user.email);
     const query = params.toString();
     const fullUrl = query ? `${url}${url.includes('?') ? '&' : '?'}${query}` : url;
 
@@ -170,7 +168,7 @@ export function FanBasisCheckout() {
     window.open(fullUrl, '_blank', 'noopener,noreferrer');
     void recordEvent('checkout_started');
     setTimeout(() => setFinancing(false), 4000);
-  }, [financing, payload.url, recordEvent, selectedOffer, user]);
+  }, [financing, payload.url, recordEvent, selectedOffer, user.email, user.first_name, user.last_name]);
 
   return (
     <div

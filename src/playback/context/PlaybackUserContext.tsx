@@ -3,6 +3,8 @@
 import { createContext } from "react";
 
 export type PlaybackUserContextType = {
+  userId: string;
+  registrantId: string;
   attendanceId: string;
   email?: string;
   first_name?: string;
@@ -10,6 +12,8 @@ export type PlaybackUserContextType = {
 };
 
 export const PlaybackUserContext = createContext<PlaybackUserContextType>({
+  userId: "",
+  registrantId: "",
   attendanceId: "",
   email: undefined,
   first_name: undefined,

@@ -7,7 +7,7 @@ import { ChatManager } from "../ChatManager";
 
 export interface WebinarChatProps {
   sessionId: string;
-  attendanceId: string;
+  registrantId: string;
   region: string;
   currentUserRole?: "host" | "presenter" | "attendee";
   enabled?: boolean;
@@ -17,7 +17,7 @@ export interface WebinarChatProps {
 
 export function WebinarChat({
   sessionId,
-  attendanceId,
+  registrantId,
   region,
   currentUserRole = "attendee",
   enabled = true,
@@ -26,7 +26,7 @@ export function WebinarChat({
   return (
     <ChatManager
       sessionId={sessionId}
-      attendanceId={attendanceId}
+      registrantId={registrantId}
       region={region}
       currentUserRole={currentUserRole}
       enabled={enabled}

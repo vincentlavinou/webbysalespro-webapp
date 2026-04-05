@@ -98,7 +98,7 @@ export const BroadcastStage = ({ token, title }: BroadcastUIProps) => {
           <div className="flex flex-col w-full lg:w-[320px] min-w-[280px] lg:max-w-[400px] flex-1 overflow-y-auto px-2">
             <WebinarChat
               sessionId={token.session.id}
-              attendanceId={token.user_id}
+              registrantId={token.registrant_id}
               region={token.stream.region}
               currentUserRole={token.role}
             />

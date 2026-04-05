@@ -24,6 +24,8 @@ export function PlaybackClient(props: PlaybackClientProps) {
       <PlaybackUserProvider
         user={{
           user_id: props.playbackToken.user_id,
+          registrant_id: props.playbackToken.registrant_id,
+          attendance_id: props.playbackToken.attendance_id,
           email: props.playbackToken.email,
           first_name: props.playbackToken.first_name,
           last_name: props.playbackToken.last_name,

@@ -4,7 +4,7 @@ import { ChatRuntimeContext } from "../context/ChatRuntimeContext";
 
 type ChatRuntimeProviderProps = {
   sessionId: string;
-  attendanceId: string;
+  registrantId: string;
   currentUserRole: "host" | "presenter" | "attendee";
   enabled: boolean;
   children: React.ReactNode;
@@ -12,14 +12,14 @@ type ChatRuntimeProviderProps = {
 
 export function ChatRuntimeProvider({
   sessionId,
-  attendanceId,
+  registrantId,
   currentUserRole,
   enabled,
   children,
 }: ChatRuntimeProviderProps) {
   return (
     <ChatRuntimeContext.Provider
-      value={{ sessionId, attendanceId, currentUserRole, enabled }}
+      value={{ sessionId, registrantId, currentUserRole, enabled }}
     >
       {children}
     </ChatRuntimeContext.Provider>

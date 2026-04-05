@@ -15,7 +15,9 @@ export function PlaybackUserProvider({
   return (
     <PlaybackUserContext.Provider
       value={{
-        attendanceId: user.user_id,
+        userId: user.user_id,
+        registrantId: user.registrant_id,
+        attendanceId: user.attendance_id,
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,

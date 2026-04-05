@@ -25,7 +25,7 @@ interface ChatMessagesProps {
 export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
   const { filteredMessages, chatConfig } = useChat();
   const { view: offerView } = useOfferSessionClient();
-  const { attendanceId, sessionId, enabled } = useChatRuntime();
+  const { registrantId, sessionId, enabled } = useChatRuntime();
   const { announcements } = useCtaAnnouncements(sessionId);
 
   const chatItems = useMemo<ChatItem[]>(() => {
@@ -93,7 +93,7 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
                 <ChatMessageBubble
                   name={msg.sender.attributes?.name || 'unknown'}
                   content={msg.content}
-                  isSelf={msg.sender.userId === attendanceId}
+                  isSelf={msg.sender.userId === registrantId}
                   avatarBgColor={msg.sender.attributes?.avatar_bg_color}
                   isWarning={isBlocked}
                   warningMessage={blockedReason}

@@ -88,7 +88,7 @@ export const AttendeeDesktopLayout = ({
                 {broadcast.stream && <div className={`flex w-full min-h-0 min-w-0 flex-col ${compact ? "flex-1" : "flex-1 lg:w-[320px] lg:min-w-[280px] lg:max-w-[400px]"}`}>
                         <WebinarChat
                           sessionId={broadcast.session.id}
-                          attendanceId={broadcast.user_id}
+                          registrantId={broadcast.registrant_id}
                           region={broadcast.stream?.region}
                           currentUserRole={broadcast.role}
                         />

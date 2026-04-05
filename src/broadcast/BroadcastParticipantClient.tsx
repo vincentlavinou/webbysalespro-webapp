@@ -32,7 +32,7 @@ export function BroadcastParticipantClient(props: BroadcastClientProps) {
     const stageRef = useRef<Stage | undefined>(undefined);
     return (
         <BroadcastConfigurationProvider sessionId={props.sessionId} getRequestHeaders={props.getRequestHeaders} seriesId={props.broadcastToken.series}>
-            <BroadcastUserProvider user={{ user_id: props.broadcastToken.user_id, email: props.broadcastToken.email, first_name: props.broadcastToken.first_name, last_name: props.broadcastToken.last_name }}>
+            <BroadcastUserProvider user={{ user_id: props.broadcastToken.user_id, registrant_id: props.broadcastToken.registrant_id, attendance_id: props.broadcastToken.attendance_id, email: props.broadcastToken.email, first_name: props.broadcastToken.first_name, last_name: props.broadcastToken.last_name }}>
                 <BroadcastServiceProvider token={props.broadcastToken}>
                     <VideoInjectionProvider videoInjections={props.videoInjections ?? []}>
                         <PresentationProvider presentations={props.presentations ?? []}>

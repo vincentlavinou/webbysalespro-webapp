@@ -20,7 +20,7 @@ function AttendeeExperienceShell({
   return (
     <ChatManager
       sessionId={playbackToken.session.id}
-      attendanceId={playbackToken.user_id}
+      registrantId={playbackToken.registrant_id}
       region={playbackToken.stream?.region ?? playbackToken.region}
       currentUserRole={playbackToken.role}
       enabled={isChatEnabled}
@@ -39,6 +39,8 @@ export function AttendeeExperienceManager({
       sessionId={playbackToken.session.id}
       user={{
         user_id: playbackToken.user_id,
+        registrant_id: playbackToken.registrant_id,
+        attendance_id: playbackToken.attendance_id,
         email: playbackToken.email,
         first_name: playbackToken.first_name,
         last_name: playbackToken.last_name,
