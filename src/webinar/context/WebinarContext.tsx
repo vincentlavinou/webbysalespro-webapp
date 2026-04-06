@@ -13,6 +13,7 @@ export type WebinarContextType = {
     setSession: (session: SeriesSession) => void
     recordEvent: (name: string, payload?: Record<string, unknown>) => Promise<void>
     recordEventBeacon: (name: string, payload?: Record<string, unknown>) => Promise<void>
+    getLastPresenceRelevantEventAt: () => number | null
     regenerateBroadcastToken: () => Promise<void>
 }
 
@@ -24,5 +25,6 @@ export const WebinarContext = createContext<WebinarContextType>({
     setSession: () => {},
     recordEvent: async () => {},
     recordEventBeacon: async () => {},
+    getLastPresenceRelevantEventAt: () => null,
     regenerateBroadcastToken: async () => {}
 })

@@ -5,6 +5,7 @@ import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
 import { ChatManager } from "@/chat/ChatManager";
 import { OfferClientManager } from "@/offer-client/OfferClientManager";
 import { AttendeeExperienceLayout } from "./layout/AttendeeExperienceLayout";
+import { AttendanceHeartbeat } from "./AttendanceHeartbeat";
 
 type AttendeeExperienceManagerProps = {
   playbackToken: AttendeeBroadcastServiceToken;
@@ -18,15 +19,18 @@ function AttendeeExperienceShell({
   const { isChatEnabled } = usePlaybackRuntime();
 
   return (
-    <ChatManager
-      sessionId={playbackToken.session.id}
-      registrantId={playbackToken.registrant_id}
-      region={playbackToken.stream?.region ?? playbackToken.region}
-      currentUserRole={playbackToken.role}
-      enabled={isChatEnabled}
-    >
-      <AttendeeExperienceLayout playbackToken={playbackToken} title={title} />
-    </ChatManager>
+    <>
+      <AttendanceHeartbeat />
+      <ChatManager
+        sessionId={playbackToken.session.id}
+        registrantId={playbackToken.registrant_id}
+        region={playbackToken.stream?.region ?? playbackToken.region}
+        currentUserRole={playbackToken.role}
+        enabled={isChatEnabled}
+      >
+        <AttendeeExperienceLayout playbackToken={playbackToken} title={title} />
+      </ChatManager>
+    </>
   );
 }
 

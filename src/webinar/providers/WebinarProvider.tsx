@@ -20,6 +20,14 @@ import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-sessio
 
 // ---- Tuning knobs (can be shared with hook defaults or overridden) ----
 const HEARTBEAT_TIMEOUT_MS = 45_000;
+const PRESENCE_RELEVANT_EVENT_CODES = new Set([
+    "live_joined",
+    "reentered",
+    "chat_message",
+    "offer_clicked",
+    "checkout_started",
+    "heartbeat",
+]);
 
 interface Props {
     sessionId: string;
@@ -46,6 +54,12 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
     })
 
     const mountedRef = useRef<boolean>(false);
+    const lastPresenceRelevantEventAtRef = useRef<number | null>(null);
+
+    const markPresenceRelevantEvent = useCallback((name: string) => {
+        if (!PRESENCE_RELEVANT_EVENT_CODES.has(name)) return;
+        lastPresenceRelevantEventAtRef.current = Date.now();
+    }, []);
 
     // ---- Bootstrap service token + initial data ----
     useEffect(() => {
@@ -78,16 +92,18 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
     // ---- Public event recorder ----
     const recordSessionEvent = useCallback(
         async (name: string, payload: Record<string, unknown> | undefined) => {
+            markPresenceRelevantEvent(name);
             try {
                 await recordEvent(name, attendanceId, payload);
             } catch (e) {
                 console.error("[WebinarProvider] recordEvent failed", e);
             }
         },
-        [attendanceId]
+        [attendanceId, markPresenceRelevantEvent]
     );
 
     const recordEventBeacon = useCallback(async (name: string, payload: Record<string, unknown> | undefined = undefined) => {
+        markPresenceRelevantEvent(name);
         fetch(`${webinarApiUrl}/v2/attendances/${attendanceId}/events/`, {
             method: 'POST',
             headers: {
@@ -102,7 +118,11 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
             }),
             keepalive: true,
         });
-    }, [attendanceId, attendeeToken])
+    }, [attendanceId, attendeeToken, markPresenceRelevantEvent])
+
+    const getLastPresenceRelevantEventAt = useCallback(() => {
+        return lastPresenceRelevantEventAtRef.current;
+    }, []);
 
     const regenerateBroadcastToken = useCallback(
         async () => {
@@ -208,6 +228,7 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
                 webinar,
                 recordEvent: recordSessionEvent,
                 recordEventBeacon,
+                getLastPresenceRelevantEventAt,
                 regenerateBroadcastToken,
             }}
         >
