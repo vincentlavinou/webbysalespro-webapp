@@ -40,7 +40,7 @@ export function useVisibilityResilience({
         }
 
         if (hasPlayedRef.current) {
-          void restoreToLive({ forceReload: true });
+          void restoreToLive();
         }
       }
     };

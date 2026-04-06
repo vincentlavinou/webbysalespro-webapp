@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Maximize2, Minimize2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { notifySuccessUiMessage } from "@/lib/notify";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
@@ -13,14 +11,13 @@ import { ChatComposer } from "@/chat/component/ChatComposer";
 import { ChatMessages } from "@/chat/component/ChatMessages";
 import { AttendeeCountBadge } from "@/broadcast/attendee-count/components/AttendeeCountBadge";
 import { useImmersiveLayout } from "@/broadcast/hooks/use-immersive-layout";
-import { WebinarSessionStatus } from "@/webinar/service/enum";
-import { getSessionAction } from "@/webinar/service/action";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import WebbySalesProPlayer, {
   type WebbySalesProPlayerHandle,
 } from "@/playback/player/ivs/WebbySalesProPlayer";
 import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
+import { useAttendeeStreamRefresh } from "@/broadcast/hooks/use-attendee-stream-refresh";
 
 type AttendeeMobileExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
@@ -57,10 +54,13 @@ export function AttendeeMobileExperience({
 
   const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const router = useRouter();
-  const [isRefreshingStream, setIsRefreshingStream] = useState(false);
   const [viewportSize, setViewportSize] = useState<ViewportSize>(readLayoutViewport);
   const { setStatus } = usePlaybackRuntime();
+  const { isRefreshingStream, handleRefreshStream } = useAttendeeStreamRefresh({
+    sessionId: playbackToken.session.id,
+    playerRef,
+    enabled: !!playbackToken.stream,
+  });
 
   const {
     advanceLayout,
@@ -135,26 +135,6 @@ export function AttendeeMobileExperience({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-
-  const handleRefreshStream = useCallback(async () => {
-    if (isRefreshingStream) return;
-
-    setIsRefreshingStream(true);
-    try {
-      const [sessionResult] = await Promise.all([
-        getSessionAction({ id: playbackToken.session.id }),
-        playerRef.current?.restoreToLive({ forceReload: true }),
-      ]);
-      window.dispatchEvent(new CustomEvent("webinar:stream:refresh"));
-      notifySuccessUiMessage("Reconnected to stream");
-
-      if (sessionResult?.data?.status === WebinarSessionStatus.COMPLETED) {
-        router.push(`/${playbackToken.session.id}/completed`);
-      }
-    } finally {
-      setIsRefreshingStream(false);
-    }
-  }, [isRefreshingStream, playbackToken.session.id, router]);
 
   const playerContent = (
     <>

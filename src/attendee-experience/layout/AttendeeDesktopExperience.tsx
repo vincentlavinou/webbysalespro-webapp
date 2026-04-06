@@ -1,10 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { WebinarSessionStatus } from "@/webinar/service/enum";
-import { getSessionAction } from "@/webinar/service/action";
-import { notifySuccessUiMessage } from "@/lib/notify";
+import { useRef } from "react";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
@@ -15,6 +11,7 @@ import WebbySalesProPlayer, {
 import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
 import { ChatPanel } from "@/chat/component/ChatPanel";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
+import { useAttendeeStreamRefresh } from "@/broadcast/hooks/use-attendee-stream-refresh";
 
 type AttendeeDesktopExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
@@ -29,29 +26,12 @@ export function AttendeeDesktopExperience({
 }: AttendeeDesktopExperienceProps) {
   const desktopPlayerWidth = "min(100%, calc((100dvh - 7rem) * 1.7777778))";
   const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
-  const [isRefreshingStream, setIsRefreshingStream] = useState(false);
-  const router = useRouter();
   const { setStatus } = usePlaybackRuntime();
-
-  const handleRefreshStream = useCallback(async () => {
-    if (isRefreshingStream) return;
-
-    setIsRefreshingStream(true);
-    try {
-      const [sessionResult] = await Promise.all([
-        getSessionAction({ id: playbackToken.session.id }),
-        playerRef.current?.restoreToLive({ forceReload: true }),
-      ]);
-      window.dispatchEvent(new CustomEvent("webinar:stream:refresh"));
-      notifySuccessUiMessage("Reconnected to stream");
-
-      if (sessionResult?.data?.status === WebinarSessionStatus.COMPLETED) {
-        router.push(`/${playbackToken.session.id}/completed`);
-      }
-    } finally {
-      setIsRefreshingStream(false);
-    }
-  }, [isRefreshingStream, playbackToken.session.id, router]);
+  const { isRefreshingStream, handleRefreshStream } = useAttendeeStreamRefresh({
+    sessionId: playbackToken.session.id,
+    playerRef,
+    enabled: !!playbackToken.stream,
+  });
 
   return (
     <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${compact ? "px-2 py-2" : "px-2 py-2 md:px-4 md:py-4"}`}>
