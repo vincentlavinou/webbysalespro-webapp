@@ -18,6 +18,7 @@ import WebbySalesProPlayer, {
 import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
 import { useAttendeeStreamRefresh } from "@/broadcast/hooks/use-attendee-stream-refresh";
+import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
 
 type AttendeeMobileExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
@@ -56,10 +57,14 @@ export function AttendeeMobileExperience({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState<ViewportSize>(readLayoutViewport);
   const { setStatus } = usePlaybackRuntime();
+  const channelStream =
+    playbackToken.stream?.kind === "channel" ? playbackToken.stream : undefined;
+  const realtimeStream =
+    playbackToken.stream?.kind === "realtime" ? playbackToken.stream : undefined;
   const { isRefreshingStream, handleRefreshStream } = useAttendeeStreamRefresh({
     sessionId: playbackToken.session.id,
     playerRef,
-    enabled: !!playbackToken.stream,
+    enabled: !!channelStream,
   });
 
   const {
@@ -138,16 +143,23 @@ export function AttendeeMobileExperience({
 
   const playerContent = (
     <>
-      <WebbySalesProPlayer
-        ref={playerRef}
-        src={playbackToken.stream!.config.playback_url}
-        ariaLabel="Live Webinar Player"
-        title={playbackToken.webinar.title}
-        onPlaybackStatusChange={setStatus}
-        artwork={playbackToken.webinar.media
-          .filter((media: WebinarMedia) => media.field_type === WebinarMediaFieldType.THUMBNAIL)
-          .map((media: WebinarMedia) => ({ src: media.file_url }))}
-      />
+      {channelStream ? (
+        <WebbySalesProPlayer
+          ref={playerRef}
+          src={channelStream.config.playback_url}
+          ariaLabel="Live Webinar Player"
+          title={playbackToken.webinar.title}
+          onPlaybackStatusChange={setStatus}
+          artwork={playbackToken.webinar.media
+            .filter((media: WebinarMedia) => media.field_type === WebinarMediaFieldType.THUMBNAIL)
+            .map((media: WebinarMedia) => ({ src: media.file_url }))}
+        />
+      ) : realtimeStream ? (
+        <AttendeeStageViewer
+          stream={realtimeStream}
+          onPlaybackStatusChange={setStatus}
+        />
+      ) : null}
       <AttendeeCountBadge />
     </>
   );
@@ -205,15 +217,17 @@ export function AttendeeMobileExperience({
             {playerContent}
           </div>
 
-          <StreamRefreshControl
-            className={
-              isImmersive
-                ? "pointer-events-auto fixed left-1/2 top-3 z-50 -translate-x-1/2"
-                : "pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
-            }
-            onRefresh={handleRefreshStream}
-            isRefreshing={isRefreshingStream}
-          />
+          {channelStream ? (
+            <StreamRefreshControl
+              className={
+                isImmersive
+                  ? "pointer-events-auto fixed left-1/2 top-3 z-50 -translate-x-1/2"
+                  : "pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
+              }
+              onRefresh={handleRefreshStream}
+              isRefreshing={isRefreshingStream}
+            />
+          ) : null}
 
           <div
             className={

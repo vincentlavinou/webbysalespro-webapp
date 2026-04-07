@@ -1,1 +1,1 @@
-export { createBroadcastServiceTokenAction } from "@/broadcast/service/action";
+export { createAttendeeBroadcastServiceTokenAction } from "@/broadcast/service/action";

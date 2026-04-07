@@ -17,6 +17,11 @@ export type StreamAttendeeConfig = {
     playback_url: string
 }
 
+export type RealtimeAttendeeConfig = {
+    stage_arn: string
+    participant_token: string
+}
+
 export type StreamParticipantConfig = {
     stage_arn: string
     participant_token: string
@@ -52,11 +57,21 @@ export type BroadcastServiceToken = {
     session: SeriesSession
 }
 
-export type AttendeeStreamConfig = {
-    kind: "realtime" | "channel"
+export type ChannelAttendeeStreamConfig = {
+    kind: "channel"
     region: string
     config: StreamAttendeeConfig
 }
+
+export type RealtimeAttendeeStreamConfig = {
+    kind: "realtime"
+    region: string
+    config: RealtimeAttendeeConfig
+}
+
+export type AttendeeStreamConfig =
+    | ChannelAttendeeStreamConfig
+    | RealtimeAttendeeStreamConfig
 
 export type AttendeeBroadcastServiceToken = {
     stream?: AttendeeStreamConfig

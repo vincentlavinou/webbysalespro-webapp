@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AttendeeBroadcastServiceToken, BroadcastServiceToken } from "@/broadcast/service/type";
+import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
 import { useWebinar } from "@/webinar/hooks";
 import { useSessionPresence } from "@/broadcast/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";
 import { useRouter } from "next/navigation";
 import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-session";
-import { createBroadcastServiceTokenAction } from "../service/action";
+import { createAttendeeBroadcastServiceTokenAction } from "../service/action";
 import { PlaybackClient } from "../client/PlaybackClient";
 
 const AUTH_ERROR_CODES = new Set(["ATD-001", "unauthorized"]);
@@ -24,7 +24,7 @@ export function PlaybackContainer({
   webinarTitle,
   clientRedirectTo,
 }: Props) {
-  const [playbackToken, setPlaybackToken] = useState<BroadcastServiceToken | null>(null);
+  const [playbackToken, setPlaybackToken] = useState<AttendeeBroadcastServiceToken | null>(null);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   useWebinar();
@@ -46,7 +46,7 @@ export function PlaybackContainer({
     async function load() {
       setBootstrapError(null);
 
-      const fetchToken = () => createBroadcastServiceTokenAction({ sessionId });
+      const fetchToken = () => createAttendeeBroadcastServiceTokenAction({ sessionId });
       let result = await fetchToken();
 
       if (result?.serverError && AUTH_ERROR_CODES.has(result.serverError.code)) {
@@ -106,7 +106,7 @@ export function PlaybackContainer({
     return (
       <PlaybackClient
         sessionId={sessionId}
-        playbackToken={playbackToken as AttendeeBroadcastServiceToken}
+        playbackToken={playbackToken}
         title={webinarTitle}
       />
     );

@@ -74,6 +74,9 @@ export type SeriesSession = {
     is_attendee_count_visible: boolean
     offer_visible: boolean
     offer_shown_at?: string
+    resolved_attendee_playback_mode?: "channel" | "stage"
+    resolved_audience_event_delivery?: "stream_only" | "chat_only" | "stream_and_chat"
+    resolved_recording_enabled?: boolean
 }
 
 export type WebinarSeriesRegistrationBehavior = {

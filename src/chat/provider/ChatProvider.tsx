@@ -6,11 +6,13 @@ import { defaultRecipient } from "../service/utils";
 import { DefaultChatRecipient } from "../service/enum";
 import { useChatConfiguration } from "../hooks/use-chat-configuration";
 import { useWebinar } from "@/webinar/hooks";
-import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback";
+import { onPlaybackPlaying } from "@/emitter/playback";
 import { chatConfigUpdateSchema } from "../service/schema";
 import { moderateText } from "../service/moderation";
 import { getAttendeeChatSession } from "../service/action";
 import { useChatRuntime } from "../hooks/use-chat-runtime";
+import { useAudienceEvent } from "@/audience-events/hooks/use-audience-event";
+import { emitAudienceChatEvent } from "@/audience-events/service/event-emitter";
 
 const RECONNECT_START_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 10000;
@@ -175,6 +177,7 @@ export function ChatProvider({ children, initialChatConfig }: ChatProviderProps)
             }),
             room.addListener('event', (event: ChatEvent) => {
                 setEvents((prev) => [...prev, event].slice(-MAX_CHAT_ITEMS));
+                emitAudienceChatEvent(event);
             }),
             room.addListener('messageDelete', (event: DeleteMessageEvent) => {
                 setMessages((prev) => prev.filter((message) => message.id !== event.messageId));
@@ -341,16 +344,17 @@ export function ChatProvider({ children, initialChatConfig }: ChatProviderProps)
         return () => window.removeEventListener("webinar:stream:refresh", handleStreamRefresh);
     }, [sessionId]);
 
-    usePlaybackMetadataEvent({
+    useAudienceEvent({
         eventType: "chat:config:update",
         schema: chatConfigUpdateSchema,
         sessionId,
-        getEventKey: (evt) => evt.payload.event_key,
         getStateScope: (evt) => evt.payload.chat_session_id,
         compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
         onEvent: (event) => {
-            console.debug(event)
-            setChatConfig(event.payload);
+            setChatConfig({
+                session_id: event.session_id,
+                ...event.payload,
+            });
         },
         getSignature: (evt) => `${evt.payload.chat_session_id}-${evt.payload.mode}-${evt.payload.is_enabled}-${evt.payload.is_active}-${evt.payload.pinned_announcements.length}`,
     })

@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { AttendeeCountContext } from "../context/AttendeeCountContext";
 import { attendeeCountMetadataSchema, type AttendeeCountMetadataEvent } from "../service/schema";
-import { usePlaybackMetadataEvent } from "@/emitter/playback/hooks/use-playback-metadata-event";
+import { useAudienceEvent } from "@/audience-events/hooks/use-audience-event";
 
 type Props = {
   children: React.ReactNode;
@@ -23,12 +23,11 @@ export function AttendeeCountProvider({ children, initialCount, initialVisible, 
     }
   }, []);
 
-  usePlaybackMetadataEvent({
+  useAudienceEvent({
     eventType: "webinar:attendee_count:update",
     schema: attendeeCountMetadataSchema,
     sessionId,
-    getEventKey: (evt) => evt.payload.event_key,
-    getStateScope: (evt) => evt.payload.session_id,
+    getStateScope: (evt) => evt.session_id,
     compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
     onEvent: handleEvent,
   });

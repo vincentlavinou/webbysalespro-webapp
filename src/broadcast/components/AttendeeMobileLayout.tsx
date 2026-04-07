@@ -57,10 +57,12 @@ export default function AttendeeMobileLayout({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] =
     useState<ViewportSize>(readLayoutViewport);
+  const channelStream =
+    broadcast.stream?.kind === "channel" ? broadcast.stream : undefined;
   const { isRefreshingStream, handleRefreshStream } = useAttendeeStreamRefresh({
     sessionId: broadcast.session.id,
     playerRef,
-    enabled: !!broadcast.stream,
+    enabled: !!channelStream,
   });
 
   const {
@@ -146,7 +148,7 @@ export default function AttendeeMobileLayout({
     <>
       <WebbySalesProPlayer
         ref={playerRef}
-        src={broadcast.stream.config.playback_url}
+        src={channelStream?.config.playback_url ?? ""}
         ariaLabel="Live Webinar Player"
         title={broadcast.webinar.title}
         artwork={broadcast.webinar.media
@@ -221,7 +223,7 @@ export default function AttendeeMobileLayout({
             {playerContent}
           </div>
 
-          {broadcast.stream && (
+          {channelStream && (
             <StreamRefreshControl
               className={
                 isImmersive

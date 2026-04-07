@@ -2,10 +2,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OfferSessionClientContext } from "../contexts/OfferSessionClientContext"
 import { OfferClientUser, OfferSessionDto, OfferView } from "../service/type";
-import { usePlaybackMetadataEvent, onPlaybackPlaying } from "@/emitter/playback";
+import { onPlaybackPlaying } from "@/emitter/playback";
 import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "../service/schema";
 import { getOfferSessionsForAttendee } from "../service/action";
 import { useWebinar } from "@/webinar/hooks";
+import { useAudienceEvent } from "@/audience-events/hooks/use-audience-event";
 
 function getExternalUrl(actionPayload: Record<string, unknown> | undefined): string | null {
     if (!actionPayload) return null;
@@ -47,11 +48,10 @@ export function OfferSessionClientProvider({
         ref: string;
     } | undefined>(undefined);
 
-    usePlaybackMetadataEvent({
+    useAudienceEvent({
         eventType: "webinar:offer:visibility",
         sessionId: sessionId,
         schema: offerVisibilityMetadataSchema,
-        getEventKey: (evt) => evt.payload.event_key,
         getStateScope: (evt) => evt.payload.id,
         compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
         onEvent: (event) => {
@@ -61,11 +61,10 @@ export function OfferSessionClientProvider({
         }
     })
 
-    usePlaybackMetadataEvent({
+    useAudienceEvent({
         eventType: "session:offer:scarcity:update",
         sessionId: sessionId,
         schema: offerScarcityUpdateMetadataSchema,
-        getEventKey: (evt) => evt.payload.event_key,
         getStateScope: (evt) => evt.payload.offer_session_id,
         compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
         onEvent: (event) => {

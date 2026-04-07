@@ -12,6 +12,7 @@ import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshContro
 import { ChatPanel } from "@/chat/component/ChatPanel";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
 import { useAttendeeStreamRefresh } from "@/broadcast/hooks/use-attendee-stream-refresh";
+import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
 
 type AttendeeDesktopExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
@@ -27,10 +28,14 @@ export function AttendeeDesktopExperience({
   const desktopPlayerWidth = "min(100%, calc((100dvh - 7rem) * 1.7777778))";
   const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
   const { setStatus } = usePlaybackRuntime();
+  const channelStream =
+    playbackToken.stream?.kind === "channel" ? playbackToken.stream : undefined;
+  const realtimeStream =
+    playbackToken.stream?.kind === "realtime" ? playbackToken.stream : undefined;
   const { isRefreshingStream, handleRefreshStream } = useAttendeeStreamRefresh({
     sessionId: playbackToken.session.id,
     playerRef,
-    enabled: !!playbackToken.stream,
+    enabled: !!channelStream,
   });
 
   return (
@@ -43,22 +48,31 @@ export function AttendeeDesktopExperience({
               className="relative z-10 w-full max-w-full bg-black"
               style={{ width: compact ? "100%" : desktopPlayerWidth }}
             >
-              <WebbySalesProPlayer
-                ref={playerRef}
-                src={playbackToken.stream!.config.playback_url}
-                ariaLabel="Live Webinar Player"
-                title={playbackToken.webinar.title}
-                onPlaybackStatusChange={setStatus}
-                artwork={playbackToken.webinar.media
-                  .filter((media: WebinarMedia) => media.field_type === WebinarMediaFieldType.THUMBNAIL)
-                  .map((media: WebinarMedia) => ({ src: media.file_url }))}
-              />
+              {channelStream ? (
+                <WebbySalesProPlayer
+                  ref={playerRef}
+                  src={channelStream.config.playback_url}
+                  ariaLabel="Live Webinar Player"
+                  title={playbackToken.webinar.title}
+                  onPlaybackStatusChange={setStatus}
+                  artwork={playbackToken.webinar.media
+                    .filter((media: WebinarMedia) => media.field_type === WebinarMediaFieldType.THUMBNAIL)
+                    .map((media: WebinarMedia) => ({ src: media.file_url }))}
+                />
+              ) : realtimeStream ? (
+                <AttendeeStageViewer
+                  stream={realtimeStream}
+                  onPlaybackStatusChange={setStatus}
+                />
+              ) : null}
               <AttendeeCountBadge />
-              <StreamRefreshControl
-                className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
-                onRefresh={handleRefreshStream}
-                isRefreshing={isRefreshingStream}
-              />
+              {channelStream ? (
+                <StreamRefreshControl
+                  className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
+                  onRefresh={handleRefreshStream}
+                  isRefreshing={isRefreshingStream}
+                />
+              ) : null}
             </div>
           </div>
         </div>

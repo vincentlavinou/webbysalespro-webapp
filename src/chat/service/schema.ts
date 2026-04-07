@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createAudienceEventSchema } from "@/audience-events/service/schema";
 
 const pinnedAnnouncementSchema = z.object({
     id: z.string(),
@@ -10,11 +11,9 @@ const pinnedAnnouncementSchema = z.object({
     pinned_by_type: z.enum(["host", "presenter", "moderator"]),
 });
 
-export const chatConfigUpdateSchema = z.object({
-    type: z.literal("chat:config:update"),
-    payload: z.object({
-        event_key: z.string().optional(),
-        session_id: z.string(),
+export const chatConfigUpdateSchema = createAudienceEventSchema(
+    "chat:config:update",
+    z.object({
         chat_session_id: z.string(),
         is_enabled: z.boolean(),
         mode: z.enum(["public", "private", "locked"]),
@@ -23,7 +22,7 @@ export const chatConfigUpdateSchema = z.object({
         closed_at: z.string().nullable(),
         pinned_announcements: z.array(pinnedAnnouncementSchema),
     }),
-});
+);
 
 export const getAttendeeChatSessionSchema = z.object({
     sessionId: z.string().uuid()

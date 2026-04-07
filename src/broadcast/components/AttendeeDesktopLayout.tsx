@@ -22,10 +22,12 @@ export const AttendeeDesktopLayout = ({
 }: AttendeeDesktopLayoutProps) => {
   const desktopPlayerWidth = "min(100%, calc((100dvh - 7rem) * 1.7777778))";
   const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
+  const channelStream =
+    broadcast.stream?.kind === "channel" ? broadcast.stream : undefined;
   const { isRefreshingStream, handleRefreshStream } = useAttendeeStreamRefresh({
     sessionId: broadcast.session.id,
     playerRef,
-    enabled: !!broadcast.stream,
+    enabled: !!channelStream,
   });
 
   return (
@@ -46,7 +48,7 @@ export const AttendeeDesktopLayout = ({
                 <>
                   <WebbySalesProPlayer
                     ref={playerRef}
-                    src={broadcast.stream.config.playback_url}
+                    src={channelStream?.config.playback_url ?? ""}
                     ariaLabel="Live Webinar Player"
                     title={broadcast.webinar.title}
                     artwork={broadcast.webinar.media
@@ -54,11 +56,13 @@ export const AttendeeDesktopLayout = ({
                       .map((m: WebinarMedia) => ({ src: m.file_url }))}
                   />
                   <AttendeeCountBadge />
-                  <StreamRefreshControl
-                    className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
-                    onRefresh={handleRefreshStream}
-                    isRefreshing={isRefreshingStream}
-                  />
+                  {channelStream ? (
+                    <StreamRefreshControl
+                      className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
+                      onRefresh={handleRefreshStream}
+                      isRefreshing={isRefreshingStream}
+                    />
+                  ) : null}
                 </>
               ) : (
                 <div className="grid h-full w-full place-items-center bg-black/80 text-white">

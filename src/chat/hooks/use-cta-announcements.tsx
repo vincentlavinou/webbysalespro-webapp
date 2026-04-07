@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePlaybackMetadataEvent } from '@/emitter/playback';
 import { purchaseAnnouncementMetadataSchema } from '@/offer-client/service/schema';
+import { useAudienceEvent } from '@/audience-events/hooks/use-audience-event';
 
 export interface CtaAnnouncement {
   id: string;
@@ -202,11 +202,11 @@ export function useCtaAnnouncements(sessionId?: string) {
     };
   }, []);
 
-  usePlaybackMetadataEvent({
+  useAudienceEvent({
     eventType: 'session:offer:cta_announcement',
     schema: purchaseAnnouncementMetadataSchema,
     sessionId,
-    getEventKey: (evt) => evt.payload.event_key ?? evt.payload.cta_entry_id,
+    getEventKey: (evt) => evt.event_key || evt.payload.cta_entry_id,
     onEvent: (event) => {
       const { content, source, ttl_seconds } = event.payload;
       const id = `cta-announcement-${++ctaCounter}`;
