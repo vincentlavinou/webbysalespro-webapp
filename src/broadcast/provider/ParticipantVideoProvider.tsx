@@ -19,6 +19,42 @@ export const ParticipantVideoProvider = ({ participant, children }: ParticipantV
     const audioRef = useRef<MediaStreamTrack | undefined>(undefined)
     const videoRef = useRef<MediaStreamTrack | undefined>(undefined)
 
+    const attachAndPlay = async (
+        element: HTMLVideoElement,
+        stream: MediaStream,
+        options?: { muted?: boolean }
+    ) => {
+        element.srcObject = stream;
+
+        if (typeof options?.muted === "boolean") {
+            element.muted = options.muted;
+            element.defaultMuted = options.muted;
+        }
+
+        const tryPlay = async () => {
+            try {
+                await element.play();
+            } catch {
+                // Autoplay with audio may be blocked; fall back to muted playback
+                // so video still renders until the user interacts.
+                if (element.muted) return;
+                element.muted = true;
+                element.defaultMuted = true;
+                await element.play().catch(() => {});
+            }
+        };
+
+        if (element.readyState >= HTMLMediaElement.HAVE_METADATA) {
+            await tryPlay();
+            return;
+        }
+
+        const handleLoadedMetadata = () => {
+            void tryPlay();
+        };
+
+        element.addEventListener("loadedmetadata", handleLoadedMetadata, { once: true });
+    }
 
     useEffect(() => {
 
@@ -46,7 +82,7 @@ export const ParticipantVideoProvider = ({ participant, children }: ParticipantV
         });
         // Show screen share if available
         if (screenTrack && audioRef.current && screenRef.current) {
-            screenRef.current.srcObject = new MediaStream([screenTrack, audioRef.current]);
+            void attachAndPlay(screenRef.current, new MediaStream([screenTrack, audioRef.current]));
             setHasScreen(true);
 
             const { width, height } = screenTrack.getSettings?.() || {};
@@ -60,7 +96,8 @@ export const ParticipantVideoProvider = ({ participant, children }: ParticipantV
 
         // Always attach camera if available
         if (cameraTrack && audioRef.current && cameraRef.current) {
-            cameraRef.current.srcObject = new MediaStream([cameraTrack, audioRef.current]);
+            void attachAndPlay(cameraRef.current, new MediaStream([cameraTrack, audioRef.current]));
+            setHasScreen(false);
         }
     }, [participant]);
 
