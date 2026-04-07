@@ -13,6 +13,7 @@ export interface CtaAnnouncement {
 }
 
 let audioCtx: AudioContext | null = null;
+const attachedMediaElements = new WeakSet<HTMLMediaElement>();
 
 /**
  * Called by the IVS player once its <video> element starts playing.
@@ -29,9 +30,13 @@ export function setSharedAudioContext(videoEl: HTMLVideoElement) {
     if (audioCtx.state === 'suspended') {
       audioCtx.resume();
     }
-    // createMediaElementSource can only be called once per element; guard against that.
+    if (attachedMediaElements.has(videoEl)) {
+      return;
+    }
+
     const source = audioCtx.createMediaElementSource(videoEl);
     source.connect(audioCtx.destination);
+    attachedMediaElements.add(videoEl);
   } catch {
     // not available or already attached
   }

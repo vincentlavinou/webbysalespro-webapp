@@ -11,8 +11,6 @@ import {
 } from "react";
 import type { SubscribeType } from "amazon-ivs-web-broadcast";
 import { emitPlaybackPlaying } from "@/emitter/playback";
-import { ParticipantVideoProvider } from "@/broadcast/provider/ParticipantVideoProvider";
-import { useParticipantVideo } from "@/broadcast/hooks/use-participant-video";
 import { joinStage, leaveStage } from "@/broadcast/service/utils";
 import {
   RealtimeAttendeeStreamConfig,
@@ -20,6 +18,7 @@ import {
 } from "@/broadcast/service/type";
 import { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
 import { WebinarMainLayoutLoading } from "@/broadcast/components/views/WebinarMainLayoutLoading";
+import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
 import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
 
 type Stage = import("amazon-ivs-web-broadcast").Stage;
@@ -99,21 +98,97 @@ function StageParticipantCard({
 }: {
   participant: WebiSalesProParticipant;
 }) {
-  const { screenShareRef, cameraRef, isScreenShare, aspectRatio } =
-    useParticipantVideo();
-  const resolvedScreenShareRef = screenShareRef ?? { current: null };
-  const resolvedCameraRef = cameraRef ?? { current: null };
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [surfaceMode, setSurfaceMode] = useState<StageSurfaceMode>("loading");
+  const [aspectRatio, setAspectRatio] = useState("aspect-video");
   const presenterName = getParticipantDisplayName(participant);
   const hasActiveVideo = participantHasActiveVideo(participant);
 
-  const activeVideoElement =
-    (isScreenShare
-      ? resolvedScreenShareRef.current
-      : resolvedCameraRef.current) ?? null;
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    let videoTrack: MediaStreamTrack | undefined;
+    let audioTrack: MediaStreamTrack | undefined;
+
+    participant.streams.forEach((stream) => {
+      const track = stream.mediaStreamTrack;
+      if (!videoTrack && track.kind === "video") {
+        videoTrack = track;
+      }
+      if (!audioTrack && track.kind === "audio") {
+        audioTrack = track;
+      }
+    });
+
+    if (!videoTrack) {
+      video.srcObject = null;
+      setSurfaceMode("loading");
+      return;
+    }
+
+    const { width, height } = videoTrack.getSettings?.() || {};
+    if (width && height) {
+      const ratio = width / height;
+      if (Math.abs(ratio - 4 / 3) < 0.1) setAspectRatio("aspect-[4/3]");
+      else if (Math.abs(ratio - 16 / 9) < 0.1) setAspectRatio("aspect-video");
+      else setAspectRatio("aspect-auto");
+    } else {
+      setAspectRatio("aspect-video");
+    }
+
+    video.srcObject = new MediaStream(
+      audioTrack ? [videoTrack, audioTrack] : [videoTrack],
+    );
+    video.muted = false;
+    video.defaultMuted = false;
+
+    const tryPlay = async () => {
+      try {
+        await video.play();
+        setSharedAudioContext(video);
+      } catch {
+        if (video.muted) {
+          setSurfaceMode(video.paused ? "blocked" : "playing-muted");
+          return;
+        }
+
+        video.muted = true;
+        video.defaultMuted = true;
+        await video.play().catch(() => {});
+        if (!video.paused) {
+          setSharedAudioContext(video);
+        }
+        setSurfaceMode(video.paused ? "blocked" : "playing-muted");
+      }
+    };
+
+    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      void tryPlay();
+    } else {
+      const handleLoadedMetadata = () => {
+        void tryPlay();
+      };
+
+      video.addEventListener("loadedmetadata", handleLoadedMetadata, {
+        once: true,
+      });
+
+      return () => {
+        video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        video.srcObject = null;
+      };
+    }
+
+    return () => {
+      video.srcObject = null;
+    };
+  }, [participant]);
 
   useEffect(() => {
-    const video = activeVideoElement;
+    const video = videoRef.current;
     if (!video) {
       setSurfaceMode("loading");
       return;
@@ -153,33 +228,38 @@ function StageParticipantCard({
         video.removeEventListener(eventName, syncMode);
       });
     };
-  }, [activeVideoElement]);
+  }, [participant]);
 
   const handleStartPlayback = async () => {
-    const video = activeVideoElement;
+    const video = videoRef.current;
     if (!video) return;
 
     try {
       video.muted = false;
       video.defaultMuted = false;
       await video.play();
+      setSharedAudioContext(video);
       setSurfaceMode("playing");
     } catch {
       video.muted = true;
       video.defaultMuted = true;
       await video.play().catch(() => {});
+      if (!video.paused) {
+        setSharedAudioContext(video);
+      }
       setSurfaceMode(video.paused ? "blocked" : "playing-muted");
     }
   };
 
   const handleUnmute = async () => {
-    const video = activeVideoElement;
+    const video = videoRef.current;
     if (!video) return;
 
     video.muted = false;
     video.defaultMuted = false;
     try {
       await video.play();
+      setSharedAudioContext(video);
       setSurfaceMode("playing");
     } catch {
       video.muted = true;
@@ -197,24 +277,12 @@ function StageParticipantCard({
       className={`w-full max-h-[80vh] ${aspectRatio} overflow-hidden rounded-md border bg-black relative`}
     >
       <video
-        ref={isScreenShare ? resolvedScreenShareRef : resolvedCameraRef}
+        ref={videoRef}
         autoPlay
         playsInline
         muted={false}
         className="h-full w-full object-contain"
       />
-
-      {isScreenShare ? (
-        <div className="absolute bottom-3 right-3 w-40 aspect-video overflow-hidden rounded border-2 shadow-lg">
-          <video
-            ref={resolvedCameraRef}
-            autoPlay
-            playsInline
-            muted={false}
-            className="h-full w-full object-cover"
-          />
-        </div>
-      ) : null}
 
       {surfaceMode === "blocked" ? (
         <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-sm">
@@ -375,8 +443,6 @@ export const AttendeeStageViewer = forwardRef<
   }
 
   return (
-    <ParticipantVideoProvider participant={mainParticipant}>
-      <StageParticipantCard participant={mainParticipant} />
-    </ParticipantVideoProvider>
+    <StageParticipantCard participant={mainParticipant} />
   );
 });
