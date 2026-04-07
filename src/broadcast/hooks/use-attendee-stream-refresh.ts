@@ -5,13 +5,19 @@ import { useRouter } from "next/navigation";
 import { notifySuccessUiMessage } from "@/lib/notify";
 import { getSessionAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
-import type { WebbySalesProPlayerHandle } from "@/playback/player/ivs/WebbySalesProPlayer";
+
+export type AttendeeStreamRecoveryHandle = {
+  restoreToLive: (options?: {
+    forceReload?: boolean;
+    gracePeriodMs?: number;
+  }) => Promise<void>;
+};
 
 const AUTO_REFRESH_COOLDOWN_MS = 5000;
 
 type UseAttendeeStreamRefreshOptions = {
   sessionId: string;
-  playerRef: React.RefObject<WebbySalesProPlayerHandle | null>;
+  playerRef: React.RefObject<AttendeeStreamRecoveryHandle | null>;
   enabled?: boolean;
 };
 

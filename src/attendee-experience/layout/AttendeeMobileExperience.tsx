@@ -12,12 +12,13 @@ import { ChatMessages } from "@/chat/component/ChatMessages";
 import { AttendeeCountBadge } from "@/broadcast/attendee-count/components/AttendeeCountBadge";
 import { useImmersiveLayout } from "@/broadcast/hooks/use-immersive-layout";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
-import WebbySalesProPlayer, {
-  type WebbySalesProPlayerHandle,
-} from "@/playback/player/ivs/WebbySalesProPlayer";
+import WebbySalesProPlayer from "@/playback/player/ivs/WebbySalesProPlayer";
 import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
-import { useAttendeeStreamRefresh } from "@/broadcast/hooks/use-attendee-stream-refresh";
+import {
+  type AttendeeStreamRecoveryHandle,
+  useAttendeeStreamRefresh,
+} from "@/broadcast/hooks/use-attendee-stream-refresh";
 import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
 
 type AttendeeMobileExperienceProps = {
@@ -53,7 +54,7 @@ export function AttendeeMobileExperience({
   const showOfferSheet =
     offerView === "offer-checkingout" || offerView === "offer-purchased";
 
-  const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
+  const playerRef = useRef<AttendeeStreamRecoveryHandle | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState<ViewportSize>(readLayoutViewport);
   const { setStatus } = usePlaybackRuntime();
@@ -64,7 +65,7 @@ export function AttendeeMobileExperience({
   const { isRefreshingStream, handleRefreshStream } = useAttendeeStreamRefresh({
     sessionId: playbackToken.session.id,
     playerRef,
-    enabled: !!channelStream,
+    enabled: !!playbackToken.stream,
   });
 
   const {
@@ -156,6 +157,7 @@ export function AttendeeMobileExperience({
         />
       ) : realtimeStream ? (
         <AttendeeStageViewer
+          ref={playerRef}
           stream={realtimeStream}
           onPlaybackStatusChange={setStatus}
         />
@@ -217,7 +219,7 @@ export function AttendeeMobileExperience({
             {playerContent}
           </div>
 
-          {channelStream ? (
+          {playbackToken.stream ? (
             <StreamRefreshControl
               className={
                 isImmersive

@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { SubscribeType } from "amazon-ivs-web-broadcast";
 import { emitPlaybackPlaying } from "@/emitter/playback";
 import { ParticipantVideoProvider } from "@/broadcast/provider/ParticipantVideoProvider";
@@ -22,7 +30,31 @@ type AttendeeStageViewerProps = {
   onPlaybackStatusChange?: (status: PlaybackStatus) => void;
 };
 
+export type AttendeeStageViewerHandle = {
+  restoreToLive: (options?: {
+    forceReload?: boolean;
+    gracePeriodMs?: number;
+  }) => Promise<void>;
+};
+
 type StageSurfaceMode = "loading" | "blocked" | "playing" | "playing-muted";
+
+function getParticipantDisplayName(participant?: WebiSalesProParticipant) {
+  const name = participant?.participant.attributes?.name;
+  return typeof name === "string" && name.trim().length > 0
+    ? name.trim()
+    : undefined;
+}
+
+function participantHasActiveVideo(participant?: WebiSalesProParticipant) {
+  if (!participant || participant.participant.videoStopped) {
+    return false;
+  }
+
+  return participant.streams.some(
+    (stream) => stream.mediaStreamTrack.kind === "video",
+  );
+}
 
 function selectPrimaryParticipant(participants: WebiSalesProParticipant[]) {
   const eligibleParticipants = participants.filter((participant) => {
@@ -35,17 +67,45 @@ function selectPrimaryParticipant(participants: WebiSalesProParticipant[]) {
 
   return (
     candidates.find((participant) =>
-      participant.streams.some((stream) => stream.mediaStreamTrack.kind === "video"),
+      participantHasActiveVideo(participant),
     ) ?? candidates[0]
   );
 }
 
-function StageParticipantCard() {
+function StageParticipantFallback({
+  presenterName,
+}: {
+  presenterName?: string;
+}) {
+  return (
+    <div className="relative w-full max-h-[80vh] aspect-video overflow-hidden rounded-md border bg-black">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_45%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(0,0,0,1))]" />
+      <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+        <div className="max-w-xl space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/55">
+            Live stage paused
+          </p>
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+            {presenterName ? `${presenterName} will be right back` : "The presenter will be right back"}
+          </h2>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StageParticipantCard({
+  participant,
+}: {
+  participant: WebiSalesProParticipant;
+}) {
   const { screenShareRef, cameraRef, isScreenShare, aspectRatio } =
     useParticipantVideo();
   const resolvedScreenShareRef = screenShareRef ?? { current: null };
   const resolvedCameraRef = cameraRef ?? { current: null };
   const [surfaceMode, setSurfaceMode] = useState<StageSurfaceMode>("loading");
+  const presenterName = getParticipantDisplayName(participant);
+  const hasActiveVideo = participantHasActiveVideo(participant);
 
   const activeVideoElement =
     (isScreenShare
@@ -128,6 +188,10 @@ function StageParticipantCard() {
     }
   };
 
+  if (!hasActiveVideo) {
+    return <StageParticipantFallback presenterName={presenterName} />;
+  }
+
   return (
     <div
       className={`w-full max-h-[80vh] ${aspectRatio} overflow-hidden rounded-md border bg-black relative`}
@@ -187,15 +251,18 @@ function StageParticipantCard() {
   );
 }
 
-export function AttendeeStageViewer({
+export const AttendeeStageViewer = forwardRef<
+  AttendeeStageViewerHandle,
+  AttendeeStageViewerProps
+>(function AttendeeStageViewer({
   stream,
   onPlaybackStatusChange,
-}: AttendeeStageViewerProps) {
+}: AttendeeStageViewerProps, ref) {
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const stageRef = useRef<Stage | undefined>(undefined);
   const localParticipantRef = useRef<StageParticipantInfo | undefined>(undefined);
-  const joinAttemptedRef = useRef(false);
 
   const strategy = useMemo<Strategy>(
     () => ({
@@ -224,10 +291,32 @@ export function AttendeeStageViewer({
     () => selectPrimaryParticipant(participants),
     [participants],
   );
+  const mainParticipantHasActiveVideo = useMemo(
+    () => participantHasActiveVideo(mainParticipant),
+    [mainParticipant],
+  );
+  const reconnectStage = useCallback(async () => {
+    const currentStage = stageRef.current;
+    stageRef.current = undefined;
+    localParticipantRef.current = undefined;
+    setParticipants([]);
+    setIsConnected(false);
+    onPlaybackStatusChange?.("loading");
+
+    if (currentStage) {
+      await leaveStage(setIsConnected, currentStage);
+    }
+
+    setConnectionAttempt((current) => current + 1);
+  }, [onPlaybackStatusChange]);
+
+  useImperativeHandle(ref, () => ({
+    restoreToLive: async () => {
+      await reconnectStage();
+    },
+  }), [reconnectStage]);
 
   useEffect(() => {
-    if (joinAttemptedRef.current) return;
-    joinAttemptedRef.current = true;
     onPlaybackStatusChange?.("loading");
     const currentStageRef = stageRef;
 
@@ -245,7 +334,12 @@ export function AttendeeStageViewer({
     return () => {
       void leaveStage(setIsConnected, currentStageRef.current);
     };
-  }, [onPlaybackStatusChange, strategy, stream.config.participant_token]);
+  }, [
+    connectionAttempt,
+    onPlaybackStatusChange,
+    strategy,
+    stream.config.participant_token,
+  ]);
 
   useEffect(() => {
     if (!isConnected) {
@@ -258,17 +352,31 @@ export function AttendeeStageViewer({
       return;
     }
 
+    if (!mainParticipantHasActiveVideo) {
+      onPlaybackStatusChange?.("ready");
+      return;
+    }
+
     emitPlaybackPlaying();
     onPlaybackStatusChange?.("playing");
-  }, [isConnected, mainParticipant, onPlaybackStatusChange]);
+  }, [
+    isConnected,
+    mainParticipant,
+    mainParticipantHasActiveVideo,
+    onPlaybackStatusChange,
+  ]);
 
   if (!isConnected || !mainParticipant) {
-    return <WebinarMainLayoutLoading aspectClassName="aspect-video" />;
+    if (!isConnected) {
+      return <WebinarMainLayoutLoading aspectClassName="aspect-video" />;
+    }
+
+    return <StageParticipantFallback />;
   }
 
   return (
     <ParticipantVideoProvider participant={mainParticipant}>
-      <StageParticipantCard />
+      <StageParticipantCard participant={mainParticipant} />
     </ParticipantVideoProvider>
   );
-}
+});

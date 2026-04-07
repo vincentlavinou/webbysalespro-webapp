@@ -5,13 +5,14 @@ import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import { AttendeeCountBadge } from "@/broadcast/attendee-count/components/AttendeeCountBadge";
-import WebbySalesProPlayer, {
-  type WebbySalesProPlayerHandle,
-} from "@/playback/player/ivs/WebbySalesProPlayer";
+import WebbySalesProPlayer from "@/playback/player/ivs/WebbySalesProPlayer";
 import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
 import { ChatPanel } from "@/chat/component/ChatPanel";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
-import { useAttendeeStreamRefresh } from "@/broadcast/hooks/use-attendee-stream-refresh";
+import {
+  type AttendeeStreamRecoveryHandle,
+  useAttendeeStreamRefresh,
+} from "@/broadcast/hooks/use-attendee-stream-refresh";
 import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
 
 type AttendeeDesktopExperienceProps = {
@@ -26,7 +27,7 @@ export function AttendeeDesktopExperience({
   compact = false,
 }: AttendeeDesktopExperienceProps) {
   const desktopPlayerWidth = "min(100%, calc((100dvh - 7rem) * 1.7777778))";
-  const playerRef = useRef<WebbySalesProPlayerHandle | null>(null);
+  const playerRef = useRef<AttendeeStreamRecoveryHandle | null>(null);
   const { setStatus } = usePlaybackRuntime();
   const channelStream =
     playbackToken.stream?.kind === "channel" ? playbackToken.stream : undefined;
@@ -35,7 +36,7 @@ export function AttendeeDesktopExperience({
   const { isRefreshingStream, handleRefreshStream } = useAttendeeStreamRefresh({
     sessionId: playbackToken.session.id,
     playerRef,
-    enabled: !!channelStream,
+    enabled: !!playbackToken.stream,
   });
 
   return (
@@ -61,12 +62,13 @@ export function AttendeeDesktopExperience({
                 />
               ) : realtimeStream ? (
                 <AttendeeStageViewer
+                  ref={playerRef}
                   stream={realtimeStream}
                   onPlaybackStatusChange={setStatus}
                 />
               ) : null}
               <AttendeeCountBadge />
-              {channelStream ? (
+              {playbackToken.stream ? (
                 <StreamRefreshControl
                   className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
                   onRefresh={handleRefreshStream}
