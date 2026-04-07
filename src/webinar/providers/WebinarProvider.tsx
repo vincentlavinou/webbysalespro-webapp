@@ -17,6 +17,8 @@ import { getSessionAction } from "../service/action";
 import { useAction } from "next-safe-action/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";
 import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-session";
+import { useAudienceEvent } from "@/audience-events/hooks/use-audience-event";
+import { webinarSessionUpdateAudienceEventSchema } from "../service/schema";
 
 // ---- Tuning knobs (can be shared with hook defaults or overridden) ----
 const HEARTBEAT_TIMEOUT_MS = 45_000;
@@ -142,7 +144,10 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
     const handleUpdateSession = useCallback((session: SeriesSession) => {
         setSession(session);
 
-        if (session.status === WebinarSessionStatus.COMPLETED) {
+        if (
+            session.status === WebinarSessionStatus.COMPLETED ||
+            session.status === WebinarSessionStatus.CANCELED
+        ) {
             setIsRedirecting(true);
             router.replace(`/${sessionId}/completed`);
         }
@@ -169,6 +174,25 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
         },
         [session, handleUpdateSession, regenerateBroadcastToken]
     );
+
+    useAudienceEvent({
+        eventType: "webinar:session:update",
+        schema: webinarSessionUpdateAudienceEventSchema,
+        sessionId,
+        getStateScope: (evt) => evt.payload.session_id,
+        compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
+        onEvent: (event) => {
+            handleUpdateSession({
+                ...(session || {}),
+                id: event.payload.session_id,
+                status: event.payload.status,
+            } as SeriesSession);
+
+            if (event.payload.status === WebinarSessionStatus.IN_PROGRESS) {
+                void regenerateBroadcastToken();
+            }
+        },
+    });
 
     // ---- Build SSE URL (generic for hook) ----
     // NOTE: EventSource does not support custom headers, so auth is passed as
