@@ -19,6 +19,7 @@ import {
 import { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
 import { WebinarMainLayoutLoading } from "@/broadcast/components/views/WebinarMainLayoutLoading";
 import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
+import { useMediaSession } from "../player/ivs/hooks/use-media-session";
 import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
 
 type Stage = import("amazon-ivs-web-broadcast").Stage;
@@ -267,6 +268,12 @@ function StageParticipantCard({
       setSurfaceMode("playing-muted");
     }
   };
+
+  useMediaSession({
+    active: surfaceMode === "playing" || surfaceMode === "playing-muted",
+    title: presenterName ? `${presenterName} — Live Webinar` : "Live Webinar",
+    ariaLabel: "Live Webinar",
+  });
 
   if (!hasActiveVideo) {
     return <StageParticipantFallback presenterName={presenterName} />;
