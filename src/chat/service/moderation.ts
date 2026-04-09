@@ -95,8 +95,10 @@ export function moderateText(
     }
   }
 
-  // LINK BLOCKING
-  const containsUrl = /\b((https?:\/\/)|www\.)[^\s]+/i.test(text);
+  // LINK BLOCKING — matches http/https/www prefixed URLs and bare domains (e.g. pornhub.com)
+  const containsUrl =
+    /\b((https?:\/\/)|www\.)\S+/i.test(text) ||
+    /\b[a-z0-9-]{2,}\.(com|net|org|io|co|tv|me|info|biz|xyz|app|site|live|online|club|xxx|adult|sex|porn|edu|gov|uk|ca|de|fr|au|ru|cn|br|jp)\b/i.test(text);
 
   if (
     containsUrl &&
