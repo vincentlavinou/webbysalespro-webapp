@@ -6,21 +6,15 @@ import { chatApiUrl } from "."
 import { actionClient } from "@/lib/safe-action"
 import { getAttendeeChatSessionSchema } from "./schema"
 import { handleStatus } from "@/lib/http"
-import { getAttendeeAuthHeader } from "@/lib/attendee-request"
+import { attendeeFetch } from "@/lib/attendee-fetch"
 
 const getChatTokenSchema = z.object({ sessionId: z.string() })
 
 export const getChatTokenAction = actionClient
     .inputSchema(getChatTokenSchema)
     .action(async ({ parsedInput }) => {
-        const authHeader = await getAttendeeAuthHeader()
-        const response = await fetch(`${chatApiUrl}/v1/chat/token/`, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...authHeader,
-            },
+        const response = await attendeeFetch(`${chatApiUrl}/v1/chat/token/`, {
             method: 'POST',
-            cache: "no-store",
             body: JSON.stringify({ session: parsedInput.sessionId }),
         })
         const checkedResponse = await handleStatus(response)
@@ -30,17 +24,9 @@ export const getChatTokenAction = actionClient
 export const getAttendeeChatSession = actionClient.inputSchema(
     getAttendeeChatSessionSchema
 ).action(async ({ parsedInput }) => {
-    const authHeader = await getAttendeeAuthHeader()
-    const response = await fetch(
+    const response = await attendeeFetch(
         `${chatApiUrl}/v1/sessions/${parsedInput.sessionId}/chat/`,
-        {
-            headers: {
-                'Content-Type': 'application/json',
-                ...authHeader,
-            },
-            method: 'GET',
-            cache: "no-store",
-        }
+        { method: 'GET' }
     )
     const checkedResponse = await handleStatus(response)
     const result = await checkedResponse.json() as ChatConfigUpdate

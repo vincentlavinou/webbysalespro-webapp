@@ -2,7 +2,7 @@
 
 import { actionClient, ServerError } from "@/lib/safe-action";
 import { handleStatus } from "@/lib/http";
-import { getAttendeeAuthHeader } from "@/lib/attendee-request";
+import { attendeeFetch } from "@/lib/attendee-fetch";
 import { z } from "zod";
 import { broadcastApiUrl } from ".";
 import { AttendeeBroadcastServiceToken, BroadcastServiceToken } from "./type";
@@ -55,16 +55,9 @@ function unwrapActionData<T>(result: {
 export const createBroadcastServiceTokenAction = actionClient
   .inputSchema(createBroadcastServiceTokenSchema)
   .action(async ({ parsedInput }) => {
-    const authHeader = await getAttendeeAuthHeader()
-    const response = await fetch(`${broadcastApiUrl}/v1/broadcast/token/`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeader,
-      },
+    const response = await attendeeFetch(`${broadcastApiUrl}/v1/broadcast/token/`, {
       method: "POST",
-      body: JSON.stringify({
-        session: parsedInput.sessionId,
-      }),
+      body: JSON.stringify({ session: parsedInput.sessionId }),
     });
 
     const checkedResponse = await handleStatus(response);
@@ -74,16 +67,9 @@ export const createBroadcastServiceTokenAction = actionClient
 export const createAttendeeBroadcastServiceTokenAction = actionClient
   .inputSchema(createBroadcastServiceTokenSchema)
   .action(async ({ parsedInput }) => {
-    const authHeader = await getAttendeeAuthHeader()
-    const response = await fetch(`${broadcastApiUrl}/v1/attendee/broadcast/token/`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeader,
-      },
+    const response = await attendeeFetch(`${broadcastApiUrl}/v1/attendee/broadcast/token/`, {
       method: "POST",
-      body: JSON.stringify({
-        session: parsedInput.sessionId,
-      }),
+      body: JSON.stringify({ session: parsedInput.sessionId }),
     });
 
     const checkedResponse = await handleStatus(response);
@@ -133,20 +119,18 @@ export const sessionControllerAction = actionClient
 export const recordEventAction = actionClient
   .inputSchema(recordEventSchema)
   .action(async ({ parsedInput }) => {
-    const authHeader = await getAttendeeAuthHeader()
-    const response = await fetch(`${broadcastApiUrl}/v2/attendances/${parsedInput.attendanceId}/events/`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeader,
-      },
-      method: "POST",
-      body: JSON.stringify({
-        event_code: parsedInput.name,
-        source: "client",
-        occurred_at: new Date().toISOString(),
-        payload: parsedInput.payload ?? {},
-      }),
-    });
+    const response = await attendeeFetch(
+      `${broadcastApiUrl}/v2/attendances/${parsedInput.attendanceId}/events/`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          event_code: parsedInput.name,
+          source: "client",
+          occurred_at: new Date().toISOString(),
+          payload: parsedInput.payload ?? {},
+        }),
+      }
+    );
 
     await handleStatus(response);
     return { success: true };

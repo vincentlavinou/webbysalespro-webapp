@@ -3,7 +3,6 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { ChatToken } from "amazon-ivs-chat-messaging";
 import { notifyErrorUiMessage } from "@/lib/notify";
-import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-session";
 import { ChatConfigurationProvider } from "./provider/ChatConfigurationProvider";
 import { ChatControlProvider } from "./provider/ChatControlProvider";
 import { ChatProvider } from "./provider/ChatProvider";
@@ -22,8 +21,6 @@ type ChatManagerProps = {
   children: ReactNode;
 };
 
-const AUTH_ERROR_CODES = new Set(["ATD-001", "unauthorized"]);
-
 export function ChatManager({
   sessionId,
   registrantId,
@@ -32,35 +29,41 @@ export function ChatManager({
   enabled,
   children,
 }: ChatManagerProps) {
-  const { refresh: refreshSession } = useAttendeeSession();
   const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
   const [isRuntimeEnabled, setIsRuntimeEnabled] = useState(false);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
-  const refreshSessionRef = useRef(refreshSession);
-  refreshSessionRef.current = refreshSession;
+
+  // Deduplicates concurrent calls from the IVS SDK — if a fetch is already in-flight,
+  // return the same promise instead of firing a second request to /api/v1/chat/token/.
+  const tokenFetchInFlightRef = useRef<Promise<ChatToken> | null>(null);
 
   const stableTokenProvider = useRef(async (): Promise<ChatToken> => {
-    const fetchToken = () => getChatTokenAction({ sessionId: sessionIdRef.current });
-    let result = await fetchToken();
+    if (tokenFetchInFlightRef.current) return tokenFetchInFlightRef.current;
 
-    if (result?.serverError && AUTH_ERROR_CODES.has(result.serverError.code)) {
-      await refreshSessionRef.current();
-      result = await fetchToken();
-    }
+    const promise = (async (): Promise<ChatToken> => {
+      // attendeeFetch inside getChatTokenAction handles the 401/403 refresh+retry,
+      // so we only need one call here.
+      const result = await getChatTokenAction({ sessionId: sessionIdRef.current });
 
-    if (!result?.data) {
-      const reason = result?.serverError?.detail ?? "Failed to get chat token";
-      const code = result?.serverError?.code ?? "unknown";
-      console.error(`[chat] token fetch failed (${code}): ${reason}`);
-      throw new Error(reason);
-    }
+      if (!result?.data) {
+        const reason = result?.serverError?.detail ?? "Failed to get chat token";
+        const code = result?.serverError?.code ?? "unknown";
+        console.error(`[chat] token fetch failed (${code}): ${reason}`);
+        throw new Error(reason);
+      }
 
-    return {
-      token: result.data.chat.token,
-      sessionExpirationTime: result.data.chat.session_expiration_time,
-      tokenExpirationTime: result.data.chat.token_expiration_time,
-    } as ChatToken;
+      return {
+        token: result.data.chat.token,
+        sessionExpirationTime: result.data.chat.session_expiration_time,
+        tokenExpirationTime: result.data.chat.token_expiration_time,
+      } as ChatToken;
+    })();
+
+    tokenFetchInFlightRef.current = promise;
+    promise.finally(() => { tokenFetchInFlightRef.current = null; });
+
+    return promise;
   });
 
   const syncLatestChatConfig = useCallback(async () => {

@@ -135,12 +135,11 @@ const sessionToWebinarSchema = z.object({
 })
 
 export const getSessionAction = actionClient.inputSchema(sessionIdSchema).action(async ({parsedInput}) => {
-    const { getAttendeeAuthHeader } = await import('@/lib/attendee-request')
-    const authHeader = await getAttendeeAuthHeader()
-    const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/`, {
-        headers: { ...authHeader },
-        cache: "no-store",
-    })
+    const { attendeeFetch } = await import('@/lib/attendee-fetch')
+    const response = await attendeeFetch(
+        `${webinarApiUrl}/v1/sessions/${parsedInput.id}/attendee-hydrate/`,
+        { method: 'GET' }
+    )
     const checkedResponse = await handleStatus(response)
     return await checkedResponse.json() as SeriesSession
 })
@@ -149,12 +148,11 @@ export const getSessionAction = actionClient.inputSchema(sessionIdSchema).action
 export const getWebinarFromSession = actionClient
     .inputSchema(sessionIdSchema)
     .action( async ({parsedInput}) => {
-        const { getAttendeeAuthHeader } = await import('@/lib/attendee-request')
-        const authHeader = await getAttendeeAuthHeader()
-        const response = await fetch(`${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/`, {
-            headers: { ...authHeader },
-            cache: "no-store",
-        })
+        const { attendeeFetch } = await import('@/lib/attendee-fetch')
+        const response = await attendeeFetch(
+            `${webinarApiUrl}/v1/sessions/${parsedInput.id}/webinar/`,
+            { method: 'GET' }
+        )
         const checkedResponse = await handleStatus(response)
         return await checkedResponse.json() as Webinar
     })

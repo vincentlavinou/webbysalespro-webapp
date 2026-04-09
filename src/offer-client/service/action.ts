@@ -4,22 +4,14 @@ import { FanbasisCheckoutDto, OfferSessionDto, StripeCheckout } from "./type";
 import { paymentProviderApiUrl } from "@/paymentprovider/service";
 import { offersForSessionSchema, startCheckoutSchema } from "./schema";
 import { handleStatus } from "@/lib/http";
-import { getAttendeeAuthHeader } from "@/lib/attendee-request";
+import { attendeeFetch } from "@/lib/attendee-fetch";
 
 export const startCheckout = actionClient
     .inputSchema(startCheckoutSchema)
     .action(async ({ parsedInput: { offerId, sessionId } }) => {
-        const authHeader = await getAttendeeAuthHeader()
-        const response = await fetch(
+        const response = await attendeeFetch(
             `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
-            {
-                method: 'post',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...authHeader,
-                },
-                body: JSON.stringify({})
-            },
+            { method: 'POST', body: JSON.stringify({}) }
         )
         const checkedResponse = await handleStatus(response)
         const data = await checkedResponse.json() as StripeCheckout
@@ -29,17 +21,9 @@ export const startCheckout = actionClient
 export const startFanbasisCheckout = actionClient
     .inputSchema(startCheckoutSchema)
     .action(async ({ parsedInput: { offerId, sessionId } }) => {
-        const authHeader = await getAttendeeAuthHeader()
-        const response = await fetch(
+        const response = await attendeeFetch(
             `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
-            {
-                method: 'post',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...authHeader,
-                },
-                body: JSON.stringify({})
-            },
+            { method: 'POST', body: JSON.stringify({}) }
         )
         const checkedResponse = await handleStatus(response)
         const data = await checkedResponse.json() as FanbasisCheckoutDto
@@ -49,14 +33,9 @@ export const startFanbasisCheckout = actionClient
 export const getOfferSessionsForAttendee = actionClient
   .inputSchema(offersForSessionSchema)
   .action(async ({ parsedInput: { sessionId } }) => {
-    const authHeader = await getAttendeeAuthHeader()
-    const response = await fetch(
+    const response = await attendeeFetch(
       `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json", ...authHeader },
-        cache: "no-store",
-      }
+      { method: "GET" }
     );
 
     const checkedResponse = await handleStatus(response);
