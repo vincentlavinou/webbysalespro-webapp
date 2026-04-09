@@ -1,5 +1,6 @@
 import { CheckCircle2 } from "lucide-react";
-import { getWebinarFromSession } from "@/webinar/service/action";
+import { getPublicWebinarIdFromSessionAction } from "@/webinar/service/action";
+import { getWebinar } from "@/webinar/service/action";
 import { isWebinarPayload } from "@/webinar/service/guards";
 import { WebinarDetailCard } from "@/webinar/components/WebinarDetailCard";
 
@@ -9,8 +10,15 @@ interface CompletedPageProps {
 
 export default async function CompletedPage(props: CompletedPageProps) {
   const sessionId = (await props.params).id;
-  const webinarResult = await getWebinarFromSession({ id: sessionId });
-  const webinar = webinarResult && isWebinarPayload(webinarResult.data) ? webinarResult.data : null;
+
+  // Use public endpoints — the join token is revoked when the session ends,
+  // so we cannot use attendee-auth'd routes here.
+  const idResult = await getPublicWebinarIdFromSessionAction({ session_id: sessionId });
+  const webinar = idResult?.data
+    ? await getWebinar(idResult.data.webinar_id).catch(() => null)
+    : null;
+
+  const payload = isWebinarPayload(webinar) ? webinar : null;
 
   return (
     <div className="max-w-5xl mx-auto w-full px-4 py-8">
@@ -18,7 +26,7 @@ export default async function CompletedPage(props: CompletedPageProps) {
 
           {/* Left — Webinar details */}
           <WebinarDetailCard
-            webinar={webinar}
+            webinar={payload}
             fallbackTitle="Webinar Session"
             badge={
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-full px-3 py-1 mb-4">
