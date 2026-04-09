@@ -32,12 +32,13 @@ export function AttendeeSessionProvider({ initial, children }: Props) {
             const result = await refreshJoinSessionAction()
 
             if (result?.data) {
+                const { join_session_token, expires_at } = result.data
                 setSession(s => ({
                     ...s,
-                    joinSessionToken: result.data.join_session_token,
-                    expiresAt: result.data.expires_at,
+                    joinSessionToken: join_session_token,
+                    expiresAt: expires_at,
                 }))
-                return result.data.join_session_token
+                return join_session_token
             }
 
             // Refresh failed — session is dead, send to completed
