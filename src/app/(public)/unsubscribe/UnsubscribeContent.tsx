@@ -49,7 +49,7 @@ export default function UnsubscribeContent({
     <section className="mx-auto flex min-h-[50vh] max-w-2xl items-center justify-center px-4 py-16">
       <div className="w-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-          {status === 'success' ? 'You&apos;ve been unsubscribed' : 'Email Preferences'}
+          {status === 'success' ? "You've been unsubscribed" : 'Email Preferences'}
         </h1>
 
         {status === 'loading' && (
