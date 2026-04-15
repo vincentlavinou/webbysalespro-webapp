@@ -126,7 +126,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
       onClick={() => onClick(offer)}
       style={accentRingStyle}
       className={[
-        "group w-full text-left rounded-xl px-3 py-2",
+        "group w-full text-left rounded-xl px-3 py-2 md:cursor-pointer",
         "bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/75",
         "shadow-sm hover:shadow-md transition",
         !accentRingStyle ? "ring-1 ring-border/70" : "",
@@ -237,7 +237,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
         <div
           aria-hidden="true"
           className={[
-            "pointer-events-none w-full rounded-lg py-2 text-center text-sm font-bold tracking-wide transition cursor-pointer",
+            "pointer-events-none w-full rounded-lg py-2 text-center text-sm font-bold tracking-wide transition",
             isSoldOut
               ? "bg-muted text-muted-foreground"
               : accentStyle ? "" : "bg-primary text-primary-foreground",
