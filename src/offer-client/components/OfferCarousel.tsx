@@ -237,7 +237,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
         <div
           aria-hidden="true"
           className={[
-            "pointer-events-none w-full rounded-lg py-2 text-center text-sm font-bold tracking-wide transition",
+            "pointer-events-none w-full rounded-lg py-2 text-center text-sm font-bold tracking-wide transition cursor-pointer",
             isSoldOut
               ? "bg-muted text-muted-foreground"
               : accentStyle ? "" : "bg-primary text-primary-foreground",
