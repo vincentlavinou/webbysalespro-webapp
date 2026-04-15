@@ -180,7 +180,7 @@ export function FanBasisCheckout() {
       ].join(' ')}
     >
       {/* Header — sticky, never scrolls away */}
-      <div className="flex-none flex items-start justify-between px-3 pt-3 pb-2">
+      <div className="sticky top-0 z-10 flex-none flex items-start justify-between px-3 pt-3 pb-2 bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/75 rounded-t-xl">
         <div>
           {cardMode ? (
             <button
