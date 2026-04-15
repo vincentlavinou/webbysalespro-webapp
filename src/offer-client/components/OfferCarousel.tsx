@@ -134,7 +134,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
       ].join(" ")}
     >
       <div className="space-y-2">
-        {/* Row 1: image + title/subtitle/description */}
+        {/* Row 1: image + title/subtitle/description/price/scarcity */}
         <div className="flex items-start gap-3">
           {thumbnail ? (
             <div className="shrink-0">
@@ -148,7 +148,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
             </div>
           ) : null}
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center gap-2 min-w-0">
               <h4 className="truncate text-sm font-semibold text-foreground">
                 {offer.offer.name}
@@ -164,76 +164,75 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
             </div>
 
             {offer.offer.subheading ? (
-              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+              <p className="line-clamp-1 text-xs text-muted-foreground">
                 {offer.offer.subheading}
               </p>
             ) : null}
 
             {offer.offer.description ? (
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/80">
+              <p className="line-clamp-2 text-xs text-muted-foreground/80">
                 {offer.offer.description}
               </p>
             ) : null}
+
+            {/* Price */}
+            {effective != null ? (
+              <div className="flex items-center gap-1.5 min-w-0 text-xs">
+                <span className="font-semibold text-primary">
+                  {getCurrencySymbol(currency)}{formatAmount(Number(effective))}
+                </span>
+                {showCompareAt && compareAt != null && (
+                  <>
+                    <span className="text-[11px] text-muted-foreground line-through">
+                      {getCurrencySymbol(currency)}{formatAmount(Number(compareAt))}
+                    </span>
+                    {discountPct !== null && (
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-500/40 bg-emerald-500/5 text-[10px] text-emerald-500"
+                      >
+                        Save {discountPct}%
+                      </Badge>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : null}
+
+            {/* Scarcity */}
+            {hasScarcity && (
+              <motion.div className="space-y-1" animate={scarcityControls}>
+                <div className="text-[10px] text-muted-foreground font-bold truncate">
+                  {scarcityDisplayType === "count"
+                    ? availableCount !== null
+                      ? `${availableCount} spot${availableCount !== 1 ? "s" : ""} left`
+                      : "Spots filling up"
+                    : percentSold !== null
+                    ? [
+                        totalSlots != null ? `${totalSlots} spots` : "Spots filling up",
+                        `${Math.round(percentSold)}% claimed`,
+                        totalSlots != null
+                          ? `${Math.max(0, Math.round(totalSlots * (1 - percentSold / 100)))} left`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : totalSlots != null
+                    ? `${totalSlots} spots`
+                    : "Spots filling up"}
+                </div>
+                <Progress
+                  value={Math.max(0, Math.min(100, percentSold ?? 0))}
+                  className="h-1.5"
+                  style={progressTrackStyle}
+                  indicatorStyle={progressIndicatorStyle}
+                />
+              </motion.div>
+            )}
           </div>
         </div>
 
-        {/* Row 2: price + scarcity */}
-        <div className="space-y-1.5">
-          {effective != null ? (
-            <div className="flex items-center gap-1.5 min-w-0 text-xs">
-              <span className="font-semibold text-primary">
-                {getCurrencySymbol(currency)}{formatAmount(Number(effective))}
-              </span>
-              {showCompareAt && compareAt != null && (
-                <>
-                  <span className="text-[11px] text-muted-foreground line-through">
-                    {getCurrencySymbol(currency)}{formatAmount(Number(compareAt))}
-                  </span>
-                  {discountPct !== null && (
-                    <Badge
-                      variant="outline"
-                      className="border-emerald-500/40 bg-emerald-500/5 text-[10px] text-emerald-500"
-                    >
-                      Save {discountPct}%
-                    </Badge>
-                  )}
-                </>
-              )}
-            </div>
-          ) : null}
-
-          {hasScarcity && (
-            <motion.div className="space-y-1" animate={scarcityControls}>
-              <div className="text-[10px] text-muted-foreground font-bold truncate">
-                {scarcityDisplayType === "count"
-                  ? availableCount !== null
-                    ? `${availableCount} spot${availableCount !== 1 ? "s" : ""} left`
-                    : "Spots filling up"
-                  : percentSold !== null
-                  ? [
-                      totalSlots != null ? `${totalSlots} spots` : "Spots filling up",
-                      `${Math.round(percentSold)}% claimed`,
-                      totalSlots != null
-                        ? `${Math.max(0, Math.round(totalSlots * (1 - percentSold / 100)))} left`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : totalSlots != null
-                  ? `${totalSlots} spots`
-                  : "Spots filling up"}
-              </div>
-              <Progress
-                value={Math.max(0, Math.min(100, percentSold ?? 0))}
-                className="h-1.5"
-                style={progressTrackStyle}
-                indicatorStyle={progressIndicatorStyle}
-              />
-            </motion.div>
-          )}
-        </div>
-
-        {/* Row 3: Full-width CTA */}
+        {/* Row 2: Full-width CTA */}
         <div
           aria-hidden="true"
           className={[

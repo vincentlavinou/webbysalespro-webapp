@@ -18,7 +18,7 @@ const RECONNECT_START_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 10000;
 const RECONNECT_MAX_ATTEMPTS = 10;
 const MAX_CHAT_ITEMS = 100;
-const CHAT_SEND_INTERVAL_MS = Math.ceil(1000 / 3);
+const CHAT_SEND_INTERVAL_MS = 1000;
 
 export type ChatProviderProps = {
     children: React.ReactNode,
@@ -233,8 +233,6 @@ export function ChatProvider({ children, initialChatConfig }: ChatProviderProps)
                 content: content,
                 attributes: {
                     "name": "You",
-                    "local_status": "blocked",
-                    "blocked_reasons": validation.reasons?.map((reason) => reason.message).join(" ") ?? ""
                 } as Record<string, string>
             } as ChatMessage].slice(-MAX_CHAT_ITEMS));
             return
