@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   emitPlaybackEnded,
   emitPlaybackMetadata,
@@ -61,10 +61,15 @@ export function PersistentAndroidPlaybackProvider({
     return () => video.removeEventListener("pause", onPause);
   }, []);
 
-  const pip = usePiP(videoRef, android.restoreToLive);
+  const restoreAfterPiP = useCallback(() => {
+    void android.restoreToLive({ gracePeriodMs: 150 });
+  }, [android]);
+
+  const pip = usePiP(videoRef, restoreAfterPiP);
 
   useVisibilityResilience({
     enabled: true,
+    videoRef,
     hasPlayedRef,
     isPiPRef: pip.isPiPRef,
     enterPiP: pip.enterPiP,

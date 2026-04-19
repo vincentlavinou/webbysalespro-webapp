@@ -45,12 +45,17 @@ function IvsPersistentCore({ src, title, artwork, children }: Props) {
     shouldPreventPause,
   });
 
-  const pip = usePiP(videoRef, ivs.restoreToLive);
+  const restoreAfterPiP = useCallback(() => {
+    void ivs.restoreToLive({ gracePeriodMs: 150 });
+  }, [ivs]);
+
+  const pip = usePiP(videoRef, restoreAfterPiP);
 
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
   useVisibilityResilience({
     enabled: true,
+    videoRef,
     hasPlayedRef: ivs.hasPlayedRef,
     isPiPRef: pip.isPiPRef,
     enterPiP: pip.enterPiP,

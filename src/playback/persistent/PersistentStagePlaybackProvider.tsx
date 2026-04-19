@@ -261,6 +261,7 @@ export function PersistentStagePlaybackProvider({
 
   useVisibilityResilience({
     enabled: true,
+    videoRef,
     hasPlayedRef,
     isPiPRef: pip.isPiPRef,
     enterPiP: pip.enterPiP,
