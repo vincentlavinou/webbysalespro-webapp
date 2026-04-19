@@ -4,11 +4,11 @@
 import React, {
   forwardRef,
   useImperativeHandle,
-  useLayoutEffect,
   useRef,
 } from "react";
 import { PlayerState } from "amazon-ivs-player";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
+import { usePersistentVideoAttachment } from "@/playback/hooks/use-persistent-video-attachment";
 import { usePersistentChannelPlayback } from "@/playback/persistent/use-persistent-channel-playback";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
@@ -58,26 +58,17 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       },
     });
 
-    // Move the persistent <video> into our visible container on mount.
-    // On unmount, return it to the hidden host — the player keeps playing.
-    useLayoutEffect(() => {
-      const video = videoRef.current;
-      const container = videoContainerRef.current;
-      const host = hiddenHostRef.current;
-      if (!video || !container) return;
-
-      if (poster) video.poster = poster;
-      video.setAttribute("aria-label", ariaLabel);
-      video.style.cssText =
-        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;touch-action:manipulation;";
-      container.appendChild(video);
-
-      return () => {
-        video.style.cssText =
-          "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
-        host?.appendChild(video);
-      };
-    }, [videoRef, hiddenHostRef, poster, ariaLabel]);
+    usePersistentVideoAttachment({
+      videoRef,
+      containerRef: videoContainerRef,
+      hiddenHostRef,
+      poster,
+      ariaLabel,
+      attachedStyle:
+        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;touch-action:manipulation;",
+      detachedStyle:
+        "position:absolute;width:0;height:0;opacity:0;pointer-events:none;",
+    });
 
     useImperativeHandle(
       ref,

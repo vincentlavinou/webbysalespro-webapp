@@ -4,10 +4,10 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useRef,
 } from "react";
 import { WebinarMainLayoutLoading } from "@/broadcast/components/views/WebinarMainLayoutLoading";
+import { usePersistentVideoAttachment } from "@/playback/hooks/use-persistent-video-attachment";
 import { usePersistentStagePlayback } from "@/playback/persistent/use-persistent-stage-playback";
 import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
 import { useFullscreen } from "../player/ivs/hooks/use-fullscreen";
@@ -78,29 +78,15 @@ export const AttendeeStageViewer = forwardRef<
     },
   });
 
-  // Move the persistent <video> into this view's container on mount.
-  // On unmount, return it to the hidden host — WebRTC audio keeps playing.
-  useLayoutEffect(() => {
-    const video = videoRef.current;
-    const container = videoContainerRef.current;
-    const host = hiddenHostRef.current;
-    if (!video || !container) return;
-
-    video.style.cssText =
-      "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;";
-    container.appendChild(video);
-
-    return () => {
-      video.style.cssText =
-        "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
-      host?.appendChild(video);
-    };
-  }, [
-    hiddenHostRef,
-    isConnected,
-    mainParticipantHasActiveVideo,
+  usePersistentVideoAttachment({
     videoRef,
-  ]);
+    containerRef: videoContainerRef,
+    hiddenHostRef,
+    attachedStyle:
+      "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;",
+    detachedStyle:
+      "position:absolute;width:0;height:0;opacity:0;pointer-events:none;",
+  });
 
   useImperativeHandle(
     ref,
