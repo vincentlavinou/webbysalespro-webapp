@@ -14,6 +14,9 @@ export type FullscreenMode = "none" | "entering" | "active" | "exiting";
 // visibilitychange:visible that iOS fires after the transition animation.
 const POST_EXIT_SUPPRESS_MS = 400;
 const POST_PIP_EXIT_SUPPRESS_MS = 1000;
+// After finalizeFullscreenExit runs, suppress reconcileFullscreenState from
+// re-entering "active" due to the transient webkitDisplayingFullscreen=true iOS leaves behind.
+const POST_FINALIZE_SUPPRESS_MS = 800;
 
 type FullscreenCapableElement = HTMLDivElement & {
   webkitRequestFullscreen?: () => Promise<void> | void;
@@ -51,6 +54,7 @@ export function useFullscreen({
   const autoFullscreenRef = useRef(false);
   const postExitTimerRef = useRef<number | null>(null);
   const suppressFullscreenRestoreUntilRef = useRef(0);
+  const postFinalizeSupressUntilRef = useRef(0);
 
   // Keep onResumeNeeded stable without adding it to every effect dep array.
   const onResumeNeededRef = useRef(onResumeNeeded);
@@ -145,6 +149,7 @@ export function useFullscreen({
     const finalizeFullscreenExit = () => {
       autoFullscreenRef.current = false;
       clearPostExitTimer();
+      postFinalizeSupressUntilRef.current = Date.now() + POST_FINALIZE_SUPPRESS_MS;
       setFullscreenMode("none");
       onFullscreenChangeRef.current?.(false);
     };
@@ -185,6 +190,8 @@ export function useFullscreen({
       const video = videoRef.current as FullscreenCapableVideo | null;
       const recentlyLeftPictureInPicture =
         Date.now() < suppressFullscreenRestoreUntilRef.current;
+      const recentlyFinalized =
+        Date.now() < postFinalizeSupressUntilRef.current;
       const isPictureInPictureActive = doc.pictureInPictureElement === video;
       const hasDocumentFullscreen = Boolean(
         doc.fullscreenElement || doc.webkitFullscreenElement,
@@ -194,6 +201,18 @@ export function useFullscreen({
       const trackedMode = fullscreenModeRef.current;
 
       if (actuallyFullscreen) {
+        // Guard 1: exit already in progress — don't clear the post-exit timer or
+        // flip back to "active" just because webkitDisplayingFullscreen is transiently true.
+        if (trackedMode === "exiting" && !hasDocumentFullscreen) {
+          return;
+        }
+
+        // Guard 2: we just called finalizeFullscreenExit — iOS leaves
+        // webkitDisplayingFullscreen=true briefly after the transition; ignore it.
+        if (recentlyFinalized && !hasDocumentFullscreen && hasNativeVideoFullscreen) {
+          return;
+        }
+
         if (
           recentlyLeftPictureInPicture &&
           !isPictureInPictureActive &&
