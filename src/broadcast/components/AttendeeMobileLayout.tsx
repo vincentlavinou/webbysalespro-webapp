@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Maximize2 } from "lucide-react";
 import { ChatComposer } from "@/chat/component/ChatComposer";
 import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
@@ -44,24 +45,6 @@ function readLayoutViewport(): ViewportSize {
   };
 }
 
-function LayoutControlButton({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="pointer-events-auto rounded-full bg-black/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
-    >
-      {label}
-    </button>
-  );
-}
-
 export default function AttendeeMobileLayout({
   broadcast,
   title,
@@ -83,22 +66,11 @@ export default function AttendeeMobileLayout({
   });
 
   const {
-    enterSplit,
-    exitFullscreen,
-    isFullscreen,
-    isFullscreenMedia,
-    isFullscreenSplit,
-    isPhysicalLandscape,
     layoutState,
-    shouldRotatePortraitImmersive,
     shouldRotatePortraitSplit,
-    toggleFullscreen,
-    toggleFullscreenSurface,
   } = useImmersiveLayout();
 
-  const isSplitLayout = layoutState === "split" || isFullscreenSplit;
-  const isChatVisible = !isFullscreenMedia;
-  const shouldRotateMediaFullscreen = shouldRotatePortraitImmersive;
+  const isSplitLayout = layoutState === "split";
   const shouldRotateSplitLayout = layoutState === "split" && shouldRotatePortraitSplit;
   const showRotatedSplitShell = layoutState === "split" && shouldRotateSplitLayout;
 
@@ -131,16 +103,6 @@ export default function AttendeeMobileLayout({
   const splitViewportHeight = shouldRotateSplitLayout
     ? viewportSize.width
     : viewportSize.height;
-  const mediaViewportWidth = shouldRotateMediaFullscreen
-    ? viewportSize.height
-    : viewportSize.width;
-  const mediaViewportHeight = shouldRotateMediaFullscreen
-    ? viewportSize.width
-    : viewportSize.height;
-  const mediaPlayerWidth =
-    mediaViewportWidth > 0 && mediaViewportHeight > 0
-      ? Math.min(mediaViewportWidth, mediaViewportHeight * (16 / 9))
-      : 0;
 
   const scrollToBottom = () => {
     const el = scrollRef.current;
@@ -185,15 +147,11 @@ export default function AttendeeMobileLayout({
     </div>
   );
 
-  const shellClassName = isFullscreenMedia
-    ? "h-full transition-[opacity] duration-300 ease-out"
-    : showRotatedSplitShell
-      ? "fixed left-1/2 top-1/2 z-30 flex flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
-      : isFullscreenSplit
-        ? "fixed inset-0 z-40 flex h-full flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
-        : isSplitLayout
-          ? "flex h-full flex-row transition-[opacity] duration-300 ease-out"
-          : "flex h-full flex-col transition-[opacity] duration-300 ease-out";
+  const shellClassName = showRotatedSplitShell
+    ? "fixed left-1/2 top-1/2 z-30 flex flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
+    : isSplitLayout
+      ? "flex h-full flex-row transition-[opacity] duration-300 ease-out"
+      : "flex h-full flex-col transition-[opacity] duration-300 ease-out";
 
   const shellStyle = showRotatedSplitShell
     ? {
@@ -209,29 +167,16 @@ export default function AttendeeMobileLayout({
       <div className={shellClassName} style={shellStyle}>
         <section
           className={
-            isFullscreenMedia
-              ? "fixed inset-0 z-50 flex items-center justify-center bg-black transition-[background-color,opacity] duration-300 ease-out"
-              : isSplitLayout
-                ? "relative flex h-full min-w-0 flex-[1.15] items-stretch bg-black transition-[flex-basis,opacity] duration-300 ease-out"
-                : "relative shrink-0 bg-black transition-[opacity] duration-300 ease-out"
+            isSplitLayout
+              ? "relative flex h-full min-w-0 flex-[1.15] items-stretch bg-black transition-[flex-basis,opacity] duration-300 ease-out"
+              : "relative shrink-0 bg-black transition-[opacity] duration-300 ease-out"
           }
         >
           <div
             className={
-              isFullscreenMedia
-                ? "relative flex items-center justify-center transition-[transform,width,opacity] duration-300 ease-out"
-                : isSplitLayout
-                  ? "relative flex flex-1 items-center justify-center self-stretch overflow-hidden transition-[transform,opacity] duration-300 ease-out"
-                  : "relative grid w-full aspect-video place-items-center text-sm text-white/80 transition-[transform,opacity] duration-300 ease-out"
-            }
-            style={
-              isFullscreenMedia
-                ? {
-                    width: mediaPlayerWidth || undefined,
-                    transform: shouldRotateMediaFullscreen ? "rotate(90deg)" : undefined,
-                    transformOrigin: "center center",
-                  }
-                : undefined
+              isSplitLayout
+                ? "relative flex flex-1 items-center justify-center self-stretch overflow-hidden transition-[transform,opacity] duration-300 ease-out"
+                : "relative grid w-full aspect-video place-items-center text-sm text-white/80 transition-[transform,opacity] duration-300 ease-out"
             }
           >
             {playerContent}
@@ -239,51 +184,29 @@ export default function AttendeeMobileLayout({
 
           {channelStream && (
             <StreamRefreshControl
-              className={
-                isFullscreen
-                  ? "pointer-events-auto fixed left-1/2 top-3 z-[60] -translate-x-1/2"
-                  : "pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
-              }
+              className="pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
               onRefresh={handleRefreshStream}
               isRefreshing={isRefreshingStream}
             />
           )}
 
           {broadcast.stream && (
-            <div
-              className={
-                isFullscreen
-                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-end gap-2 p-3"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end gap-2 p-2.5"
-              }
-            >
-              {!isFullscreenMedia ? (
-                <LayoutControlButton
-                  label={isSplitLayout ? "Media Only" : "Split View"}
-                  onClick={() => {
-                    if (isSplitLayout) {
-                      toggleFullscreenSurface();
-                      return;
-                    }
-                    enterSplit();
-                  }}
-                />
-              ) : (
-                <LayoutControlButton
-                  label={isPhysicalLandscape ? "Show Chat" : "Back To Chat"}
-                  onClick={toggleFullscreenSurface}
-                />
-              )}
-
-              <LayoutControlButton
-                label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                onClick={isFullscreen ? exitFullscreen : toggleFullscreen}
-              />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  void playerRef.current?.enterFullscreen();
+                }}
+                className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
+                aria-label="Enter fullscreen"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
         </section>
 
-        {broadcast.stream && isChatVisible && (
+        {broadcast.stream && (
           <WebinarChat
             sessionId={broadcast.session.id}
             registrantId={broadcast.registrant_id}

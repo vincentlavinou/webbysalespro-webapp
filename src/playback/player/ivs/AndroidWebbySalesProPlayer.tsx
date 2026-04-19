@@ -10,6 +10,7 @@ import React, {
 import type { MediaPlayer } from "amazon-ivs-player";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import { usePersistentAndroidPlayback } from "@/playback/persistent/use-persistent-android-playback";
+import { useFullscreen } from "./hooks/use-fullscreen";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
 import type { WebbySalesProPlayerHandle } from "./WebbySalesProPlayer";
 
@@ -36,6 +37,7 @@ export const AndroidWebbySalesProPlayer =
     ref,
   ) {
     const videoContainerRef = useRef<HTMLDivElement>(null);
+    const playerSurfaceRef = useRef<HTMLDivElement>(null);
 
     const {
       videoRef,
@@ -50,6 +52,14 @@ export const AndroidWebbySalesProPlayer =
       handleUnmute,
       restoreToLive,
     } = usePersistentAndroidPlayback();
+
+    const { enterFullscreen, exitFullscreen, isFullscreen } = useFullscreen({
+      videoRef,
+      containerRef: playerSurfaceRef,
+      onResumeNeeded: () => {
+        void restoreToLive();
+      },
+    });
 
     // Move the persistent <video> into our visible container on mount.
     // On unmount, return it to the hidden host — the player keeps playing.
@@ -81,7 +91,15 @@ export const AndroidWebbySalesProPlayer =
       video.controls = true;
     }, [mode, src, videoRef]);
 
-    useImperativeHandle(ref, () => ({ restoreToLive }), [restoreToLive]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        restoreToLive,
+        enterFullscreen,
+        exitFullscreen,
+      }),
+      [enterFullscreen, exitFullscreen, restoreToLive],
+    );
 
     useSyncPlaybackStatus({
       kind: "android",
@@ -100,10 +118,11 @@ export const AndroidWebbySalesProPlayer =
     return (
       <div className="w-full">
         <div
+          ref={playerSurfaceRef}
           className="relative overflow-hidden border bg-black shadow-sm"
           style={{ touchAction: "manipulation" }}
         >
-          <div className="aspect-video">
+          <div className={isFullscreen ? "h-full min-h-screen" : "aspect-video"}>
             {/* video is reparented here via useLayoutEffect */}
             <div
               ref={videoContainerRef}

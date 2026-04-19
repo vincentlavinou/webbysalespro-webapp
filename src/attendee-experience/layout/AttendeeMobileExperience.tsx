@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Maximize2 } from "lucide-react";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
@@ -46,24 +47,6 @@ function readLayoutViewport(): ViewportSize {
   };
 }
 
-function LayoutControlButton({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="pointer-events-auto rounded-full bg-black/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
-    >
-      {label}
-    </button>
-  );
-}
-
 export function AttendeeMobileExperience({
   playbackToken,
 }: AttendeeMobileExperienceProps) {
@@ -86,22 +69,11 @@ export function AttendeeMobileExperience({
   });
 
   const {
-    enterSplit,
-    exitFullscreen,
-    isFullscreen,
-    isFullscreenMedia,
-    isFullscreenSplit,
-    isPhysicalLandscape,
     layoutState,
-    shouldRotatePortraitImmersive,
     shouldRotatePortraitSplit,
-    toggleFullscreen,
-    toggleFullscreenSurface,
   } = useImmersiveLayout();
 
-  const isSplitLayout = layoutState === "split" || isFullscreenSplit;
-  const isChatVisible = !isFullscreenMedia;
-  const shouldRotateMediaFullscreen = shouldRotatePortraitImmersive;
+  const isSplitLayout = layoutState === "split";
   const shouldRotateSplitLayout = layoutState === "split" && shouldRotatePortraitSplit;
   const showRotatedSplitShell = layoutState === "split" && shouldRotateSplitLayout;
 
@@ -134,16 +106,6 @@ export function AttendeeMobileExperience({
   const splitViewportHeight = shouldRotateSplitLayout
     ? viewportSize.width
     : viewportSize.height;
-  const mediaViewportWidth = shouldRotateMediaFullscreen
-    ? viewportSize.height
-    : viewportSize.width;
-  const mediaViewportHeight = shouldRotateMediaFullscreen
-    ? viewportSize.width
-    : viewportSize.height;
-  const mediaPlayerWidth =
-    mediaViewportWidth > 0 && mediaViewportHeight > 0
-      ? Math.min(mediaViewportWidth, mediaViewportHeight * (16 / 9))
-      : 0;
 
   const scrollToBottom = () => {
     const element = scrollRef.current;
@@ -189,15 +151,11 @@ export function AttendeeMobileExperience({
     </>
   );
 
-  const shellClassName = isFullscreenMedia
-    ? "h-full transition-[opacity] duration-300 ease-out"
-    : showRotatedSplitShell
-      ? "fixed left-1/2 top-1/2 z-30 flex flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
-      : isFullscreenSplit
-        ? "fixed inset-0 z-40 flex h-full flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
-        : isSplitLayout
-          ? "flex h-full flex-row transition-[opacity] duration-300 ease-out"
-          : "flex h-full flex-col transition-[opacity] duration-300 ease-out";
+  const shellClassName = showRotatedSplitShell
+    ? "fixed left-1/2 top-1/2 z-30 flex flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
+    : isSplitLayout
+      ? "flex h-full flex-row transition-[opacity] duration-300 ease-out"
+      : "flex h-full flex-col transition-[opacity] duration-300 ease-out";
 
   const shellStyle = showRotatedSplitShell
     ? {
@@ -213,29 +171,16 @@ export function AttendeeMobileExperience({
       <div className={shellClassName} style={shellStyle}>
         <section
           className={
-            isFullscreenMedia
-              ? "fixed inset-0 z-50 flex items-center justify-center bg-black transition-[background-color,opacity] duration-300 ease-out"
-              : isSplitLayout
-                ? "relative flex h-full min-w-0 flex-[1.15] items-stretch bg-black transition-[flex-basis,opacity] duration-300 ease-out"
-                : "relative shrink-0 bg-black transition-[opacity] duration-300 ease-out"
+            isSplitLayout
+              ? "relative flex h-full min-w-0 flex-[1.15] items-stretch bg-black transition-[flex-basis,opacity] duration-300 ease-out"
+              : "relative shrink-0 bg-black transition-[opacity] duration-300 ease-out"
           }
         >
           <div
             className={
-              isFullscreenMedia
-                ? "relative flex items-center justify-center transition-[transform,width,opacity] duration-300 ease-out"
-                : isSplitLayout
-                  ? "relative flex flex-1 items-center justify-center self-stretch overflow-hidden transition-[transform,opacity] duration-300 ease-out"
-                  : "relative grid aspect-video w-full place-items-center text-sm text-white/80 transition-[transform,opacity] duration-300 ease-out"
-            }
-            style={
-              isFullscreenMedia
-                ? {
-                    width: mediaPlayerWidth || undefined,
-                    transform: shouldRotateMediaFullscreen ? "rotate(90deg)" : undefined,
-                    transformOrigin: "center center",
-                  }
-                : undefined
+              isSplitLayout
+                ? "relative flex flex-1 items-center justify-center self-stretch overflow-hidden transition-[transform,opacity] duration-300 ease-out"
+                : "relative grid aspect-video w-full place-items-center text-sm text-white/80 transition-[transform,opacity] duration-300 ease-out"
             }
           >
             {playerContent}
@@ -243,90 +188,66 @@ export function AttendeeMobileExperience({
 
           {playbackToken.stream ? (
             <StreamRefreshControl
-              className={
-                isFullscreen
-                  ? "pointer-events-auto fixed left-1/2 top-3 z-[60] -translate-x-1/2"
-                  : "pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
-              }
+              className="pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
               onRefresh={handleRefreshStream}
               isRefreshing={isRefreshingStream}
             />
           ) : null}
 
           {playbackToken.stream ? (
-            <div
-              className={
-                isFullscreen
-                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-end gap-2 p-3"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end gap-2 p-2.5"
-              }
-            >
-              {!isFullscreenMedia ? (
-                <LayoutControlButton
-                  label={isSplitLayout ? "Media Only" : "Split View"}
-                  onClick={() => {
-                    if (isSplitLayout) {
-                      toggleFullscreenSurface();
-                      return;
-                    }
-                    enterSplit();
-                  }}
-                />
-              ) : (
-                <LayoutControlButton
-                  label={isPhysicalLandscape ? "Show Chat" : "Back To Chat"}
-                  onClick={toggleFullscreenSurface}
-                />
-              )}
-
-              <LayoutControlButton
-                label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                onClick={isFullscreen ? exitFullscreen : toggleFullscreen}
-              />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  void playerRef.current?.enterFullscreen?.();
+                }}
+                className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
+                aria-label="Enter fullscreen"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
             </div>
           ) : null}
         </section>
 
-        {isChatVisible && (
-          <section
-            className={
-              isSplitLayout
-                ? "relative flex min-h-0 flex-1 flex-col border-l border-white/10 bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
-                : "relative flex min-h-0 flex-1 flex-col bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
-            }
-            style={showRotatedSplitShell ? { height: splitViewportHeight } : undefined}
+        <section
+          className={
+            isSplitLayout
+              ? "relative flex min-h-0 flex-1 flex-col border-l border-white/10 bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
+              : "relative flex min-h-0 flex-1 flex-col bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
+          }
+          style={showRotatedSplitShell ? { height: splitViewportHeight } : undefined}
+        >
+          <main
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto overscroll-y-auto touch-pan-y"
           >
-            <main
-              ref={scrollRef}
-              className="flex-1 overflow-y-auto overscroll-y-auto touch-pan-y"
-            >
-              <ChatMessages scrollRef={scrollRef} autoStick />
-            </main>
+            <ChatMessages scrollRef={scrollRef} autoStick />
+          </main>
 
-            <AnimatePresence>
-              {showOfferSheet && (
-                <motion.div
-                  key={`offer-sheet-${isSplitLayout ? "landscape" : "portrait"}`}
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 32, stiffness: 300 }}
-                  className={
-                    isSplitLayout
-                      ? "absolute inset-0 z-30 overflow-y-auto bg-background shadow-[-8px_0_24px_rgba(0,0,0,0.2)]"
-                      : "absolute inset-x-0 bottom-0 top-0 z-30 overflow-y-auto rounded-t-xl bg-background shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
-                  }
-                >
-                  <OfferChatBubble />
-                </motion.div>
-              )}
-            </AnimatePresence>
+          <AnimatePresence>
+            {showOfferSheet && (
+              <motion.div
+                key={`offer-sheet-${isSplitLayout ? "landscape" : "portrait"}`}
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 32, stiffness: 300 }}
+                className={
+                  isSplitLayout
+                    ? "absolute inset-0 z-30 overflow-y-auto bg-background shadow-[-8px_0_24px_rgba(0,0,0,0.2)]"
+                    : "absolute inset-x-0 bottom-0 top-0 z-30 overflow-y-auto rounded-t-xl bg-background shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
+                }
+              >
+                <OfferChatBubble />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-            <footer className="shrink-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur">
-              <ChatComposer />
-            </footer>
-          </section>
-        )}
+          <footer className="shrink-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur">
+            <ChatComposer />
+          </footer>
+        </section>
       </div>
     </div>
   );

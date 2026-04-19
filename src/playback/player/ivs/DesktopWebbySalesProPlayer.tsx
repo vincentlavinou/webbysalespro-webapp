@@ -12,6 +12,7 @@ import { PlayerState } from "amazon-ivs-player";
 import { PictureInPicture2, Minimize2 } from "lucide-react";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import { usePersistentChannelPlayback } from "@/playback/persistent/use-persistent-channel-playback";
+import { useFullscreen } from "./hooks/use-fullscreen";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
 import type { WebbySalesProPlayerHandle } from "./WebbySalesProPlayer";
 
@@ -37,6 +38,7 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
     ref,
   ) {
     const videoContainerRef = useRef<HTMLDivElement>(null);
+    const playerSurfaceRef = useRef<HTMLDivElement>(null);
 
     const {
       videoRef,
@@ -53,6 +55,14 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       enterPiP,
       exitPiP,
     } = usePersistentChannelPlayback();
+
+    const { enterFullscreen, exitFullscreen, isFullscreen } = useFullscreen({
+      videoRef,
+      containerRef: playerSurfaceRef,
+      onResumeNeeded: () => {
+        void restoreToLive();
+      },
+    });
 
     // Move the persistent <video> into our visible container on mount.
     // On unmount, return it to the hidden host — the player keeps playing.
@@ -77,8 +87,12 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
 
     useImperativeHandle(
       ref,
-      () => ({ restoreToLive }),
-      [restoreToLive],
+      () => ({
+        restoreToLive,
+        enterFullscreen,
+        exitFullscreen,
+      }),
+      [enterFullscreen, exitFullscreen, restoreToLive],
     );
 
     // Resume if the user exits native fullscreen and the video stalled.
@@ -113,10 +127,11 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
     return (
       <div className="w-full">
         <div
+          ref={playerSurfaceRef}
           className="relative w-full overflow-hidden border bg-black shadow-sm"
           style={{ touchAction: "manipulation" }}
         >
-          <div className="aspect-video">
+          <div className={isFullscreen ? "h-full min-h-screen" : "aspect-video"}>
             {/* video is reparented here via useLayoutEffect */}
             <div
               ref={videoContainerRef}

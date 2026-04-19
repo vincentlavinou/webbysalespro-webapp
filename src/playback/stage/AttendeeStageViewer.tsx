@@ -10,6 +10,7 @@ import {
 import { WebinarMainLayoutLoading } from "@/broadcast/components/views/WebinarMainLayoutLoading";
 import { usePersistentStagePlayback } from "@/playback/persistent/use-persistent-stage-playback";
 import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
+import { useFullscreen } from "../player/ivs/hooks/use-fullscreen";
 
 type AttendeeStageViewerProps = {
   onPlaybackStatusChange?: (status: PlaybackStatus) => void;
@@ -20,6 +21,8 @@ export type AttendeeStageViewerHandle = {
     forceReload?: boolean;
     gracePeriodMs?: number;
   }) => Promise<void>;
+  enterFullscreen: () => Promise<void>;
+  exitFullscreen: () => Promise<void>;
 };
 
 function StageParticipantFallback({
@@ -51,6 +54,7 @@ export const AttendeeStageViewer = forwardRef<
   AttendeeStageViewerProps
 >(function AttendeeStageViewer({ onPlaybackStatusChange }, ref) {
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const playerSurfaceRef = useRef<HTMLDivElement>(null);
 
   const {
     videoRef,
@@ -65,6 +69,14 @@ export const AttendeeStageViewer = forwardRef<
     handleStartPlayback,
     handleUnmute,
   } = usePersistentStagePlayback();
+
+  const { enterFullscreen, exitFullscreen, isFullscreen } = useFullscreen({
+    videoRef,
+    containerRef: playerSurfaceRef,
+    onResumeNeeded: () => {
+      void reconnectStage();
+    },
+  });
 
   // Move the persistent <video> into this view's container on mount.
   // On unmount, return it to the hidden host — WebRTC audio keeps playing.
@@ -92,8 +104,12 @@ export const AttendeeStageViewer = forwardRef<
 
   useImperativeHandle(
     ref,
-    () => ({ restoreToLive: reconnectStage }),
-    [reconnectStage],
+    () => ({
+      restoreToLive: reconnectStage,
+      enterFullscreen,
+      exitFullscreen,
+    }),
+    [enterFullscreen, exitFullscreen, reconnectStage],
   );
 
   useEffect(() => {
@@ -123,7 +139,8 @@ export const AttendeeStageViewer = forwardRef<
 
   return (
     <div
-      className={`w-full max-h-[80vh] ${aspectRatio} overflow-hidden rounded-md border bg-black relative`}
+      ref={playerSurfaceRef}
+      className={`relative w-full overflow-hidden rounded-md border bg-black ${isFullscreen ? "h-full min-h-screen" : `max-h-[80vh] ${aspectRatio}`}`}
     >
       {/* video is reparented here via useLayoutEffect */}
       <div ref={videoContainerRef} className="absolute inset-0" />

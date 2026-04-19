@@ -24,6 +24,8 @@ export type WebbySalesProPlayerHandle = {
     forceReload?: boolean;
     gracePeriodMs?: number;
   }) => Promise<void>;
+  enterFullscreen: () => Promise<void>;
+  exitFullscreen: () => Promise<void>;
 };
 
 const WebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(

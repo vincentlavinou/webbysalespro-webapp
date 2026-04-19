@@ -31,9 +31,17 @@ type Options = {
   containerRef: React.RefObject<HTMLDivElement | null>;
   /** Called when fullscreen exits and the video element is paused — caller should resume. */
   onResumeNeeded: () => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
+  syncWithOrientation?: boolean;
 };
 
-export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Options) {
+export function useFullscreen({
+  videoRef,
+  containerRef,
+  onResumeNeeded,
+  onFullscreenChange,
+  syncWithOrientation = false,
+}: Options) {
   const [fullscreenMode, setFullscreenModeState] = useState<FullscreenMode>("none");
 
   // Ref mirror kept in sync for use inside stable callbacks and shouldIgnoreVisibilityChange.
@@ -44,6 +52,8 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
   // Keep onResumeNeeded stable without adding it to every effect dep array.
   const onResumeNeededRef = useRef(onResumeNeeded);
   useEffect(() => { onResumeNeededRef.current = onResumeNeeded; }, [onResumeNeeded]);
+  const onFullscreenChangeRef = useRef(onFullscreenChange);
+  useEffect(() => { onFullscreenChangeRef.current = onFullscreenChange; }, [onFullscreenChange]);
 
   const setFullscreenMode = useCallback((m: FullscreenMode) => {
     fullscreenModeRef.current = m;
@@ -130,6 +140,7 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
           postExitTimerRef.current = null;
         }
         setFullscreenMode("active");
+        onFullscreenChangeRef.current?.(true);
         return;
       }
 
@@ -148,6 +159,7 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
       postExitTimerRef.current = window.setTimeout(() => {
         postExitTimerRef.current = null;
         setFullscreenMode("none");
+        onFullscreenChangeRef.current?.(false);
       }, POST_EXIT_SUPPRESS_MS);
     };
 
@@ -163,10 +175,11 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
     };
 
     const fullscreenVideo = videoRef.current;
-    syncOrientationFullscreen();
-
-    window.addEventListener("resize", syncOrientationFullscreen);
-    window.screen.orientation?.addEventListener?.("change", syncOrientationFullscreen);
+    if (syncWithOrientation) {
+      syncOrientationFullscreen();
+      window.addEventListener("resize", syncOrientationFullscreen);
+      window.screen.orientation?.addEventListener?.("change", syncOrientationFullscreen);
+    }
     document.addEventListener("fullscreenchange", onFullscreenChange);
     document.addEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
     // iOS native video fullscreen exit
@@ -174,16 +187,21 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
 
     return () => {
       if (postExitTimerRef.current) window.clearTimeout(postExitTimerRef.current);
-      window.removeEventListener("resize", syncOrientationFullscreen);
-      window.screen.orientation?.removeEventListener?.("change", syncOrientationFullscreen);
+      if (syncWithOrientation) {
+        window.removeEventListener("resize", syncOrientationFullscreen);
+        window.screen.orientation?.removeEventListener?.("change", syncOrientationFullscreen);
+      }
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
       fullscreenVideo?.removeEventListener("webkitendfullscreen", onFullscreenChange as EventListener);
     };
-  }, [isInFullscreen, enterFullscreen, exitFullscreen, videoRef, setFullscreenMode]);
+  }, [isInFullscreen, enterFullscreen, exitFullscreen, syncWithOrientation, videoRef, setFullscreenMode]);
 
   return {
+    enterFullscreen,
+    exitFullscreen,
     fullscreenMode,
+    isFullscreen: fullscreenMode !== "none",
     /** Stable ref for use in shouldIgnoreVisibilityChange — avoids closure staleness. */
     fullscreenModeRef,
   };

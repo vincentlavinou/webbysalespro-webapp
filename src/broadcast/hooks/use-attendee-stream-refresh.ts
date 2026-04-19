@@ -11,6 +11,8 @@ export type AttendeeStreamRecoveryHandle = {
     forceReload?: boolean;
     gracePeriodMs?: number;
   }) => Promise<void>;
+  enterFullscreen: () => Promise<void>;
+  exitFullscreen: () => Promise<void>;
 };
 
 const AUTO_REFRESH_COOLDOWN_MS = 5000;
