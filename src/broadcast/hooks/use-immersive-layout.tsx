@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type ImmersiveLayoutState = "regular" | "split" | "immersive";
+export type ImmersiveLayoutState =
+  | "regular"
+  | "split"
+  | "fullscreen-split"
+  | "fullscreen-media";
 
 const PORTRAIT_EXIT_DELAY_MS = 750;
 const SPLIT_ENTER_PORTRAIT_GRACE_MS = 3000;
@@ -12,12 +16,15 @@ export function useImmersiveLayout() {
     useState<ImmersiveLayoutState | null>(null);
   const [splitEnteredInPortrait, setSplitEnteredInPortrait] = useState(false);
   const [splitSawLandscape, setSplitSawLandscape] = useState(false);
-  const [immersiveEnteredInPortrait, setImmersiveEnteredInPortrait] =
+  const [mediaFullscreenEnteredInPortrait, setMediaFullscreenEnteredInPortrait] =
     useState(false);
-  const [immersiveSawLandscape, setImmersiveSawLandscape] = useState(false);
+  const [mediaFullscreenSawLandscape, setMediaFullscreenSawLandscape] =
+    useState(false);
   const splitExitTimerRef = useRef<number | null>(null);
   const portraitExitTimerRef = useRef<number | null>(null);
+  const fullscreenSplitExitTimerRef = useRef<number | null>(null);
   const previousLayoutStateRef = useRef<ImmersiveLayoutState>("regular");
+  const lastNonFullscreenLayoutRef = useRef<"regular" | "split">("regular");
 
   const [isPhysicalLandscape, setIsPhysicalLandscape] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -30,6 +37,11 @@ export function useImmersiveLayout() {
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  const getResponsiveLayout = useCallback(
+    (): "regular" | "split" => (isPhysicalLandscape ? "split" : "regular"),
+    [isPhysicalLandscape],
+  );
 
   const clearSplitExitTimer = useCallback(() => {
     if (splitExitTimerRef.current) {
@@ -45,61 +57,112 @@ export function useImmersiveLayout() {
     }
   }, []);
 
+  const clearFullscreenSplitExitTimer = useCallback(() => {
+    if (fullscreenSplitExitTimerRef.current) {
+      window.clearTimeout(fullscreenSplitExitTimerRef.current);
+      fullscreenSplitExitTimerRef.current = null;
+    }
+  }, []);
+
   const resetSplitTracking = useCallback(() => {
     setSplitEnteredInPortrait(false);
     setSplitSawLandscape(false);
   }, []);
 
-  const resetImmersiveTracking = useCallback(() => {
-    setImmersiveEnteredInPortrait(false);
-    setImmersiveSawLandscape(false);
+  const resetMediaFullscreenTracking = useCallback(() => {
+    setMediaFullscreenEnteredInPortrait(false);
+    setMediaFullscreenSawLandscape(false);
   }, []);
+
+  const applyNonFullscreenLayout = useCallback(
+    (nextLayout: "regular" | "split") => {
+      lastNonFullscreenLayoutRef.current = nextLayout;
+      const responsiveLayout = getResponsiveLayout();
+      setForcedLayoutState(nextLayout === responsiveLayout ? null : nextLayout);
+    },
+    [getResponsiveLayout],
+  );
 
   const enterSplit = useCallback(() => {
     clearSplitExitTimer();
     clearPortraitExitTimer();
+    clearFullscreenSplitExitTimer();
     setSplitEnteredInPortrait(!isPhysicalLandscape);
     setSplitSawLandscape(isPhysicalLandscape);
-    resetImmersiveTracking();
-    setForcedLayoutState("split");
+    resetMediaFullscreenTracking();
+    applyNonFullscreenLayout("split");
   }, [
+    applyNonFullscreenLayout,
+    clearFullscreenSplitExitTimer,
     clearPortraitExitTimer,
     clearSplitExitTimer,
     isPhysicalLandscape,
-    resetImmersiveTracking,
+    resetMediaFullscreenTracking,
   ]);
 
-  const enterImmersive = useCallback(() => {
+  const enterFullscreenSplit = useCallback(() => {
     clearSplitExitTimer();
     clearPortraitExitTimer();
-    resetSplitTracking();
-    setImmersiveEnteredInPortrait(!isPhysicalLandscape);
-    setImmersiveSawLandscape(isPhysicalLandscape);
-    setForcedLayoutState("immersive");
+    clearFullscreenSplitExitTimer();
+    lastNonFullscreenLayoutRef.current =
+      forcedLayoutState === "regular" || forcedLayoutState === "split"
+        ? forcedLayoutState
+        : getResponsiveLayout();
+    resetMediaFullscreenTracking();
+    setForcedLayoutState("fullscreen-split");
   }, [
+    clearFullscreenSplitExitTimer,
     clearPortraitExitTimer,
     clearSplitExitTimer,
+    forcedLayoutState,
+    getResponsiveLayout,
+    resetMediaFullscreenTracking,
+  ]);
+
+  const enterFullscreenMedia = useCallback(() => {
+    clearSplitExitTimer();
+    clearPortraitExitTimer();
+    clearFullscreenSplitExitTimer();
+    lastNonFullscreenLayoutRef.current =
+      forcedLayoutState === "regular" || forcedLayoutState === "split"
+        ? forcedLayoutState
+        : getResponsiveLayout();
+    resetSplitTracking();
+    setMediaFullscreenEnteredInPortrait(!isPhysicalLandscape);
+    setMediaFullscreenSawLandscape(isPhysicalLandscape);
+    setForcedLayoutState("fullscreen-media");
+  }, [
+    clearFullscreenSplitExitTimer,
+    clearPortraitExitTimer,
+    clearSplitExitTimer,
+    forcedLayoutState,
+    getResponsiveLayout,
     isPhysicalLandscape,
     resetSplitTracking,
   ]);
 
-  const exitImmersive = useCallback(() => {
+  const exitFullscreen = useCallback(() => {
     clearSplitExitTimer();
     clearPortraitExitTimer();
+    clearFullscreenSplitExitTimer();
     resetSplitTracking();
-    resetImmersiveTracking();
-    setForcedLayoutState(isPhysicalLandscape ? "split" : null);
+    resetMediaFullscreenTracking();
+    applyNonFullscreenLayout(lastNonFullscreenLayoutRef.current);
   }, [
+    applyNonFullscreenLayout,
+    clearFullscreenSplitExitTimer,
     clearPortraitExitTimer,
     clearSplitExitTimer,
-    isPhysicalLandscape,
-    resetImmersiveTracking,
+    resetMediaFullscreenTracking,
     resetSplitTracking,
   ]);
 
   const layoutState: ImmersiveLayoutState =
-    forcedLayoutState ?? (isPhysicalLandscape ? "split" : "regular");
-  const isImmersive = layoutState === "immersive";
+    forcedLayoutState ?? getResponsiveLayout();
+  const isFullscreenSplit = layoutState === "fullscreen-split";
+  const isFullscreenMedia = layoutState === "fullscreen-media";
+  const isImmersive = isFullscreenMedia;
+  const isFullscreen = isFullscreenSplit || isFullscreenMedia;
 
   useEffect(() => {
     if (
@@ -128,7 +191,7 @@ export function useImmersiveLayout() {
 
     splitExitTimerRef.current = window.setTimeout(() => {
       splitExitTimerRef.current = null;
-      setForcedLayoutState(null);
+      applyNonFullscreenLayout("regular");
       resetSplitTracking();
     }, splitEnteredInPortrait && !splitSawLandscape
       ? SPLIT_ENTER_PORTRAIT_GRACE_MS
@@ -138,6 +201,7 @@ export function useImmersiveLayout() {
       clearSplitExitTimer();
     };
   }, [
+    applyNonFullscreenLayout,
     clearSplitExitTimer,
     isPhysicalLandscape,
     layoutState,
@@ -147,31 +211,58 @@ export function useImmersiveLayout() {
   ]);
 
   useEffect(() => {
-    if (!isImmersive) {
+    if (!isFullscreenMedia) {
       clearPortraitExitTimer();
       return;
     }
 
     if (isPhysicalLandscape) {
       clearPortraitExitTimer();
-      setImmersiveSawLandscape(true);
+      setMediaFullscreenSawLandscape(true);
       return;
     }
 
     portraitExitTimerRef.current = window.setTimeout(() => {
       portraitExitTimerRef.current = null;
-      setForcedLayoutState(null);
-      resetImmersiveTracking();
+      applyNonFullscreenLayout(lastNonFullscreenLayoutRef.current);
+      resetMediaFullscreenTracking();
     }, PORTRAIT_EXIT_DELAY_MS);
 
     return () => {
       clearPortraitExitTimer();
     };
   }, [
+    applyNonFullscreenLayout,
     clearPortraitExitTimer,
-    isImmersive,
+    isFullscreenMedia,
     isPhysicalLandscape,
-    resetImmersiveTracking,
+    resetMediaFullscreenTracking,
+  ]);
+
+  useEffect(() => {
+    if (!isFullscreenSplit) {
+      clearFullscreenSplitExitTimer();
+      return;
+    }
+
+    if (isPhysicalLandscape) {
+      clearFullscreenSplitExitTimer();
+      return;
+    }
+
+    fullscreenSplitExitTimerRef.current = window.setTimeout(() => {
+      fullscreenSplitExitTimerRef.current = null;
+      applyNonFullscreenLayout(lastNonFullscreenLayoutRef.current);
+    }, PORTRAIT_EXIT_DELAY_MS);
+
+    return () => {
+      clearFullscreenSplitExitTimer();
+    };
+  }, [
+    applyNonFullscreenLayout,
+    clearFullscreenSplitExitTimer,
+    isFullscreenSplit,
+    isPhysicalLandscape,
   ]);
 
   useEffect(() => {
@@ -185,26 +276,97 @@ export function useImmersiveLayout() {
     }
 
     if (layoutState === "split") {
-      enterImmersive();
+      if (isPhysicalLandscape) {
+        enterFullscreenSplit();
+        return;
+      }
+      enterFullscreenMedia();
       return;
     }
 
-    exitImmersive();
-  }, [enterImmersive, enterSplit, exitImmersive, layoutState]);
+    if (layoutState === "fullscreen-split") {
+      enterFullscreenMedia();
+      return;
+    }
+
+    exitFullscreen();
+  }, [
+    enterFullscreenMedia,
+    enterFullscreenSplit,
+    enterSplit,
+    exitFullscreen,
+    isPhysicalLandscape,
+    layoutState,
+  ]);
+
+  const toggleFullscreen = useCallback(() => {
+    if (isFullscreen) {
+      exitFullscreen();
+      return;
+    }
+
+    if (isPhysicalLandscape) {
+      enterFullscreenSplit();
+      return;
+    }
+
+    enterFullscreenMedia();
+  }, [
+    enterFullscreenMedia,
+    enterFullscreenSplit,
+    exitFullscreen,
+    isFullscreen,
+    isPhysicalLandscape,
+  ]);
+
+  const toggleFullscreenSurface = useCallback(() => {
+    if (layoutState === "fullscreen-split") {
+      enterFullscreenMedia();
+      return;
+    }
+
+    if (layoutState === "fullscreen-media" && isPhysicalLandscape) {
+      setMediaFullscreenSawLandscape(true);
+      setForcedLayoutState("fullscreen-split");
+      return;
+    }
+
+    if (layoutState === "split" && isPhysicalLandscape) {
+      enterFullscreenSplit();
+      return;
+    }
+
+    if (layoutState === "split" || layoutState === "regular") {
+      enterFullscreenMedia();
+    }
+  }, [
+    enterFullscreenMedia,
+    enterFullscreenSplit,
+    isPhysicalLandscape,
+    layoutState,
+  ]);
 
   return {
     advanceLayout,
-    enterImmersive,
+    enterImmersive: enterFullscreenMedia,
     enterSplit,
-    exitImmersive,
+    enterFullscreenSplit,
+    enterFullscreenMedia,
+    exitFullscreen,
+    exitImmersive: exitFullscreen,
     isImmersive,
+    isFullscreen,
+    isFullscreenSplit,
+    isFullscreenMedia,
     isPhysicalLandscape,
     layoutState,
+    toggleFullscreen,
+    toggleFullscreenSurface,
     shouldRotatePortraitImmersive:
-      isImmersive &&
-      immersiveEnteredInPortrait &&
+      isFullscreenMedia &&
+      mediaFullscreenEnteredInPortrait &&
       !isPhysicalLandscape &&
-      !immersiveSawLandscape,
+      !mediaFullscreenSawLandscape,
     shouldRotatePortraitSplit:
       layoutState === "split" &&
       splitEnteredInPortrait &&

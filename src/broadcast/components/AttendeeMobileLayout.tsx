@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2, Minimize2 } from "lucide-react";
 import { ChatComposer } from "@/chat/component/ChatComposer";
 import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
@@ -45,6 +44,24 @@ function readLayoutViewport(): ViewportSize {
   };
 }
 
+function LayoutControlButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="pointer-events-auto rounded-full bg-black/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function AttendeeMobileLayout({
   broadcast,
   title,
@@ -66,20 +83,25 @@ export default function AttendeeMobileLayout({
   });
 
   const {
-    advanceLayout,
-    exitImmersive,
-    isImmersive,
+    enterSplit,
+    exitFullscreen,
+    isFullscreen,
+    isFullscreenMedia,
+    isFullscreenSplit,
+    isPhysicalLandscape,
     layoutState,
     shouldRotatePortraitImmersive,
     shouldRotatePortraitSplit,
+    toggleFullscreen,
+    toggleFullscreenSurface,
   } = useImmersiveLayout();
 
-  const isSplitLayout = layoutState === "split";
-  const shouldRotateImmersivePlayer = shouldRotatePortraitImmersive;
-  const shouldRotateSplitLayout = shouldRotatePortraitSplit;
+  const isSplitLayout = layoutState === "split" || isFullscreenSplit;
+  const isChatVisible = !isFullscreenMedia;
+  const shouldRotateMediaFullscreen = shouldRotatePortraitImmersive;
+  const shouldRotateSplitLayout = layoutState === "split" && shouldRotatePortraitSplit;
+  const showRotatedSplitShell = layoutState === "split" && shouldRotateSplitLayout;
 
-  // Track viewport size for split/immersive layout calculations only.
-  // Keyboard avoidance is handled natively by h-[100dvh] + flex layout.
   useEffect(() => {
     const vv = window.visualViewport;
 
@@ -109,16 +131,15 @@ export default function AttendeeMobileLayout({
   const splitViewportHeight = shouldRotateSplitLayout
     ? viewportSize.width
     : viewportSize.height;
-
-  const immersiveViewportWidth = shouldRotateImmersivePlayer
+  const mediaViewportWidth = shouldRotateMediaFullscreen
     ? viewportSize.height
     : viewportSize.width;
-  const immersiveViewportHeight = shouldRotateImmersivePlayer
+  const mediaViewportHeight = shouldRotateMediaFullscreen
     ? viewportSize.width
     : viewportSize.height;
-  const immersivePlayerWidth =
-    immersiveViewportWidth > 0 && immersiveViewportHeight > 0
-      ? Math.min(immersiveViewportWidth, immersiveViewportHeight * (16 / 9))
+  const mediaPlayerWidth =
+    mediaViewportWidth > 0 && mediaViewportHeight > 0
+      ? Math.min(mediaViewportWidth, mediaViewportHeight * (16 / 9))
       : 0;
 
   const scrollToBottom = () => {
@@ -132,8 +153,6 @@ export default function AttendeeMobileLayout({
     scrollToBottom();
   }, []);
 
-  // Scroll to bottom whenever the chat area resizes — covers keyboard open/close
-  // and layout transitions without any manual keyboard height tracking.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -166,35 +185,32 @@ export default function AttendeeMobileLayout({
     </div>
   );
 
+  const shellClassName = isFullscreenMedia
+    ? "h-full transition-[opacity] duration-300 ease-out"
+    : showRotatedSplitShell
+      ? "fixed left-1/2 top-1/2 z-30 flex flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
+      : isFullscreenSplit
+        ? "fixed inset-0 z-40 flex h-full flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
+        : isSplitLayout
+          ? "flex h-full flex-row transition-[opacity] duration-300 ease-out"
+          : "flex h-full flex-col transition-[opacity] duration-300 ease-out";
+
+  const shellStyle = showRotatedSplitShell
+    ? {
+        width: splitViewportWidth,
+        height: splitViewportHeight,
+        transform: "translate(-50%, -50%) rotate(90deg)",
+        transformOrigin: "center center",
+      }
+    : undefined;
+
   return (
-    // h-[100dvh]: shrinks when the keyboard opens on iOS 15.4+ and Android Chrome 108+,
-    // so the flex layout naturally keeps the footer above the keyboard.
     <div className="relative h-[100dvh] overflow-hidden bg-neutral-900 text-neutral-100">
-      <div
-        className={
-          isImmersive
-            ? "h-full transition-[opacity] duration-300 ease-out"
-            : isSplitLayout
-              ? shouldRotateSplitLayout
-                ? "fixed left-1/2 top-1/2 z-30 flex flex-row overflow-hidden bg-neutral-900 transition-[opacity,transform] duration-300 ease-out"
-                : "flex h-full flex-row transition-[opacity] duration-300 ease-out"
-              : "flex h-full flex-col transition-[opacity] duration-300 ease-out"
-        }
-        style={
-          isSplitLayout && shouldRotateSplitLayout
-            ? {
-                width: splitViewportWidth,
-                height: splitViewportHeight,
-                transform: "translate(-50%, -50%) rotate(90deg)",
-                transformOrigin: "center center",
-              }
-            : undefined
-        }
-      >
+      <div className={shellClassName} style={shellStyle}>
         <section
           className={
-            isImmersive
-              ? "fixed inset-0 z-40 flex items-center justify-center bg-black transition-[background-color,opacity] duration-300 ease-out"
+            isFullscreenMedia
+              ? "fixed inset-0 z-50 flex items-center justify-center bg-black transition-[background-color,opacity] duration-300 ease-out"
               : isSplitLayout
                 ? "relative flex h-full min-w-0 flex-[1.15] items-stretch bg-black transition-[flex-basis,opacity] duration-300 ease-out"
                 : "relative shrink-0 bg-black transition-[opacity] duration-300 ease-out"
@@ -202,19 +218,17 @@ export default function AttendeeMobileLayout({
         >
           <div
             className={
-              isImmersive
+              isFullscreenMedia
                 ? "relative flex items-center justify-center transition-[transform,width,opacity] duration-300 ease-out"
                 : isSplitLayout
                   ? "relative flex flex-1 items-center justify-center self-stretch overflow-hidden transition-[transform,opacity] duration-300 ease-out"
                   : "relative grid w-full aspect-video place-items-center text-sm text-white/80 transition-[transform,opacity] duration-300 ease-out"
             }
             style={
-              isImmersive
+              isFullscreenMedia
                 ? {
-                    width: immersivePlayerWidth || undefined,
-                    transform: shouldRotateImmersivePlayer
-                      ? "rotate(90deg)"
-                      : undefined,
+                    width: mediaPlayerWidth || undefined,
+                    transform: shouldRotateMediaFullscreen ? "rotate(90deg)" : undefined,
                     transformOrigin: "center center",
                   }
                 : undefined
@@ -226,8 +240,8 @@ export default function AttendeeMobileLayout({
           {channelStream && (
             <StreamRefreshControl
               className={
-                isImmersive
-                  ? "pointer-events-auto fixed left-1/2 top-3 z-50 -translate-x-1/2"
+                isFullscreen
+                  ? "pointer-events-auto fixed left-1/2 top-3 z-[60] -translate-x-1/2"
                   : "pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
               }
               onRefresh={handleRefreshStream}
@@ -238,34 +252,38 @@ export default function AttendeeMobileLayout({
           {broadcast.stream && (
             <div
               className={
-                isImmersive
-                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-3 transition-[opacity,transform] duration-200 ease-out"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-2.5 transition-[opacity,transform] duration-200 ease-out"
+                isFullscreen
+                  ? "pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-end gap-2 p-3"
+                  : "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end gap-2 p-2.5"
               }
             >
-              <button
-                type="button"
-                onClick={isImmersive ? exitImmersive : advanceLayout}
-                className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
-                aria-label={
-                  isImmersive
-                    ? "Exit immersive mode"
-                    : isSplitLayout
-                      ? "Enter immersive mode"
-                      : "Enter split mode"
-                }
-              >
-                {isImmersive ? (
-                  <Minimize2 className="h-3.5 w-3.5" />
-                ) : (
-                  <Maximize2 className="h-3.5 w-3.5" />
-                )}
-              </button>
+              {!isFullscreenMedia ? (
+                <LayoutControlButton
+                  label={isSplitLayout ? "Media Only" : "Split View"}
+                  onClick={() => {
+                    if (isSplitLayout) {
+                      toggleFullscreenSurface();
+                      return;
+                    }
+                    enterSplit();
+                  }}
+                />
+              ) : (
+                <LayoutControlButton
+                  label={isPhysicalLandscape ? "Show Chat" : "Back To Chat"}
+                  onClick={toggleFullscreenSurface}
+                />
+              )}
+
+              <LayoutControlButton
+                label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                onClick={isFullscreen ? exitFullscreen : toggleFullscreen}
+              />
             </div>
           )}
         </section>
 
-        {broadcast.stream && !isImmersive && (
+        {broadcast.stream && isChatVisible && (
           <WebinarChat
             sessionId={broadcast.session.id}
             registrantId={broadcast.registrant_id}
@@ -278,9 +296,7 @@ export default function AttendeeMobileLayout({
                     ? "relative flex min-h-0 flex-1 flex-col border-l border-white/10 bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
                     : "relative flex min-h-0 flex-1 flex-col bg-background text-foreground transition-[opacity,transform] duration-300 ease-out"
                 }
-                style={
-                  isSplitLayout ? { height: splitViewportHeight } : undefined
-                }
+                style={showRotatedSplitShell ? { height: splitViewportHeight } : undefined}
               >
                 <main
                   ref={scrollRef}
