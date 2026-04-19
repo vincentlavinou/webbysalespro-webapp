@@ -11,14 +11,10 @@ export type PersistentAndroidPlaybackState = {
   qualityName: string | null;
   syncTimeMs: number | null;
   isMuted: boolean;
-  isInPiP: boolean;
-  isPiPSupported: boolean;
   handleStartMuted: () => void;
   handleStartWithSound: () => void;
   handleUnmute: () => void;
   restoreToLive: (opts?: { forceReload?: boolean; gracePeriodMs?: number }) => Promise<void>;
-  enterPiP: () => void | Promise<void>;
-  exitPiP: () => void;
 };
 
 export const PersistentAndroidPlaybackContext =

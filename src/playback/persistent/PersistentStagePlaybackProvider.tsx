@@ -14,7 +14,6 @@ import { joinStage, leaveStage } from "@/broadcast/service/utils";
 import type { RealtimeAttendeeStreamConfig, Strategy } from "@/broadcast/service/type";
 import type { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
 import { useMediaSession } from "../player/ivs/hooks/use-media-session";
-import { usePiP } from "../player/ivs/hooks/use-pip";
 import { useVisibilityResilience } from "../player/ivs/hooks/use-visibility-resilience";
 import {
   PersistentStagePlaybackContext,
@@ -257,15 +256,10 @@ export function PersistentStagePlaybackProvider({
     video.play().catch(() => {});
   }, []);
 
-  const pip = usePiP(videoRef, restoreToLiveForVisibility);
-
   useVisibilityResilience({
     enabled: true,
     videoRef,
     hasPlayedRef,
-    isPiPRef: pip.isPiPRef,
-    enterPiP: pip.enterPiP,
-    exitPiP: pip.exitPiP,
     restoreToLive: restoreToLiveForVisibility,
   });
 

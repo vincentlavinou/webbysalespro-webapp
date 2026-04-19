@@ -8,7 +8,6 @@ import React, {
   useRef,
 } from "react";
 import { PlayerState } from "amazon-ivs-player";
-import { Minimize2, PictureInPicture2 } from "lucide-react";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import { usePersistentChannelPlayback } from "@/playback/persistent/use-persistent-channel-playback";
 import { useFullscreen } from "./hooks/use-fullscreen";
@@ -46,13 +45,9 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       stats,
       playerState,
       isMuted,
-      isInPiP,
-      isPiPSupported,
       restoreToLive,
       handleManualPlay,
       tapToUnmute,
-      enterPiP,
-      exitPiP,
     } = usePersistentChannelPlayback();
 
     const { enterFullscreen, exitFullscreen, isFullscreen } = useFullscreen({
@@ -124,31 +119,6 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
               className={`relative h-full w-full transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
             />
           </div>
-
-          {isPiPSupported && (
-            <div className="absolute top-3 right-3 z-40">
-              <button
-                type="button"
-                onClick={() => {
-                  if (isInPiP) {
-                    exitPiP();
-                  } else {
-                    void enterPiP();
-                  }
-                }}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
-                aria-label={
-                  isInPiP ? "Exit picture in picture" : "Open picture in picture"
-                }
-              >
-                {isInPiP ? (
-                  <Minimize2 className="h-4 w-4" />
-                ) : (
-                  <PictureInPicture2 className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          )}
 
           {(mode === "idle" || isBuffering) && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">

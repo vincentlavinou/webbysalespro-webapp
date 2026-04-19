@@ -17,9 +17,6 @@ type Options = {
   enabled: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   hasPlayedRef: React.RefObject<boolean>;
-  isPiPRef?: React.RefObject<boolean>;
-  enterPiP?: () => void;
-  exitPiP?: () => void;
   restoreToLive: (options?: { forceReload?: boolean }) => Promise<void>;
   shouldIgnoreVisibilityChange?: () => boolean;
 };
@@ -28,9 +25,6 @@ export function useVisibilityResilience({
   enabled,
   videoRef,
   hasPlayedRef,
-  isPiPRef,
-  enterPiP,
-  exitPiP,
   restoreToLive,
   shouldIgnoreVisibilityChange,
 }: Options) {
@@ -61,17 +55,7 @@ export function useVisibilityResilience({
       if (isFullscreenTransitionActive()) return;
       if (shouldIgnoreVisibilityChange?.()) return;
 
-      if (document.visibilityState === "hidden") {
-        enterPiP?.();
-        return;
-      }
-
       if (document.visibilityState === "visible") {
-        if (isPiPRef?.current) {
-          exitPiP?.();
-          return;
-        }
-
         if (hasPlayedRef.current) {
           void restoreToLive();
         }
@@ -112,9 +96,6 @@ export function useVisibilityResilience({
     enabled,
     videoRef,
     hasPlayedRef,
-    isPiPRef,
-    enterPiP,
-    exitPiP,
     restoreToLive,
     shouldIgnoreVisibilityChange,
   ]);

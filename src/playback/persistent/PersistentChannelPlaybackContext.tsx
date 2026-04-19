@@ -22,15 +22,11 @@ export type PersistentPlaybackState = {
   lastErrorMessage: string | null;
   playerVersion: number;
   playerRef: React.RefObject<import("amazon-ivs-player").Player | null>;
-  isInPiP: boolean;
-  isPiPSupported: boolean;
   updateStats: () => void;
   restoreToLive: (opts?: { forceReload?: boolean; gracePeriodMs?: number }) => Promise<void>;
   handleManualPlay: () => Promise<void>;
   tapToUnmute: () => void;
   scheduleRetry: () => void;
-  enterPiP: () => void | Promise<void>;
-  exitPiP: () => void;
 };
 
 export const PersistentChannelPlaybackContext =

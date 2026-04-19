@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   emitPlaybackEnded,
   emitPlaybackMetadata,
   emitPlaybackPlaying,
 } from "@/emitter/playback";
 import { useAndroidIvsPlayerCore } from "../player/ivs/hooks/use-android-ivs-player-core";
-import { usePiP } from "../player/ivs/hooks/use-pip";
 import { useMediaSession } from "../player/ivs/hooks/use-media-session";
 import { useVisibilityResilience } from "../player/ivs/hooks/use-visibility-resilience";
 import { PersistentAndroidPlaybackContext } from "./PersistentAndroidPlaybackContext";
@@ -61,19 +60,10 @@ export function PersistentAndroidPlaybackProvider({
     return () => video.removeEventListener("pause", onPause);
   }, []);
 
-  const restoreAfterPiP = useCallback(() => {
-    void android.restoreToLive({ gracePeriodMs: 150 });
-  }, [android]);
-
-  const pip = usePiP(videoRef, restoreAfterPiP);
-
   useVisibilityResilience({
     enabled: true,
     videoRef,
     hasPlayedRef,
-    isPiPRef: pip.isPiPRef,
-    enterPiP: pip.enterPiP,
-    exitPiP: pip.exitPiP,
     restoreToLive: android.restoreToLive,
   });
 
@@ -97,10 +87,6 @@ export function PersistentAndroidPlaybackProvider({
         videoRef,
         hiddenHostRef,
         ...android,
-        isInPiP: pip.isInPiP,
-        isPiPSupported: pip.isPiPSupported,
-        enterPiP: pip.enterPiP,
-        exitPiP: pip.exitPiP,
       }}
     >
       {/*

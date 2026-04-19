@@ -9,7 +9,6 @@ import {
 import { detectDeviceType } from "../player/ivs/hooks/use-device-type";
 import { PersistentAndroidPlaybackProvider } from "./PersistentAndroidPlaybackProvider";
 import { useIvsPlayerCore } from "../player/ivs/hooks/use-ivs-player-core";
-import { usePiP } from "../player/ivs/hooks/use-pip";
 import { useLatencyWatchdog } from "../player/ivs/hooks/use-latency-watchdog";
 import { useMediaSession } from "../player/ivs/hooks/use-media-session";
 import { useVisibilityResilience } from "../player/ivs/hooks/use-visibility-resilience";
@@ -45,21 +44,12 @@ function IvsPersistentCore({ src, title, artwork, children }: Props) {
     shouldPreventPause,
   });
 
-  const restoreAfterPiP = useCallback(() => {
-    void ivs.restoreToLive({ gracePeriodMs: 150 });
-  }, [ivs]);
-
-  const pip = usePiP(videoRef, restoreAfterPiP);
-
   useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
 
   useVisibilityResilience({
     enabled: true,
     videoRef,
     hasPlayedRef: ivs.hasPlayedRef,
-    isPiPRef: pip.isPiPRef,
-    enterPiP: pip.enterPiP,
-    exitPiP: pip.exitPiP,
     restoreToLive: ivs.restoreToLive,
   });
 
@@ -83,10 +73,6 @@ function IvsPersistentCore({ src, title, artwork, children }: Props) {
         videoRef,
         hiddenHostRef,
         ...ivs,
-        isInPiP: pip.isInPiP,
-        isPiPSupported: pip.isPiPSupported,
-        enterPiP: pip.enterPiP,
-        exitPiP: pip.exitPiP,
       }}
     >
       {/*
