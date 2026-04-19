@@ -83,7 +83,12 @@ export const AttendeeStageViewer = forwardRef<
         "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
       host?.appendChild(video);
     };
-  }, [videoRef, hiddenHostRef]);
+  }, [
+    hiddenHostRef,
+    isConnected,
+    mainParticipantHasActiveVideo,
+    videoRef,
+  ]);
 
   useImperativeHandle(
     ref,
