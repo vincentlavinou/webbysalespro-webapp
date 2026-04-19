@@ -331,9 +331,8 @@ export function useIvsPlayerCore({
   // ─── Pause prevention (live stream must not stay paused) ──────────────────
 
   useEffect(() => {
-    const p = playerRef.current;
     const v = videoRef.current;
-    if (!p || !v) return;
+    if (!v) return;
     const canForcePlayback = autoPlay || hasPlayedRef.current;
 
     setIsMuted(v.muted);

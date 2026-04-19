@@ -467,6 +467,22 @@ export function useAndroidIvsPlayerCore({
     }
   };
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onPause = () => {
+      if (mode === "ended" || mode === "error" || mode === "blocked") return;
+      if (video.ended) return;
+      void restoreToLive({ gracePeriodMs: 150 }).catch(() => {});
+    };
+
+    video.addEventListener("pause", onPause);
+    return () => {
+      video.removeEventListener("pause", onPause);
+    };
+  }, [mode, restoreToLive, videoRef]);
+
   return {
     playerRef,
     mode,

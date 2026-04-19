@@ -349,11 +349,10 @@ export function useHlsPlayerCore({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const canForcePlayback = autoPlay || hasPlayedRef.current;
 
     setIsMuted(video.muted);
 
-    if (canForcePlayback && video.paused && (shouldPreventPause?.() ?? true)) {
+    if ((autoPlay || hasPlayedRef.current) && video.paused && (shouldPreventPause?.() ?? true)) {
       void video.play().catch(() => {});
     }
 
