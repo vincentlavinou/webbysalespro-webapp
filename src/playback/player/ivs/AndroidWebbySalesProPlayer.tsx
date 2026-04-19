@@ -53,7 +53,7 @@ export const AndroidWebbySalesProPlayer =
       restoreToLive,
     } = usePersistentAndroidPlayback();
 
-    const { enterFullscreen, exitFullscreen, isFullscreen } = useFullscreen({
+    const { enterFullscreen, exitFullscreen } = useFullscreen({
       videoRef,
       containerRef: playerSurfaceRef,
       onResumeNeeded: () => {
@@ -113,7 +113,7 @@ export const AndroidWebbySalesProPlayer =
           className="relative overflow-hidden border bg-black shadow-sm"
           style={{ touchAction: "manipulation" }}
         >
-          <div className={isFullscreen ? "h-full min-h-screen" : "aspect-video"}>
+          <div className="aspect-video">
             {/* video is reparented here via useLayoutEffect */}
             <div
               ref={videoContainerRef}

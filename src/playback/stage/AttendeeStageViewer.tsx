@@ -70,7 +70,7 @@ export const AttendeeStageViewer = forwardRef<
     handleUnmute,
   } = usePersistentStagePlayback();
 
-  const { enterFullscreen, exitFullscreen, isFullscreen } = useFullscreen({
+  const { enterFullscreen, exitFullscreen } = useFullscreen({
     videoRef,
     containerRef: playerSurfaceRef,
     onResumeNeeded: () => {
@@ -144,7 +144,7 @@ export const AttendeeStageViewer = forwardRef<
   return (
     <div
       ref={playerSurfaceRef}
-      className={`relative w-full overflow-hidden rounded-md border bg-black ${isFullscreen ? "h-full min-h-screen" : `max-h-[80vh] ${aspectRatio}`}`}
+      className={`relative w-full overflow-hidden rounded-md border bg-black max-h-[80vh] ${aspectRatio}`}
     >
       {/* video is reparented here via useLayoutEffect */}
       <div ref={videoContainerRef} className="absolute inset-0" />
