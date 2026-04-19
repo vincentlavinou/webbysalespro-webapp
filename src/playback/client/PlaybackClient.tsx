@@ -29,14 +29,13 @@ export function PlaybackClient(props: PlaybackClientProps) {
       ? props.playbackToken.stream
       : undefined;
 
-  const artwork: MediaImage[] = channelStream
-    ? props.playbackToken.webinar.media
-        .filter(
-          (media: WebinarMedia) =>
-            media.field_type === WebinarMediaFieldType.THUMBNAIL,
-        )
-        .map((media: WebinarMedia) => ({ src: media.file_url }))
-    : [];
+  const artwork: MediaImage[] = props.playbackToken.webinar.media
+    .filter(
+      (media: WebinarMedia) =>
+        media.file_type === "image" &&
+        media.field_type === WebinarMediaFieldType.THUMBNAIL,
+    )
+    .map((media: WebinarMedia) => ({ src: media.file_url }));
 
   const inner = (
     <PlaybackConfigurationProvider
