@@ -8,6 +8,7 @@ import { useSessionPresence } from "@/broadcast/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";
 import { useRouter } from "next/navigation";
 import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-session";
+import { onPlaybackPlaying } from "@/emitter/playback";
 import { createAttendeeBroadcastServiceTokenAction } from "../service/action";
 import { PlaybackClient } from "../client/PlaybackClient";
 
@@ -27,7 +28,8 @@ export function PlaybackContainer({
   const [playbackToken, setPlaybackToken] = useState<AttendeeBroadcastServiceToken | null>(null);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  useWebinar();
+  const { recordEvent } = useWebinar();
+  const hasFiredLiveWatchingRef = useRef(false);
   const { markRoom } = useSessionPresence();
   const router = useRouter();
   const { refresh: refreshSession } = useAttendeeSession();
@@ -39,6 +41,14 @@ export function PlaybackContainer({
       router.replace(clientRedirectTo);
     }
   }, [clientRedirectTo, router]);
+
+  useEffect(() => {
+    return onPlaybackPlaying(() => {
+      if (hasFiredLiveWatchingRef.current) return;
+      hasFiredLiveWatchingRef.current = true;
+      void recordEvent("live_watching");
+    });
+  }, [recordEvent]);
 
   useEffect(() => {
     let cancelled = false;
