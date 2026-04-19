@@ -4,10 +4,10 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
 } from "react";
 import { WebinarMainLayoutLoading } from "@/broadcast/components/views/WebinarMainLayoutLoading";
-import { usePersistentVideoAttachment } from "@/playback/hooks/use-persistent-video-attachment";
 import { usePersistentStagePlayback } from "@/playback/persistent/use-persistent-stage-playback";
 import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
 import { useFullscreen } from "../player/ivs/hooks/use-fullscreen";
@@ -78,15 +78,33 @@ export const AttendeeStageViewer = forwardRef<
     },
   });
 
-  usePersistentVideoAttachment({
-    videoRef,
-    containerRef: videoContainerRef,
+  // The stage viewer swaps between loading/fallback/live surfaces, so the
+  // attachment effect must re-run when the active video surface appears.
+  useLayoutEffect(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    const host = hiddenHostRef.current;
+    if (!video || !container) return;
+
+    video.style.cssText =
+      "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;";
+    if (video.parentElement !== container) {
+      container.appendChild(video);
+    }
+
+    return () => {
+      video.style.cssText =
+        "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
+      if (host && video.parentElement !== host) {
+        host.appendChild(video);
+      }
+    };
+  }, [
     hiddenHostRef,
-    attachedStyle:
-      "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;",
-    detachedStyle:
-      "position:absolute;width:0;height:0;opacity:0;pointer-events:none;",
-  });
+    isConnected,
+    mainParticipantHasActiveVideo,
+    videoRef,
+  ]);
 
   useImperativeHandle(
     ref,

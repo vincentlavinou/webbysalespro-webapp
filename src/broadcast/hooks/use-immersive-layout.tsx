@@ -23,6 +23,39 @@ export function useImmersiveLayout() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  useEffect(() => {
+    const syncFromEnvironment = () => {
+      if (document.visibilityState === "hidden") return;
+
+      const isLandscapeNow =
+        window.matchMedia("(orientation: landscape)").matches;
+      setIsPhysicalLandscape(isLandscapeNow);
+
+      const doc = document as Document & {
+        webkitFullscreenElement?: Element | null;
+      };
+      const isActuallyFullscreen = Boolean(
+        doc.fullscreenElement || doc.webkitFullscreenElement,
+      );
+
+      if (!isLandscapeNow && !isActuallyFullscreen) {
+        setForcedLayoutState(null);
+        setSplitEnteredInPortrait(false);
+        setSplitSawLandscape(false);
+      }
+    };
+
+    document.addEventListener("visibilitychange", syncFromEnvironment);
+    window.addEventListener("pageshow", syncFromEnvironment);
+    window.addEventListener("focus", syncFromEnvironment);
+
+    return () => {
+      document.removeEventListener("visibilitychange", syncFromEnvironment);
+      window.removeEventListener("pageshow", syncFromEnvironment);
+      window.removeEventListener("focus", syncFromEnvironment);
+    };
+  }, []);
+
   const resetSplitTracking = useCallback(() => {
     setSplitEnteredInPortrait(false);
     setSplitSawLandscape(false);

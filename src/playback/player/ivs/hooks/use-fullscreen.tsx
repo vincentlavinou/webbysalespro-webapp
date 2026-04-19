@@ -60,6 +60,13 @@ export function useFullscreen({
     setFullscreenModeState(m);
   }, []);
 
+  const clearPostExitTimer = useCallback(() => {
+    if (postExitTimerRef.current) {
+      window.clearTimeout(postExitTimerRef.current);
+      postExitTimerRef.current = null;
+    }
+  }, []);
+
   const isInFullscreen = useCallback(() => {
     const doc = document as FullscreenCapableDocument;
     const video = videoRef.current as FullscreenCapableVideo | null;
@@ -132,13 +139,17 @@ export function useFullscreen({
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const finalizeFullscreenExit = () => {
+      autoFullscreenRef.current = false;
+      clearPostExitTimer();
+      setFullscreenMode("none");
+      onFullscreenChangeRef.current?.(false);
+    };
+
     const onFullscreenChange = () => {
       if (isInFullscreen()) {
         // Entered fullscreen — clear any post-exit timer and mark as active.
-        if (postExitTimerRef.current) {
-          window.clearTimeout(postExitTimerRef.current);
-          postExitTimerRef.current = null;
-        }
+        clearPostExitTimer();
         setFullscreenMode("active");
         onFullscreenChangeRef.current?.(true);
         return;
@@ -160,10 +171,34 @@ export function useFullscreen({
       // Hold "exiting" briefly to catch the trailing visibilitychange:visible
       // that iOS fires after the fullscreen animation completes.
       postExitTimerRef.current = window.setTimeout(() => {
-        postExitTimerRef.current = null;
-        setFullscreenMode("none");
-        onFullscreenChangeRef.current?.(false);
+        finalizeFullscreenExit();
       }, POST_EXIT_SUPPRESS_MS);
+    };
+
+    const reconcileFullscreenState = () => {
+      if (document.visibilityState === "hidden") return;
+
+      const actuallyFullscreen = isInFullscreen();
+      const trackedMode = fullscreenModeRef.current;
+
+      if (actuallyFullscreen) {
+        if (trackedMode !== "active") {
+          clearPostExitTimer();
+          setFullscreenMode("active");
+          onFullscreenChangeRef.current?.(true);
+        }
+        return;
+      }
+
+      if (trackedMode === "none") return;
+
+      finalizeFullscreenExit();
+
+      window.setTimeout(() => {
+        if (!isInFullscreen()) {
+          onResumeNeededRef.current();
+        }
+      }, 150);
     };
 
     const syncOrientationFullscreen = () => {
@@ -185,20 +220,34 @@ export function useFullscreen({
     }
     document.addEventListener("fullscreenchange", onFullscreenChange);
     document.addEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
+    document.addEventListener("visibilitychange", reconcileFullscreenState);
+    window.addEventListener("pageshow", reconcileFullscreenState);
+    window.addEventListener("focus", reconcileFullscreenState);
     // iOS native video fullscreen exit
     fullscreenVideo?.addEventListener("webkitendfullscreen", onFullscreenChange as EventListener);
 
     return () => {
-      if (postExitTimerRef.current) window.clearTimeout(postExitTimerRef.current);
+      clearPostExitTimer();
       if (syncWithOrientation) {
         window.removeEventListener("resize", syncOrientationFullscreen);
         window.screen.orientation?.removeEventListener?.("change", syncOrientationFullscreen);
       }
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
+      document.removeEventListener("visibilitychange", reconcileFullscreenState);
+      window.removeEventListener("pageshow", reconcileFullscreenState);
+      window.removeEventListener("focus", reconcileFullscreenState);
       fullscreenVideo?.removeEventListener("webkitendfullscreen", onFullscreenChange as EventListener);
     };
-  }, [isInFullscreen, enterFullscreen, exitFullscreen, syncWithOrientation, videoRef, setFullscreenMode]);
+  }, [
+    clearPostExitTimer,
+    isInFullscreen,
+    enterFullscreen,
+    exitFullscreen,
+    syncWithOrientation,
+    videoRef,
+    setFullscreenMode,
+  ]);
 
   return {
     enterFullscreen,
