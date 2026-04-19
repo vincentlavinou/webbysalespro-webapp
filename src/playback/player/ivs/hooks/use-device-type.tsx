@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 export type DeviceType = "ios" | "android" | "desktop";
 
-function detectDeviceType(): DeviceType {
+export function detectDeviceType(): DeviceType {
   if (typeof navigator === "undefined") return "desktop";
 
   const nav = navigator as Navigator & {

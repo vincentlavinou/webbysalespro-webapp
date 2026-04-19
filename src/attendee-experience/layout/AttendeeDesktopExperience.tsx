@@ -63,7 +63,6 @@ export function AttendeeDesktopExperience({
               ) : realtimeStream ? (
                 <AttendeeStageViewer
                   ref={playerRef}
-                  stream={realtimeStream}
                   onPlaybackStatusChange={setStatus}
                 />
               ) : null}

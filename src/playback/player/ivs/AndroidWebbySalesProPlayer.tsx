@@ -4,16 +4,12 @@ import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
 } from "react";
 import type { MediaPlayer } from "amazon-ivs-player";
-import {
-  emitPlaybackEnded,
-  emitPlaybackMetadata,
-  emitPlaybackPlaying,
-} from "@/emitter/playback";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
-import { useAndroidIvsPlayerCore } from "./hooks/use-android-ivs-player-core";
+import { usePersistentAndroidPlayback } from "@/playback/persistent/use-persistent-android-playback";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
 import type { WebbySalesProPlayerHandle } from "./WebbySalesProPlayer";
 
@@ -29,15 +25,21 @@ type Props = {
 };
 
 export const AndroidWebbySalesProPlayer =
-  forwardRef<WebbySalesProPlayerHandle, Props>(function AndroidWebbySalesProPlayer({
-    src,
-    poster,
-    showStats = false,
-    ariaLabel = "WebbySalesPro player",
-    onPlaybackStatusChange,
-  }: Props, ref) {
-    const videoRef = useRef<HTMLVideoElement | null>(null);
+  forwardRef<WebbySalesProPlayerHandle, Props>(function AndroidWebbySalesProPlayer(
+    {
+      src,
+      poster,
+      showStats = false,
+      ariaLabel = "WebbySalesPro player",
+      onPlaybackStatusChange,
+    }: Props,
+    ref,
+  ) {
+    const videoContainerRef = useRef<HTMLDivElement>(null);
+
     const {
+      videoRef,
+      hiddenHostRef,
       mode,
       errorMessage,
       qualityName,
@@ -47,44 +49,45 @@ export const AndroidWebbySalesProPlayer =
       handleStartWithSound,
       handleUnmute,
       restoreToLive,
-    } = useAndroidIvsPlayerCore({
-      src,
-      videoRef,
-      onTextMetadata: emitPlaybackMetadata,
-      onEnded: emitPlaybackEnded,
-      onPlaying: emitPlaybackPlaying,
-    });
+    } = usePersistentAndroidPlayback();
 
-    useImperativeHandle(ref, () => ({
-      restoreToLive,
-    }), [restoreToLive]);
+    // Move the persistent <video> into our visible container on mount.
+    // On unmount, return it to the hidden host — the player keeps playing.
+    useLayoutEffect(() => {
+      const video = videoRef.current;
+      const container = videoContainerRef.current;
+      const host = hiddenHostRef.current;
+      if (!video || !container) return;
+
+      if (poster) video.poster = poster;
+      video.setAttribute("aria-label", ariaLabel);
+      video.style.cssText =
+        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;";
+      container.appendChild(video);
+
+      return () => {
+        video.style.cssText =
+          "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
+        host?.appendChild(video);
+      };
+    }, [videoRef, hiddenHostRef, poster, ariaLabel]);
+
+    // When IVS is unsupported on this device, switch the persistent video
+    // element to native HLS playback with browser controls.
+    useEffect(() => {
+      const video = videoRef.current;
+      if (!video || mode !== "unsupported") return;
+      video.src = src;
+      video.controls = true;
+    }, [mode, src, videoRef]);
+
+    useImperativeHandle(ref, () => ({ restoreToLive }), [restoreToLive]);
 
     useSyncPlaybackStatus({
       kind: "android",
       mode,
       onPlaybackStatusChange,
     });
-
-    if (mode === "unsupported") {
-      return (
-        <div className="w-full">
-          <div className="relative overflow-hidden border bg-black shadow-sm">
-            <div className="aspect-video">
-              <video
-                ref={videoRef}
-                src={src}
-                poster={poster}
-                playsInline
-                controls
-                preload="auto"
-                aria-label={ariaLabel}
-                className="h-full w-full object-contain"
-              />
-            </div>
-          </div>
-        </div>
-      );
-    }
 
     const showBlockedStart = mode === "blocked";
     const showUnmuteButton = mode === "playing-muted" && isMuted;
@@ -101,13 +104,10 @@ export const AndroidWebbySalesProPlayer =
           style={{ touchAction: "manipulation" }}
         >
           <div className="aspect-video">
-            <video
-              ref={videoRef}
-              poster={poster}
-              playsInline
-              preload="auto"
-              aria-label={ariaLabel}
-              className="h-full w-full object-contain"
+            {/* video is reparented here via useLayoutEffect */}
+            <div
+              ref={videoContainerRef}
+              className="relative h-full w-full"
             />
           </div>
 
@@ -210,9 +210,9 @@ export function IvsAndroidDebug({ src }: { src: string }) {
       }
 
       const player = IVSPlayer.create({
-          wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
-          wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
-        });
+        wasmWorker: "/ivs/amazon-ivs-wasmworker.min.js",
+        wasmBinary: "/ivs/amazon-ivs-wasmworker.min.wasm",
+      });
       console.log("[IVS] player created");
 
       video.muted = true;
@@ -227,26 +227,26 @@ export function IvsAndroidDebug({ src }: { src: string }) {
       player.setLiveLowLatencyEnabled(true);
 
       player.addEventListener(IVSPlayer.PlayerState.READY, () =>
-        console.log("[IVS] READY")
+        console.log("[IVS] READY"),
       );
       player.addEventListener(IVSPlayer.PlayerState.BUFFERING, () =>
-        console.log("[IVS] BUFFERING")
+        console.log("[IVS] BUFFERING"),
       );
       player.addEventListener(IVSPlayer.PlayerState.PLAYING, () =>
-        console.log("[IVS] PLAYING")
+        console.log("[IVS] PLAYING"),
       );
       player.addEventListener(IVSPlayer.PlayerState.ENDED, () =>
-        console.log("[IVS] ENDED")
+        console.log("[IVS] ENDED"),
       );
 
       player.addEventListener(IVSPlayer.PlayerEventType.ERROR, (e: unknown) =>
-        console.log("[IVS] ERROR", e)
+        console.log("[IVS] ERROR", e),
       );
       player.addEventListener(IVSPlayer.PlayerEventType.PLAYBACK_BLOCKED, () =>
-        console.log("[IVS] PLAYBACK_BLOCKED")
+        console.log("[IVS] PLAYBACK_BLOCKED"),
       );
       player.addEventListener(IVSPlayer.PlayerEventType.AUDIO_BLOCKED, () =>
-        console.log("[IVS] AUDIO_BLOCKED")
+        console.log("[IVS] AUDIO_BLOCKED"),
       );
 
       console.log("[IVS] loading", src);

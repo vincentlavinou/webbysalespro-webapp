@@ -2,9 +2,13 @@
 
 import { RequestHeaders } from "next/dist/client/components/router-reducer/fetch-server-response";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
+import { WebinarMediaFieldType } from "@/media";
+import type { WebinarMedia } from "@/media";
 import { PlaybackConfigurationProvider } from "../provider/PlaybackConfigurationProvider";
 import { PlaybackRuntimeProvider } from "../provider/PlaybackRuntimeProvider";
 import { PlaybackUserProvider } from "../provider/PlaybackUserProvider";
+import { PersistentChannelPlaybackProvider } from "../persistent/PersistentChannelPlaybackProvider";
+import { PersistentStagePlaybackProvider } from "../persistent/PersistentStagePlaybackProvider";
 import { AttendeeExperienceManager } from "@/attendee-experience/AttendeeExperienceManager";
 
 type PlaybackClientProps = {
@@ -15,7 +19,26 @@ type PlaybackClientProps = {
 };
 
 export function PlaybackClient(props: PlaybackClientProps) {
-  return (
+  const channelStream =
+    props.playbackToken.stream?.kind === "channel"
+      ? props.playbackToken.stream
+      : undefined;
+
+  const realtimeStream =
+    props.playbackToken.stream?.kind === "realtime"
+      ? props.playbackToken.stream
+      : undefined;
+
+  const artwork: MediaImage[] = channelStream
+    ? props.playbackToken.webinar.media
+        .filter(
+          (media: WebinarMedia) =>
+            media.field_type === WebinarMediaFieldType.THUMBNAIL,
+        )
+        .map((media: WebinarMedia) => ({ src: media.file_url }))
+    : [];
+
+  const inner = (
     <PlaybackConfigurationProvider
       sessionId={props.sessionId}
       getRequestHeaders={props.getRequestHeaders}
@@ -40,4 +63,30 @@ export function PlaybackClient(props: PlaybackClientProps) {
       </PlaybackUserProvider>
     </PlaybackConfigurationProvider>
   );
+
+  if (channelStream) {
+    return (
+      <PersistentChannelPlaybackProvider
+        src={channelStream.config.playback_url}
+        title={props.playbackToken.webinar.title}
+        artwork={artwork}
+      >
+        {inner}
+      </PersistentChannelPlaybackProvider>
+    );
+  }
+
+  if (realtimeStream) {
+    return (
+      <PersistentStagePlaybackProvider
+        stream={realtimeStream}
+        title={props.playbackToken.webinar.title}
+        artwork={artwork}
+      >
+        {inner}
+      </PersistentStagePlaybackProvider>
+    );
+  }
+
+  return inner;
 }

@@ -3,19 +3,14 @@
 
 import React, {
   forwardRef,
-  useCallback,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
 } from "react";
 import { PlayerState } from "amazon-ivs-player";
 import { Minimize2, PictureInPicture2 } from "lucide-react";
-import { emitPlaybackMetadata, emitPlaybackEnded, emitPlaybackPlaying } from "@/emitter/playback/";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
-import { useIvsPlayerCore } from "./hooks/use-ivs-player-core";
-import { useLatencyWatchdog } from "./hooks/use-latency-watchdog";
-import { useMediaSession } from "./hooks/use-media-session";
-import { useVisibilityResilience } from "./hooks/use-visibility-resilience";
-import { usePiP } from "./hooks/use-pip";
+import { usePersistentChannelPlayback } from "@/playback/persistent/use-persistent-channel-playback";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
 import type { WebbySalesProPlayerHandle } from "./WebbySalesProPlayer";
 
@@ -31,180 +26,195 @@ type Props = {
 };
 
 const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
-function IOSWebbySalesProPlayer({
-  src,
-  poster,
-  showStats = false,
-  ariaLabel = "WebbySalesPro player",
-  title,
-  artwork,
-  keepAlive = false,
-  onPlaybackStatusChange,
-}: Props, ref) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  function IOSWebbySalesProPlayer(
+    {
+      poster,
+      showStats = false,
+      ariaLabel = "WebbySalesPro player",
+      onPlaybackStatusChange,
+    }: Props,
+    ref,
+  ) {
+    const videoContainerRef = useRef<HTMLDivElement>(null);
 
-  const shouldPreventPause = useCallback(() => true, []);
+    const {
+      videoRef,
+      hiddenHostRef,
+      mode,
+      stats,
+      playerState,
+      isMuted,
+      isInPiP,
+      isPiPSupported,
+      restoreToLive,
+      handleManualPlay,
+      tapToUnmute,
+      enterPiP,
+      exitPiP,
+    } = usePersistentChannelPlayback();
 
-  // iOS: autoPlay=false — tap-to-play gate shown immediately
-  const ivs = useIvsPlayerCore({
-    src,
-    autoPlay: false,
-    videoRef,
-    onTextMetadata: emitPlaybackMetadata,
-    onEnded: emitPlaybackEnded,
-    onPlaying: emitPlaybackPlaying,
-    keepAlive,
-    shouldPreventPause,
-  });
+    // Move the persistent <video> into our visible container on mount.
+    // On unmount, return it to the hidden host — the player keeps playing.
+    useLayoutEffect(() => {
+      const video = videoRef.current;
+      const container = videoContainerRef.current;
+      const host = hiddenHostRef.current;
+      if (!video || !container) return;
 
-  const pip = usePiP(videoRef, ivs.restoreToLive);
+      if (poster) video.poster = poster;
+      video.setAttribute("aria-label", ariaLabel);
+      video.style.cssText =
+        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;touch-action:manipulation;";
+      container.appendChild(video);
 
-  useLatencyWatchdog(ivs.playerRef, src, ivs.playerVersion);
+      return () => {
+        video.style.cssText =
+          "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
+        host?.appendChild(video);
+      };
+    }, [videoRef, hiddenHostRef, poster, ariaLabel]);
 
-  useImperativeHandle(ref, () => ({
-    restoreToLive: ivs.restoreToLive,
-  }), [ivs.restoreToLive]);
+    useImperativeHandle(
+      ref,
+      () => ({ restoreToLive }),
+      [restoreToLive],
+    );
 
-  useVisibilityResilience({
-    enabled: true,
-    hasPlayedRef: ivs.hasPlayedRef,
-    isPiPRef: pip.isPiPRef,
-    enterPiP: pip.enterPiP,
-    exitPiP: pip.exitPiP,
-    restoreToLive: ivs.restoreToLive,
-  });
+    const isBuffering =
+      (mode === "playing" || mode === "playing-muted") &&
+      playerState === PlayerState.BUFFERING;
+    const shouldBlur = mode !== "playing" && mode !== "playing-muted";
+    const showUnmuteNudge = mode === "playing-muted" && isMuted;
 
-  useMediaSession({
-    active: ivs.mode === "playing" || ivs.mode === "playing-muted",
-    title,
-    ariaLabel,
-    poster,
-    artwork,
-    onPlay: () => { videoRef.current?.play().catch(() => {}); },
-    onPause: () => { videoRef.current?.play().catch(() => {}); },
-  });
+    useSyncPlaybackStatus({
+      kind: "ivs",
+      mode,
+      playerState,
+      onPlaybackStatusChange,
+    });
 
-  // ─── Derived display state ───────────────────────────────────────────────
+    return (
+      <div className="w-full">
+        <div
+          className="relative w-full overflow-hidden border bg-black shadow-sm"
+          onPointerUp={() => {
+            if (mode === "gate") void handleManualPlay();
+          }}
+          style={{ touchAction: "manipulation" }}
+        >
+          <div className="aspect-video">
+            {/* video is reparented here via useLayoutEffect */}
+            <div
+              ref={videoContainerRef}
+              className={`relative h-full w-full transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
+            />
+          </div>
 
-  const { mode, playerState } = ivs;
-  const isBuffering = (mode === "playing" || mode === "playing-muted") && playerState === PlayerState.BUFFERING;
-  const shouldBlur = mode !== "playing" && mode !== "playing-muted";
-  const showUnmuteNudge = mode === "playing-muted" && ivs.isMuted;
-
-  useSyncPlaybackStatus({
-    kind: "ivs",
-    mode,
-    playerState,
-    onPlaybackStatusChange,
-  });
-
-  return (
-    <div className="w-full">
-      <div
-        className="relative w-full overflow-hidden border bg-black shadow-sm"
-        onPointerUp={() => {
-          if (mode === "gate") void ivs.handleManualPlay();
-        }}
-        style={{ touchAction: "manipulation" }}
-      >
-        <div className="aspect-video">
-          <video
-            ref={videoRef}
-            poster={poster}
-            playsInline
-            preload="auto"
-            aria-label={ariaLabel}
-            className={`h-full w-full object-contain transition duration-200 ${shouldBlur ? "blur-sm" : ""}`}
-            style={{ userSelect: "none", touchAction: "manipulation" }}
-          />
-        </div>
-
-        {/* PiP button */}
-        {pip.isPiPSupported && (
-          <div className="absolute top-3 right-3 z-40">
-            <button
-              type="button"
-              onClick={() => {
-                if (pip.isInPiP) {
-                  pip.exitPiP();
-                } else {
-                  void pip.enterPiP();
+          {isPiPSupported && (
+            <div className="absolute top-3 right-3 z-40">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isInPiP) {
+                    exitPiP();
+                  } else {
+                    void enterPiP();
+                  }
+                }}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
+                aria-label={
+                  isInPiP ? "Exit picture in picture" : "Open picture in picture"
                 }
-              }}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
-              aria-label={pip.isInPiP ? "Exit picture in picture" : "Open picture in picture"}
-            >
-              {pip.isInPiP ? <Minimize2 className="h-4 w-4" /> : <PictureInPicture2 className="h-4 w-4" />}
-            </button>
-          </div>
-        )}
-
-        {/* Loading / buffering overlay */}
-        {(mode === "idle" || isBuffering) && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
-            <p className="text-xs font-medium uppercase tracking-wide text-white/80">
-              {isBuffering ? "Connecting to live webinar…" : "Preparing live webinar…"}
-            </p>
-          </div>
-        )}
-
-        {/* Ended overlay */}
-        {mode === "ended" && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="rounded-md bg-black/70 px-3 py-2 text-sm font-medium text-white">
-              This live webinar has ended.
+              >
+                {isInPiP ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <PictureInPicture2 className="h-4 w-4" />
+                )}
+              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Tap to play gate */}
-        {mode === "gate" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <button
-              type="button"
-              onClick={() => void ivs.handleManualPlay()}
-              className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-300">
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 translate-x-[1px]">
-                  <polygon points="6,4 20,12 6,20" fill="currentColor" />
+          {(mode === "idle" || isBuffering) && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+              <p className="text-xs font-medium uppercase tracking-wide text-white/80">
+                {isBuffering
+                  ? "Connecting to live webinar…"
+                  : "Preparing live webinar…"}
+              </p>
+            </div>
+          )}
+
+          {mode === "ended" && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <div className="rounded-md bg-black/70 px-3 py-2 text-sm font-medium text-white">
+                This live webinar has ended.
+              </div>
+            </div>
+          )}
+
+          {mode === "gate" && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={() => void handleManualPlay()}
+                className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-300">
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    className="h-4 w-4 translate-x-[1px]"
+                  >
+                    <polygon points="6,4 20,12 6,20" fill="currentColor" />
+                  </svg>
+                </span>
+                <span>Tap to start the live webinar</span>
+              </button>
+            </div>
+          )}
+
+          {showUnmuteNudge && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
+              <button
+                type="button"
+                onClick={tapToUnmute}
+                className="flex flex-col items-center gap-3 rounded-2xl bg-black/80 px-8 py-6 text-white shadow-xl backdrop-blur-sm hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white/50"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-10 w-10 shrink-0"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M16.5 12A4.5 4.5 0 0 0 14 7.97V10.18L16.45 12.63C16.48 12.43 16.5 12.21 16.5 12ZM19 12C19 12.94 18.8 13.82 18.46 14.64L19.97 16.15C20.63 14.91 21 13.5 21 12C21 7.72 18.01 4.14 14 3.23V5.29C16.89 6.15 19 8.83 19 12ZM4.27 3L3 4.27 7.73 9H3V15H7L12 20V13.27L16.25 17.52C15.58 18.04 14.83 18.45 14 18.7V20.77C15.38 20.45 16.63 19.82 17.68 18.96L19.73 21 21 19.73 12 10.73 4.27 3ZM12 4L9.91 6.09 12 8.18V4Z" />
                 </svg>
-              </span>
-              <span>Tap to start the live webinar</span>
-            </button>
-          </div>
-        )}
+                <span className="text-base font-semibold">Tap to unmute</span>
+              </button>
+            </div>
+          )}
 
-        {/* Unmute nudge */}
-        {showUnmuteNudge && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
-            <button
-              type="button"
-              onClick={ivs.tapToUnmute}
-              className="flex flex-col items-center gap-3 rounded-2xl bg-black/80 px-8 py-6 text-white shadow-xl backdrop-blur-sm hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white/50"
-            >
-              <svg viewBox="0 0 24 24" className="h-10 w-10 shrink-0" fill="currentColor" aria-hidden="true">
-                <path d="M16.5 12A4.5 4.5 0 0 0 14 7.97V10.18L16.45 12.63C16.48 12.43 16.5 12.21 16.5 12ZM19 12C19 12.94 18.8 13.82 18.46 14.64L19.97 16.15C20.63 14.91 21 13.5 21 12C21 7.72 18.01 4.14 14 3.23V5.29C16.89 6.15 19 8.83 19 12ZM4.27 3L3 4.27 7.73 9H3V15H7L12 20V13.27L16.25 17.52C15.58 18.04 14.83 18.45 14 18.7V20.77C15.38 20.45 16.63 19.82 17.68 18.96L19.73 21 21 19.73 12 10.73 4.27 3ZM12 4L9.91 6.09 12 8.18V4Z" />
-              </svg>
-              <span className="text-base font-semibold">Tap to unmute</span>
-            </button>
-          </div>
-        )}
-
-        {/* Stats */}
-        {showStats && (
-          <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
-            <div>Mode: {mode}</div>
-            <div>IVS: {playerState ?? "…"}</div>
-            <div>Latency: {typeof ivs.stats.latency === "number" ? `${ivs.stats.latency.toFixed(1)}s` : "…"}</div>
-            <div>Bitrate: {ivs.stats.bitrate ? `${ivs.stats.bitrate} kbps` : "…"}</div>
-            <div>Res: {ivs.stats.resolution ?? "…"}</div>
-          </div>
-        )}
+          {showStats && (
+            <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
+              <div>Mode: {mode}</div>
+              <div>IVS: {playerState ?? "…"}</div>
+              <div>
+                Latency:{" "}
+                {typeof stats.latency === "number"
+                  ? `${stats.latency.toFixed(1)}s`
+                  : "…"}
+              </div>
+              <div>
+                Bitrate: {stats.bitrate ? `${stats.bitrate} kbps` : "…"}
+              </div>
+              <div>Res: {stats.resolution ?? "…"}</div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 export default IOSWebbySalesProPlayer;
