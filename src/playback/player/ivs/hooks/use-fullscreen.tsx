@@ -201,7 +201,8 @@ export function useFullscreen({
     enterFullscreen,
     exitFullscreen,
     fullscreenMode,
-    isFullscreen: fullscreenMode !== "none",
+    isFullscreen:
+      fullscreenMode === "entering" || fullscreenMode === "active",
     /** Stable ref for use in shouldIgnoreVisibilityChange — avoids closure staleness. */
     fullscreenModeRef,
   };

@@ -76,8 +76,10 @@ export default function AttendeeMobileLayout({
 
   useEffect(() => {
     const vv = window.visualViewport;
+    let frameId: number | null = null;
 
-    const updateViewport = () => {
+    const commitViewport = () => {
+      frameId = null;
       const next = readLayoutViewport();
       setViewportSize((current) =>
         current.width === next.width && current.height === next.height
@@ -86,12 +88,20 @@ export default function AttendeeMobileLayout({
       );
     };
 
-    updateViewport();
+    const updateViewport = () => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(commitViewport);
+    };
+
+    commitViewport();
 
     vv?.addEventListener("resize", updateViewport);
     window.addEventListener("resize", updateViewport);
 
     return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
       vv?.removeEventListener("resize", updateViewport);
       window.removeEventListener("resize", updateViewport);
     };
