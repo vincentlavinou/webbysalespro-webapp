@@ -74,7 +74,7 @@ export const AttendeeStageViewer = forwardRef<
     videoRef,
     containerRef: playerSurfaceRef,
     onResumeNeeded: () => {
-      void reconnectStage();
+      void reconnectStage({ gracePeriodMs: 150 });
     },
   });
 

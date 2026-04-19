@@ -148,10 +148,13 @@ export function useFullscreen({
       autoFullscreenRef.current = false;
       setFullscreenMode("exiting"); // suppress visibilitychange while animating out
 
-      // Resume playback if the browser paused the video during the transition.
-      const v = videoRef.current;
+      // Fullscreen transitions can leave IVS in IDLE with a black frame even
+      // when the media element is no longer paused, so always request a live
+      // restore once the browser has finished unwinding the transition.
       window.setTimeout(() => {
-        if (v?.paused) onResumeNeededRef.current();
+        if (!isInFullscreen()) {
+          onResumeNeededRef.current();
+        }
       }, 150);
 
       // Hold "exiting" briefly to catch the trailing visibilitychange:visible
@@ -201,8 +204,7 @@ export function useFullscreen({
     enterFullscreen,
     exitFullscreen,
     fullscreenMode,
-    isFullscreen:
-      fullscreenMode === "entering" || fullscreenMode === "active",
+    isFullscreen: fullscreenMode === "active",
     /** Stable ref for use in shouldIgnoreVisibilityChange — avoids closure staleness. */
     fullscreenModeRef,
   };

@@ -60,7 +60,7 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       videoRef,
       containerRef: playerSurfaceRef,
       onResumeNeeded: () => {
-        void restoreToLive();
+        void restoreToLive({ gracePeriodMs: 150 });
       },
     });
 

@@ -4,15 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ImmersiveLayoutState = "regular" | "split";
 
-const PORTRAIT_EXIT_DELAY_MS = 750;
-const SPLIT_ENTER_PORTRAIT_GRACE_MS = 3000;
-
 export function useImmersiveLayout() {
   const [forcedLayoutState, setForcedLayoutState] =
     useState<ImmersiveLayoutState | null>(null);
   const [splitEnteredInPortrait, setSplitEnteredInPortrait] = useState(false);
   const [splitSawLandscape, setSplitSawLandscape] = useState(false);
-  const splitExitTimerRef = useRef<number | null>(null);
   const previousLayoutStateRef = useRef<ImmersiveLayoutState>("regular");
 
   const [isPhysicalLandscape, setIsPhysicalLandscape] = useState(() => {
@@ -27,24 +23,16 @@ export function useImmersiveLayout() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  const clearSplitExitTimer = useCallback(() => {
-    if (splitExitTimerRef.current) {
-      window.clearTimeout(splitExitTimerRef.current);
-      splitExitTimerRef.current = null;
-    }
-  }, []);
-
   const resetSplitTracking = useCallback(() => {
     setSplitEnteredInPortrait(false);
     setSplitSawLandscape(false);
   }, []);
 
   const enterSplit = useCallback(() => {
-    clearSplitExitTimer();
     setSplitEnteredInPortrait(!isPhysicalLandscape);
     setSplitSawLandscape(isPhysicalLandscape);
     setForcedLayoutState("split");
-  }, [clearSplitExitTimer, isPhysicalLandscape]);
+  }, [isPhysicalLandscape]);
 
   const layoutState: ImmersiveLayoutState =
     forcedLayoutState ?? (isPhysicalLandscape ? "split" : "regular");
@@ -64,29 +52,17 @@ export function useImmersiveLayout() {
 
   useEffect(() => {
     if (layoutState !== "split") {
-      clearSplitExitTimer();
       return;
     }
 
     if (isPhysicalLandscape) {
-      clearSplitExitTimer();
       setSplitSawLandscape(true);
       return;
     }
 
-    splitExitTimerRef.current = window.setTimeout(() => {
-      splitExitTimerRef.current = null;
-      setForcedLayoutState(null);
-      resetSplitTracking();
-    }, splitEnteredInPortrait && !splitSawLandscape
-      ? SPLIT_ENTER_PORTRAIT_GRACE_MS
-      : PORTRAIT_EXIT_DELAY_MS);
-
-    return () => {
-      clearSplitExitTimer();
-    };
+    setForcedLayoutState(null);
+    resetSplitTracking();
   }, [
-    clearSplitExitTimer,
     isPhysicalLandscape,
     layoutState,
     resetSplitTracking,
