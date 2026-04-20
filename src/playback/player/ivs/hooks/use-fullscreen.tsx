@@ -13,10 +13,6 @@ export type FullscreenMode = "none" | "entering" | "active" | "exiting";
 // Hold "exiting" for this long after fullscreen ends to absorb the trailing
 // visibilitychange:visible that iOS fires after the transition animation.
 const POST_EXIT_SUPPRESS_MS = 400;
-const POST_PIP_EXIT_SUPPRESS_MS = 1000;
-// After finalizeFullscreenExit runs, suppress reconcileFullscreenState from
-// re-entering "active" due to the transient webkitDisplayingFullscreen=true iOS leaves behind.
-const POST_FINALIZE_SUPPRESS_MS = 800;
 
 type FullscreenCapableElement = HTMLDivElement & {
   webkitRequestFullscreen?: () => Promise<void> | void;
@@ -28,7 +24,6 @@ type FullscreenCapableVideo = HTMLVideoElement & {
 type FullscreenCapableDocument = Document & {
   webkitExitFullscreen?: () => Promise<void> | void;
   webkitFullscreenElement?: Element | null;
-  pictureInPictureElement?: Element | null;
 };
 
 type Options = {
@@ -36,31 +31,19 @@ type Options = {
   containerRef: React.RefObject<HTMLDivElement | null>;
   /** Called when fullscreen exits and the video element is paused — caller should resume. */
   onResumeNeeded: () => void;
-  onFullscreenChange?: (isFullscreen: boolean) => void;
-  syncWithOrientation?: boolean;
 };
 
-export function useFullscreen({
-  videoRef,
-  containerRef,
-  onResumeNeeded,
-  onFullscreenChange,
-  syncWithOrientation = false,
-}: Options) {
+export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Options) {
   const [fullscreenMode, setFullscreenModeState] = useState<FullscreenMode>("none");
 
   // Ref mirror kept in sync for use inside stable callbacks and shouldIgnoreVisibilityChange.
   const fullscreenModeRef = useRef<FullscreenMode>("none");
   const autoFullscreenRef = useRef(false);
   const postExitTimerRef = useRef<number | null>(null);
-  const suppressFullscreenRestoreUntilRef = useRef(0);
-  const postFinalizeSupressUntilRef = useRef(0);
 
   // Keep onResumeNeeded stable without adding it to every effect dep array.
   const onResumeNeededRef = useRef(onResumeNeeded);
   useEffect(() => { onResumeNeededRef.current = onResumeNeeded; }, [onResumeNeeded]);
-  const onFullscreenChangeRef = useRef(onFullscreenChange);
-  useEffect(() => { onFullscreenChangeRef.current = onFullscreenChange; }, [onFullscreenChange]);
 
   const setFullscreenMode = useCallback((m: FullscreenMode) => {
     fullscreenModeRef.current = m;
@@ -149,17 +132,13 @@ export function useFullscreen({
     const finalizeFullscreenExit = () => {
       autoFullscreenRef.current = false;
       clearPostExitTimer();
-      postFinalizeSupressUntilRef.current = Date.now() + POST_FINALIZE_SUPPRESS_MS;
       setFullscreenMode("none");
-      onFullscreenChangeRef.current?.(false);
     };
 
     const onFullscreenChange = () => {
       if (isInFullscreen()) {
-        // Entered fullscreen — clear any post-exit timer and mark as active.
         clearPostExitTimer();
         setFullscreenMode("active");
-        onFullscreenChangeRef.current?.(true);
         return;
       }
 
@@ -183,52 +162,19 @@ export function useFullscreen({
       }, POST_EXIT_SUPPRESS_MS);
     };
 
+    // Safety net: reconcile tracked mode against actual fullscreen state on
+    // visibility/pageshow/focus events in case fullscreenchange was missed.
     const reconcileFullscreenState = () => {
       if (document.visibilityState === "hidden") return;
-
-      const doc = document as FullscreenCapableDocument;
-      const video = videoRef.current as FullscreenCapableVideo | null;
-      const recentlyLeftPictureInPicture =
-        Date.now() < suppressFullscreenRestoreUntilRef.current;
-      const recentlyFinalized =
-        Date.now() < postFinalizeSupressUntilRef.current;
-      const isPictureInPictureActive = doc.pictureInPictureElement === video;
-      const hasDocumentFullscreen = Boolean(
-        doc.fullscreenElement || doc.webkitFullscreenElement,
-      );
-      const hasNativeVideoFullscreen = Boolean(video?.webkitDisplayingFullscreen);
-      const actuallyFullscreen = isInFullscreen();
       const trackedMode = fullscreenModeRef.current;
+      const actuallyFullscreen = isInFullscreen();
 
       if (actuallyFullscreen) {
-        // Guard 1: exit already in progress — don't clear the post-exit timer or
-        // flip back to "active" just because webkitDisplayingFullscreen is transiently true.
-        if (trackedMode === "exiting" && !hasDocumentFullscreen) {
-          return;
-        }
-
-        // Guard 2: we just called finalizeFullscreenExit — iOS leaves
-        // webkitDisplayingFullscreen=true briefly after the transition; ignore it.
-        if (recentlyFinalized && !hasDocumentFullscreen && hasNativeVideoFullscreen) {
-          return;
-        }
-
-        if (
-          recentlyLeftPictureInPicture &&
-          !isPictureInPictureActive &&
-          !hasDocumentFullscreen &&
-          hasNativeVideoFullscreen
-        ) {
-          if (trackedMode !== "none") {
-            finalizeFullscreenExit();
-          }
-          return;
-        }
-
+        // Exit already in progress — let the post-exit timer finish.
+        if (trackedMode === "exiting") return;
         if (trackedMode !== "active") {
           clearPostExitTimer();
           setFullscreenMode("active");
-          onFullscreenChangeRef.current?.(true);
         }
         return;
       }
@@ -236,7 +182,6 @@ export function useFullscreen({
       if (trackedMode === "none") return;
 
       finalizeFullscreenExit();
-
       window.setTimeout(() => {
         if (!isInFullscreen()) {
           onResumeNeededRef.current();
@@ -244,74 +189,28 @@ export function useFullscreen({
       }, 150);
     };
 
-    const syncOrientationFullscreen = () => {
-      const isLandscape = window.innerWidth > window.innerHeight;
-      if (isLandscape) {
-        void enterFullscreen();
-        return;
-      }
-      if (autoFullscreenRef.current || isInFullscreen()) {
-        void exitFullscreen();
-      }
-    };
-
     const fullscreenVideo = videoRef.current;
-    const onEnterPictureInPicture = () => {
-      suppressFullscreenRestoreUntilRef.current = 0;
-    };
-    const onLeavePictureInPicture = () => {
-      suppressFullscreenRestoreUntilRef.current =
-        Date.now() + POST_PIP_EXIT_SUPPRESS_MS;
-    };
 
-    if (syncWithOrientation) {
-      syncOrientationFullscreen();
-      window.addEventListener("resize", syncOrientationFullscreen);
-      window.screen.orientation?.addEventListener?.("change", syncOrientationFullscreen);
-    }
     document.addEventListener("fullscreenchange", onFullscreenChange);
     document.addEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
     document.addEventListener("visibilitychange", reconcileFullscreenState);
     window.addEventListener("pageshow", reconcileFullscreenState);
     window.addEventListener("focus", reconcileFullscreenState);
-    fullscreenVideo?.addEventListener(
-      "enterpictureinpicture",
-      onEnterPictureInPicture as EventListener,
-    );
-    fullscreenVideo?.addEventListener(
-      "leavepictureinpicture",
-      onLeavePictureInPicture as EventListener,
-    );
     // iOS native video fullscreen exit
     fullscreenVideo?.addEventListener("webkitendfullscreen", onFullscreenChange as EventListener);
 
     return () => {
       clearPostExitTimer();
-      if (syncWithOrientation) {
-        window.removeEventListener("resize", syncOrientationFullscreen);
-        window.screen.orientation?.removeEventListener?.("change", syncOrientationFullscreen);
-      }
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
       document.removeEventListener("visibilitychange", reconcileFullscreenState);
       window.removeEventListener("pageshow", reconcileFullscreenState);
       window.removeEventListener("focus", reconcileFullscreenState);
-      fullscreenVideo?.removeEventListener(
-        "enterpictureinpicture",
-        onEnterPictureInPicture as EventListener,
-      );
-      fullscreenVideo?.removeEventListener(
-        "leavepictureinpicture",
-        onLeavePictureInPicture as EventListener,
-      );
       fullscreenVideo?.removeEventListener("webkitendfullscreen", onFullscreenChange as EventListener);
     };
   }, [
     clearPostExitTimer,
     isInFullscreen,
-    enterFullscreen,
-    exitFullscreen,
-    syncWithOrientation,
     videoRef,
     setFullscreenMode,
   ]);
