@@ -35,6 +35,16 @@ const nextConfig: NextConfig = {
           { key: "Content-Type", value: "application/wasm" },
         ],
       },
+      {
+        // Allow the registration embed to be iframed from any origin.
+        // All other routes inherit the browser default (no framing restriction),
+        // but this makes the intent explicit and survives future security hardening.
+        source: "/:id/register/embed",
+        headers: [
+          { key: "X-Frame-Options", value: "ALLOWALL" },
+          { key: "Content-Security-Policy", value: "frame-ancestors *" },
+        ],
+      },
     ];
   },
 };

@@ -1,6 +1,6 @@
 'use server'
 import { actionClient } from "@/lib/safe-action";
-import { QueryWebinar, RegisterV2Response, SeriesSession, Webinar } from "./type";
+import { QueryWebinar, RegistrationEmbedConfig, RegisterV2Response, SeriesSession, Webinar } from "./type";
 import { emptyPage, PaginationPage } from "@/components/pagination";
 import { webinarApiUrl } from ".";
 import { AlreadyRegisteredError } from "./error";
@@ -67,6 +67,16 @@ const getWebinarCached = cache(async (id: string, fresh: boolean): Promise<Webin
 
 export async function getWebinar(id: string, options?: GetWebinarOptions): Promise<Webinar> {
     return getWebinarCached(id, Boolean(options?.fresh))
+}
+
+export async function getRegistrationEmbedConfig(webinarId: string, source: string): Promise<RegistrationEmbedConfig | null> {
+    const params = new URLSearchParams({ source })
+    const response = await fetch(
+        `${webinarApiUrl}/v1/webinars/${webinarId}/registration-embeds/by-source/?${params.toString()}`,
+        { cache: 'no-store' }
+    )
+    if (!response.ok) return null
+    return await response.json() as RegistrationEmbedConfig
 }
 
 export async function registerForWebinar(formData: FormData): Promise<void> {
@@ -181,6 +191,7 @@ type AttendeeRequestBody = {
     state?: string;
     country?: string;
     registration_source: string;
+    embed_source?: string;
 }
 
 function shouldRetryWithoutLocation(error: unknown): boolean {
@@ -200,15 +211,16 @@ export const registerForWebinarAction = actionClient
     .inputSchema(registerForWebinarInput)
     .action(
         async (input) => {
-            const { webinar_id, session_id, first_name, last_name, email, phone } = input.parsedInput;
+            const { webinar_id, session_id, first_name, last_name, email, phone, embed_source } = input.parsedInput;
 
             const baseRequestBody: AttendeeRequestBody = {
                 first_name,
                 last_name,
                 email,
                 phone: phone ?? null,
-                registration_source: 'public_registration_page',
+                registration_source: embed_source ? 'embed' : 'public_registration_page',
                 ...(session_id ? { session_id } : {}),
+                ...(embed_source ? { embed_source } : {}),
             };
 
             const location = await resolveAttendeeLocation();

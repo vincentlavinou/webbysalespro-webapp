@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAction } from "next-safe-action/hooks";
 import toast from "react-hot-toast";
-import { Loader2 } from "lucide-react";
+import { CheckCircle, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,10 @@ import { extractJoinToken, extractJoinUrl } from "@/webinar/service/join";
 
 interface DefaultRegistrationFormProps {
   webinar: Webinar;
+  primaryColor?: string;
+  secondaryColor?: string;
+  embedSource?: string;
+  embedSuccessUrl?: string;
 }
 
 const PHONE_ALLOWED_CHARACTERS = /^[+\d\s().-]+$/;
@@ -59,17 +63,31 @@ const attendeeSchema = z.object({
 
 type AttendeeFormData = z.infer<typeof attendeeSchema>;
 
+type RegistrationSuccessState = {
+  scheduledStart: string;
+  timezone: string;
+};
 
-export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProps) => {
+const embedFieldClassName =
+  "!border-gray-200 !bg-white !text-gray-900 placeholder:!text-gray-400 shadow-none dark:!border-gray-200 dark:!bg-white dark:!text-gray-900 dark:placeholder:!text-gray-400";
+
+const embedAutofillClassName =
+  "[&:-webkit-autofill]:[box-shadow:0_0_0px_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#111827] [&:-webkit-autofill]:[caret-color:#111827] [&:-webkit-autofill:hover]:[box-shadow:0_0_0px_1000px_white_inset] [&:-webkit-autofill:focus]:[box-shadow:0_0_0px_1000px_white_inset]";
+
+export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor, embedSource, embedSuccessUrl }: DefaultRegistrationFormProps) => {
   const router = useRouter();
   const submitLockRef = useRef(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [successState, setSuccessState] = useState<RegistrationSuccessState | null>(null);
 
   const sessions = useMemo(
     () => webinar.series?.sessions || [],
     [webinar.series]
   );
   const allowsSessionSelection = allowsManualSessionSelection(webinar);
+  const shouldShowInlineEmbedSuccess = Boolean(
+    embedSource && !embedSuccessUrl
+  );
   const autoAssignedSession = useMemo(
     () =>
       sessions.find((session) => session.status === WebinarSessionStatus.IN_PROGRESS)
@@ -99,6 +117,24 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
     resolver: zodResolver(formSchema),
   });
 
+  const navigateToUrl = (url: string) => {
+    if (!embedSource) {
+      router.push(url);
+      return true;
+    }
+
+    const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
+    if (openedWindow) {
+      openedWindow.opener = null;
+      return true;
+    }
+
+    toast.error("Please allow pop-ups to continue.");
+    submitLockRef.current = false;
+    setIsNavigating(false);
+    return false;
+  };
+
   const { execute, isPending } = useAction(registerForWebinarAction, {
     onSuccess: async ({data, input}) => {
       setIsNavigating(true);
@@ -111,28 +147,48 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       const shouldJoinLive = registeredSession
         ? registeredSession.status === WebinarSessionStatus.IN_PROGRESS
         : hasLiveSession;
+      const successUrl = embedSource
+        ? embedSuccessUrl
+        : webinar.registration_settings?.registration_success_url;
 
       const joinUrl = extractJoinUrl(data)
       if (!joinUrl) {
+        if (successUrl && registeredSession) {
+          const params = new URLSearchParams();
+          params.set('wsp_lead_first_name', input.first_name);
+          params.set('wsp_lead_last_name', input.last_name);
+          if (input.phone) params.set('wsp_lead_phone', input.phone);
+          const dt = DateTime.fromISO(registeredSession.scheduled_start, { zone: registeredSession.timezone || 'utc' });
+          params.set('wsp_event_ts', String(Math.floor(dt.toMillis() / 1000)));
+          params.set('wsp_event_tz', registeredSession.timezone || 'utc');
+          params.set('wsp_next_event_date', dt.toFormat("cccc, d LLLL yyyy"));
+          params.set('wsp_next_event_time', dt.toFormat("h:mm a"));
+          params.set('wsp_next_event_timezone', `(GMT${dt.toFormat("ZZ")}) ${dt.toFormat("ZZZZZ")}`);
+          const separator = successUrl.includes('?') ? '&' : '?';
+          navigateToUrl(`${successUrl}${separator}email=${input.email}&${params.toString()}`);
+          return;
+        }
+
+        if (shouldShowInlineEmbedSuccess && registeredSession) {
+          setSuccessState({
+            scheduledStart: registeredSession.scheduled_start,
+            timezone: registeredSession.timezone || "utc",
+          });
+          submitLockRef.current = false;
+          setIsNavigating(false);
+          return;
+        }
+
         toast.error("Registration succeeded but no join link was returned. Please check your email.");
         setIsNavigating(false);
         return;
       }
 
-      const rawJoinToken = extractJoinToken(data);
-
-      if (!rawJoinToken) {
-        toast.error("Registration succeeded but the join link was invalid. Please check your email.");
-        setIsNavigating(false);
-        return;
-      }
-
       if (shouldJoinLive) {
-        router.push(joinUrl);
+        navigateToUrl(joinUrl);
         return;
       }
 
-      const successUrl = webinar.registration_settings?.registration_success_url;
       if (successUrl) {
         const params = new URLSearchParams();
         params.set('wsp_lead_first_name', input.first_name);
@@ -147,7 +203,25 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
           params.set('wsp_next_event_timezone', `(GMT${dt.toFormat("ZZ")}) ${dt.toFormat("ZZZZZ")}`);
         }
         const separator = successUrl.includes('?') ? '&' : '?';
-        router.push(`${successUrl}${separator}email=${input.email}&${params.toString()}`);
+        navigateToUrl(`${successUrl}${separator}email=${input.email}&${params.toString()}`);
+        return;
+      }
+
+      if (shouldShowInlineEmbedSuccess && registeredSession) {
+        setSuccessState({
+          scheduledStart: registeredSession.scheduled_start,
+          timezone: registeredSession.timezone || "utc",
+        });
+        submitLockRef.current = false;
+        setIsNavigating(false);
+        return;
+      }
+
+      const rawJoinToken = extractJoinToken(data);
+
+      if (!rawJoinToken) {
+        toast.error("Registration succeeded but the join link was invalid. Please check your email.");
+        setIsNavigating(false);
         return;
       }
 
@@ -159,7 +233,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         successParams.set("session_id", registeredSessionId);
       }
 
-      router.push(`${webinarAppUrl}/${webinar.id}/register/success?${successParams.toString()}`);
+      navigateToUrl(`${webinarAppUrl}/${webinar.id}/register/success?${successParams.toString()}`);
     },
     onError: ({error, input}) => {
       submitLockRef.current = false;
@@ -220,6 +294,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       last_name: data.last_name,
       email: data.email,
       phone: data.phone,
+      ...(embedSource ? { embed_source: embedSource } : {}),
     });
   };
 
@@ -246,6 +321,34 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
     return () => timers.forEach(clearTimeout);
   }, [pulseControls]);
 
+  if (successState) {
+    const sessionDt = DateTime.fromISO(successState.scheduledStart, { zone: successState.timezone || "utc" });
+
+    return (
+      <div
+        className="rounded-2xl border px-5 py-6 text-center"
+        style={{
+          borderColor: `${(secondaryColor ?? primaryColor ?? "#059669")}33`,
+          backgroundColor: `${(secondaryColor ?? primaryColor ?? "#059669")}11`,
+        }}
+      >
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50">
+          <CheckCircle className="h-7 w-7 text-emerald-600" />
+        </div>
+        <h3 className="mt-4 text-xl font-bold text-gray-900">You&apos;re Registered!</h3>
+        <p className="mt-2 text-sm text-gray-600">
+          Check your email for your confirmation and join link.
+        </p>
+        <div className="mt-5 rounded-xl border border-white/70 bg-white/80 px-4 py-3">
+          <p className="text-sm font-semibold text-gray-800">Your session is reserved for:</p>
+          <p className="mt-1 text-sm text-gray-700">
+            {sessionDt.toFormat("cccc, LLLL d yyyy, h:mm a ZZZZ")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
@@ -261,7 +364,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
             control={control}
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className="w-full bg-white border-gray-200">
+                <SelectTrigger className={`w-full ${embedFieldClassName}`}>
                   <SelectValue placeholder="Select a session" />
                 </SelectTrigger>
                 <SelectContent>
@@ -291,9 +394,15 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
           {errors.session_id && <p className="text-red-500 text-sm">{errors.session_id.message}</p>}
         </div>
       ) : autoAssignedSession ? (
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-          <p className="text-sm font-semibold text-emerald-900">You&apos;ll be registered for the next available session.</p>
-          <p className="mt-1 text-sm text-emerald-800">
+        <div
+          className="rounded-xl px-4 py-3"
+          style={{
+            border: `1px solid ${(secondaryColor ?? primaryColor ?? '#059669')}33`,
+            backgroundColor: `${(secondaryColor ?? primaryColor ?? '#059669')}11`,
+          }}
+        >
+          <p className="text-sm font-semibold text-gray-800">You&apos;ll be registered for the next available session.</p>
+          <p className="mt-1 text-sm text-gray-700">
             {DateTime.fromISO(autoAssignedSession.scheduled_start, { zone: autoAssignedSession.timezone || "utc" }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
           </p>
         </div>
@@ -309,7 +418,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
             {...register("first_name")}
             disabled={isBusy}
             autoComplete="given-name"
-            className="bg-white border-gray-200"
+            className={`${embedFieldClassName} ${embedAutofillClassName}`}
           />
           {errors.first_name && (
             <p className="text-red-500 text-xs">{errors.first_name.message}</p>
@@ -323,7 +432,7 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
             {...register("last_name")}
             disabled={isBusy}
             autoComplete="family-name"
-            className="bg-white border-gray-200"
+            className={`${embedFieldClassName} ${embedAutofillClassName}`}
           />
           {errors.last_name && (
             <p className="text-red-500 text-xs">{errors.last_name.message}</p>
@@ -336,13 +445,13 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         <Label htmlFor="email" className="text-gray-700">Email Address</Label>
         <Input
           id="email"
-          type="email"
-          placeholder="jane@example.com"
-          {...register("email")}
-          disabled={isBusy}
-          autoComplete="email"
-          className="bg-white border-gray-200"
-        />
+            type="email"
+            placeholder="jane@example.com"
+            {...register("email")}
+            disabled={isBusy}
+            autoComplete="email"
+            className={`${embedFieldClassName} ${embedAutofillClassName}`}
+          />
         {errors.email && (
           <p className="text-red-500 text-xs">{errors.email.message}</p>
         )}
@@ -353,14 +462,14 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
         <Label htmlFor="phone" className="text-gray-700">Phone</Label>
         <Input
           id="phone"
-          type="tel"
-          inputMode="tel"
-          placeholder="+1 (555) 000-0000"
-          {...register("phone")}
-          disabled={isBusy}
-          autoComplete="tel"
-          className="bg-white border-gray-200"
-        />
+            type="tel"
+            inputMode="tel"
+            placeholder="+1 (555) 000-0000"
+            {...register("phone")}
+            disabled={isBusy}
+            autoComplete="tel"
+            className={`${embedFieldClassName} ${embedAutofillClassName}`}
+          />
         {errors.phone && (
           <p className="text-red-500 text-xs">{errors.phone.message}</p>
         )}
@@ -370,7 +479,8 @@ export const DefaultRegistrationForm = ({ webinar }: DefaultRegistrationFormProp
       <motion.div animate={pulseControls}>
         <Button
           type="submit"
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 text-base rounded-xl transition-colors mt-2"
+          className={`w-full text-white font-semibold py-3 text-base rounded-xl transition-colors mt-2 ${primaryColor ? 'hover:opacity-90' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+          style={primaryColor ? { backgroundColor: primaryColor } : undefined}
           disabled={isBusy || sessions.length === 0}
           aria-busy={isBusy}
         >

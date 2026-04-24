@@ -10,6 +10,7 @@ export const registerForWebinarInput = z.object({
     last_name: z.string().min(1, "Last name is required"),
     email: z.string().email("Enter a valid email"),
     phone: z.string().optional().nullable(),
+    embed_source: z.string().optional(),
 });
 
 export const anonymousRegisterForWebinarInput = z.object({

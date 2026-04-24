@@ -115,6 +115,20 @@ export type WebinarRegistrationSettings = {
     registration_success_url?: string | null
 }
 
+export type RegistrationEmbedConfig = {
+    id: string
+    name: string
+    source: string
+    background_color?: string | null
+    primary_color?: string | null
+    secondary_color?: string | null
+    secondary_background_color?: string | null
+    header_scripts?: string | null
+    success_url?: string | null
+    created_at: string
+    updated_at: string
+}
+
 export type Webinar = {
     id: string
     owner: number
