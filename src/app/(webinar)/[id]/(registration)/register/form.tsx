@@ -123,16 +123,20 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
       return true;
     }
 
-    const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
-    if (openedWindow) {
-      openedWindow.opener = null;
+    try {
+      window.top!.location.href = url;
       return true;
+    } catch {
+      const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
+      if (openedWindow) {
+        openedWindow.opener = null;
+        return true;
+      }
+      toast.error("Please allow pop-ups to continue.");
+      submitLockRef.current = false;
+      setIsNavigating(false);
+      return false;
     }
-
-    toast.error("Please allow pop-ups to continue.");
-    submitLockRef.current = false;
-    setIsNavigating(false);
-    return false;
   };
 
   const { execute, isPending } = useAction(registerForWebinarAction, {
