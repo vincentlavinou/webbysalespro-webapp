@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
 import { DateTime } from "luxon";
 import { useForm, Controller } from "react-hook-form";
@@ -76,6 +76,8 @@ const embedAutofillClassName =
 
 export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor, embedSource, embedSuccessUrl }: DefaultRegistrationFormProps) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const refSource = searchParams.get('ref') ?? '';
   const submitLockRef = useRef(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [successState, setSuccessState] = useState<RegistrationSuccessState | null>(null);
@@ -299,6 +301,7 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
       email: data.email,
       phone: data.phone,
       ...(embedSource ? { embed_source: embedSource } : {}),
+      ...(refSource ? { ref_source: refSource } : {}),
     });
   };
 
