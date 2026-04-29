@@ -23,6 +23,7 @@ export default function OfferPurchaseSuccess({
 
   const redirectUrl = purchasedOffer?.offer?.offer?.post_purchase_config?.redirect_url ?? null;
   const continueButtonText = purchasedOffer?.offer?.offer?.post_purchase_config?.continue_button_text ?? 'Continue';
+  const successMessage = purchasedOffer?.offer?.offer?.post_purchase_config?.success_message ?? null;
 
   const priceLabel = useMemo(() => {
     const offer = purchasedOffer?.offer?.offer
@@ -91,17 +92,26 @@ export default function OfferPurchaseSuccess({
 
       {/* Next steps */}
       <div className="mt-3 grid gap-2 text-xs">
-        <div className="flex items-center gap-2">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-          <span className="text-foreground">
-            We’ve sent a confirmation to{" "}
-            <span className="font-medium">{email}</span>.
-          </span>
-        </div>
-        <p className="text-muted-foreground">
-          Your access details are in the email. You can keep watching the
-          webinar—no further action needed.
-        </p>
+        {successMessage ? (
+          <div
+            className="prose prose-xs text-foreground max-w-none"
+            dangerouslySetInnerHTML={{ __html: successMessage }}
+          />
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <span className="text-foreground">
+                We’ve sent a confirmation to{" "}
+                <span className="font-medium">{email}</span>.
+              </span>
+            </div>
+            <p className="text-muted-foreground">
+              Your access details are in the email. You can keep watching the
+              webinar—no further action needed.
+            </p>
+          </>
+        )}
       </div>
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">

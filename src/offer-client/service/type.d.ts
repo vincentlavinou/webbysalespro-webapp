@@ -86,6 +86,7 @@ export type OfferMiniDto = {
   post_purchase_config?: {
     redirect_url: string | null;       // if set, show a CTA button navigating here
     continue_button_text: string;      // label for the redirect button
+    success_message: string | null;    // rendered as HTML; falls back to generic copy when empty
   };
 };
 

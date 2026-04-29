@@ -246,7 +246,7 @@ export function AttendeeMobileExperience({
                 className={
                   isSplitLayout
                     ? "absolute inset-0 z-30 overflow-y-auto bg-background shadow-[-8px_0_24px_rgba(0,0,0,0.2)]"
-                    : "absolute inset-x-0 bottom-0 top-0 z-30 overflow-y-auto rounded-t-xl bg-background shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
+                    : "fixed inset-x-0 bottom-0 top-[20vh] z-30 overflow-y-auto rounded-t-2xl bg-background shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
                 }
               >
                 <OfferChatBubble />
