@@ -13,12 +13,15 @@ import { useAttendeeSession } from '@/attendee-session/hooks/use-attendee-sessio
 import { useRouter } from 'next/navigation'
 import { SessionDetailCard } from '@/webinar/components/SessionDetailCard'
 import { WebinarDetailCard } from '@/webinar/components/WebinarDetailCard'
+import { useWakeLock } from '@/hooks/use-wake-lock'
 
 export default function EarlyAccessRoomPage() {
 
   const [timeLeft, setTimeLeft] = useState<string>('')
   const [isRedirecting, setIsRedirecting] = useState(false)
   const hasRedirectedRef = useRef(false)
+
+  useWakeLock()
 
   const router = useRouter()
   const { session, webinar, broadcastServiceToken } = useWebinar()

@@ -11,6 +11,7 @@ import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-sessio
 import { onPlaybackPlaying } from "@/emitter/playback";
 import { createAttendeeBroadcastServiceTokenAction } from "../service/action";
 import { PlaybackClient } from "../client/PlaybackClient";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 
 const AUTH_ERROR_CODES = new Set(["ATD-001", "unauthorized"]);
 
@@ -25,6 +26,8 @@ export function PlaybackContainer({
   webinarTitle,
   clientRedirectTo,
 }: Props) {
+  useWakeLock()
+
   const [playbackToken, setPlaybackToken] = useState<AttendeeBroadcastServiceToken | null>(null);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
