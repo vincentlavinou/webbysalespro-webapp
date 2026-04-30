@@ -29,19 +29,11 @@ export const AttendeePlayerLayout = ({
     const previousBodyOverscrollBehavior = body.style.overscrollBehavior;
     const previousBodyHeight = body.style.height;
 
-    if (isMobileLayout) {
-      html.style.overflow = previousHtmlOverflow;
-      html.style.overscrollBehavior = previousHtmlOverscrollBehavior;
-      body.style.overflow = previousBodyOverflow;
-      body.style.overscrollBehavior = previousBodyOverscrollBehavior;
-      body.style.height = previousBodyHeight;
-    } else {
-      html.style.overflow = "hidden";
-      html.style.overscrollBehavior = "none";
-      body.style.overflow = "hidden";
-      body.style.overscrollBehavior = "none";
-      body.style.height = "100dvh";
-    }
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    body.style.height = "100dvh";
 
     return () => {
       html.style.overflow = previousHtmlOverflow;
@@ -56,7 +48,7 @@ export const AttendeePlayerLayout = ({
   if (!hasStream) return <WebinarLoadingView />;
 
   return (
-    <div className={`h-[100dvh] max-h-[100dvh] w-full ${isMobileLayout ? "overflow-visible overscroll-y-auto" : "overflow-hidden overscroll-none"}`}>
+    <div className="h-[100dvh] max-h-[100dvh] w-full overflow-hidden overscroll-none">
       <AttendeeCountProvider
         sessionId={broadcast.session.id}
         initialCount={broadcast.session.attendee_count}
