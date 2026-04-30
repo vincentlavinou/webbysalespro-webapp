@@ -9,6 +9,8 @@ import {
 } from "react";
 import { WebinarMainLayoutLoading } from "@/broadcast/components/views/WebinarMainLayoutLoading";
 import { usePersistentStagePlayback } from "@/playback/persistent/use-persistent-stage-playback";
+import { FullscreenOverlayButton } from "@/playback/player/ivs/FullscreenOverlayButton";
+import { useTransientFullscreenControl } from "@/playback/player/ivs/hooks/use-transient-fullscreen-control";
 import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
 import { useFullscreen } from "../player/ivs/hooks/use-fullscreen";
 
@@ -133,6 +135,14 @@ export const AttendeeStageViewer = forwardRef<
     onPlaybackStatusChange,
   ]);
 
+  const {
+    isVisible: isFullscreenControlVisible,
+    toggleControls,
+    showControls,
+  } = useTransientFullscreenControl({
+    enabled: surfaceMode === "playing" || surfaceMode === "playing-muted",
+  });
+
   if (!isConnected) {
     return <WebinarMainLayoutLoading aspectClassName="aspect-video" />;
   }
@@ -145,6 +155,8 @@ export const AttendeeStageViewer = forwardRef<
     <div
       ref={playerSurfaceRef}
       className={`relative w-full overflow-hidden rounded-md border bg-black max-h-[80vh] ${aspectRatio}`}
+      onPointerUp={toggleControls}
+      style={{ touchAction: "manipulation" }}
     >
       {/* video is reparented here via useLayoutEffect */}
       <div ref={videoContainerRef} className="absolute inset-0" />
@@ -174,7 +186,10 @@ export const AttendeeStageViewer = forwardRef<
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
           <button
             type="button"
-            onClick={() => void handleUnmute()}
+            onClick={() => {
+              void handleUnmute();
+              showControls();
+            }}
             className="flex flex-col items-center gap-3 rounded-2xl bg-black/80 px-8 py-6 text-white shadow-xl backdrop-blur-sm hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white/50"
           >
             <svg
@@ -189,6 +204,14 @@ export const AttendeeStageViewer = forwardRef<
           </button>
         </div>
       )}
+
+      <FullscreenOverlayButton
+        isVisible={isFullscreenControlVisible}
+        onClick={() => {
+          showControls();
+          void enterFullscreen();
+        }}
+      />
     </div>
   );
 });

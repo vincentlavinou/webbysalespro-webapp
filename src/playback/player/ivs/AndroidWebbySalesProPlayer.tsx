@@ -10,8 +10,10 @@ import type { MediaPlayer } from "amazon-ivs-player";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import { usePersistentVideoAttachment } from "@/playback/hooks/use-persistent-video-attachment";
 import { usePersistentAndroidPlayback } from "@/playback/persistent/use-persistent-android-playback";
+import { FullscreenOverlayButton } from "./FullscreenOverlayButton";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
+import { useTransientFullscreenControl } from "./hooks/use-transient-fullscreen-control";
 import type { WebbySalesProPlayerHandle } from "./WebbySalesProPlayer";
 
 type Props = {
@@ -105,12 +107,22 @@ export const AndroidWebbySalesProPlayer =
       mode === "loading" ||
       mode === "ready" ||
       mode === "buffering";
+    const canShowFullscreenControl =
+      mode === "playing" || mode === "playing-muted" || mode === "buffering";
+    const {
+      isVisible: isFullscreenControlVisible,
+      toggleControls,
+      showControls,
+    } = useTransientFullscreenControl({
+      enabled: canShowFullscreenControl,
+    });
 
     return (
       <div className="w-full">
         <div
           ref={playerSurfaceRef}
           className="relative overflow-hidden border bg-black shadow-sm"
+          onPointerUp={toggleControls}
           style={{ touchAction: "manipulation" }}
         >
           <div className="aspect-video">
@@ -156,13 +168,24 @@ export const AndroidWebbySalesProPlayer =
             <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
               <button
                 type="button"
-                onClick={handleUnmute}
+                onClick={() => {
+                  handleUnmute();
+                  showControls();
+                }}
                 className="rounded-full bg-black/80 px-5 py-3 text-sm font-semibold text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60"
               >
                 Tap to unmute
               </button>
             </div>
           )}
+
+          <FullscreenOverlayButton
+            isVisible={isFullscreenControlVisible}
+            onClick={() => {
+              showControls();
+              void enterFullscreen();
+            }}
+          />
 
           {mode === "ended" && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">

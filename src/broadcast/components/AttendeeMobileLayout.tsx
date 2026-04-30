@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2 } from "lucide-react";
 import { ChatComposer } from "@/chat/component/ChatComposer";
 import { WebinarChat } from "@/chat/component";
 import { ChatMessages } from "@/chat/component/ChatMessages";
@@ -198,21 +197,6 @@ export default function AttendeeMobileLayout({
               onRefresh={handleRefreshStream}
               isRefreshing={isRefreshingStream}
             />
-          )}
-
-          {broadcast.stream && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  void playerRef.current?.enterFullscreen();
-                }}
-                className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
-                aria-label="Enter fullscreen"
-              >
-                <Maximize2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
           )}
         </section>
 

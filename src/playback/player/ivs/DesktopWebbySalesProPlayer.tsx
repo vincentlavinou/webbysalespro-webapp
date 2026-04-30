@@ -11,8 +11,10 @@ import { PlayerState } from "amazon-ivs-player";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import { usePersistentVideoAttachment } from "@/playback/hooks/use-persistent-video-attachment";
 import { usePersistentChannelPlayback } from "@/playback/persistent/use-persistent-channel-playback";
+import { FullscreenOverlayButton } from "./FullscreenOverlayButton";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
+import { useTransientFullscreenControl } from "./hooks/use-transient-fullscreen-control";
 import type { WebbySalesProPlayerHandle } from "./WebbySalesProPlayer";
 
 type Props = {
@@ -102,6 +104,15 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       playerState === PlayerState.BUFFERING;
     const shouldBlur = mode !== "playing" && mode !== "playing-muted";
     const showUnmuteNudge = mode === "playing-muted" && isMuted;
+    const canShowFullscreenControl =
+      mode === "playing" || mode === "playing-muted" || isBuffering;
+    const {
+      isVisible: isFullscreenControlVisible,
+      toggleControls,
+      showControls,
+    } = useTransientFullscreenControl({
+      enabled: canShowFullscreenControl,
+    });
 
     useSyncPlaybackStatus({
       kind: "ivs",
@@ -115,6 +126,7 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
         <div
           ref={playerSurfaceRef}
           className="relative w-full overflow-hidden border bg-black shadow-sm"
+          onPointerUp={toggleControls}
           style={{ touchAction: "manipulation" }}
         >
           <div className="aspect-video">
@@ -169,7 +181,10 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
             <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
               <button
                 type="button"
-                onClick={tapToUnmute}
+                onClick={() => {
+                  tapToUnmute();
+                  showControls();
+                }}
                 className="flex flex-col items-center gap-3 rounded-2xl bg-black/80 px-8 py-6 text-white shadow-xl backdrop-blur-sm hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white/50"
               >
                 <svg
@@ -184,6 +199,14 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
               </button>
             </div>
           )}
+
+          <FullscreenOverlayButton
+            isVisible={isFullscreenControlVisible}
+            onClick={() => {
+              showControls();
+              void enterFullscreen();
+            }}
+          />
 
           {showStats && (
             <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">

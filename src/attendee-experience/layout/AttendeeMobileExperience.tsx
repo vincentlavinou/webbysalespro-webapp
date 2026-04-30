@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2 } from "lucide-react";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
@@ -47,18 +46,21 @@ function readLayoutViewport(): ViewportSize {
   };
 }
 
+function isTextEntryElement(element: Element | null): boolean {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    (element instanceof HTMLElement && element.isContentEditable)
+  );
+}
+
 function readKeyboardInset(): number {
   if (typeof window === "undefined") {
     return 0;
   }
 
   const activeElement = document.activeElement;
-  const isTextEntryActive =
-    activeElement instanceof HTMLInputElement ||
-    activeElement instanceof HTMLTextAreaElement ||
-    (activeElement instanceof HTMLElement && activeElement.isContentEditable);
-
-  if (!isTextEntryActive) {
+  if (!isTextEntryElement(activeElement)) {
     return 0;
   }
 
@@ -86,6 +88,7 @@ export function AttendeeMobileExperience({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState<ViewportSize>(readLayoutViewport);
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const [isTextEntryFocused, setIsTextEntryFocused] = useState(false);
   const { setStatus } = usePlaybackRuntime();
   const channelStream =
     playbackToken.stream?.kind === "channel" ? playbackToken.stream : undefined;
@@ -114,10 +117,6 @@ export function AttendeeMobileExperience({
       frameId = null;
       const nextViewport = readLayoutViewport();
       const nextKeyboardInset = readKeyboardInset();
-
-      if (nextKeyboardInset > 0 && window.scrollY !== 0) {
-        window.scrollTo(0, 0);
-      }
 
       setViewportSize((current) =>
         current.width === nextViewport.width && current.height === nextViewport.height
@@ -149,6 +148,56 @@ export function AttendeeMobileExperience({
       window.removeEventListener("resize", updateLayout);
     };
   }, []);
+
+  useEffect(() => {
+    const handleFocusIn = (event: FocusEvent) => {
+      setIsTextEntryFocused(isTextEntryElement(event.target as Element | null));
+    };
+
+    const handleFocusOut = () => {
+      window.requestAnimationFrame(() => {
+        setIsTextEntryFocused(isTextEntryElement(document.activeElement));
+      });
+    };
+
+    document.addEventListener("focusin", handleFocusIn);
+    document.addEventListener("focusout", handleFocusOut);
+
+    return () => {
+      document.removeEventListener("focusin", handleFocusIn);
+      document.removeEventListener("focusout", handleFocusOut);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isTextEntryFocused) {
+      return;
+    }
+
+    const html = document.documentElement;
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyPosition = body.style.position;
+    const previousBodyTop = body.style.top;
+    const previousBodyWidth = body.style.width;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+      body.style.position = previousBodyPosition;
+      body.style.top = previousBodyTop;
+      body.style.width = previousBodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isTextEntryFocused]);
 
   const splitViewportWidth = shouldRotateSplitLayout
     ? viewportSize.height
@@ -242,21 +291,6 @@ export function AttendeeMobileExperience({
               onRefresh={handleRefreshStream}
               isRefreshing={isRefreshingStream}
             />
-          ) : null}
-
-          {playbackToken.stream ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end p-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  void playerRef.current?.enterFullscreen?.();
-                }}
-                className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-all duration-200 ease-out hover:scale-105 hover:bg-black/85 focus:outline-none focus:ring-2 focus:ring-white/60"
-                aria-label="Enter fullscreen"
-              >
-                <Maximize2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
           ) : null}
         </section>
 
