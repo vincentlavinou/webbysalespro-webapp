@@ -41,9 +41,10 @@ function readLayoutViewport(): ViewportSize {
     return FALLBACK_VIEWPORT;
   }
 
+  const vv = window.visualViewport;
   return {
-    width: Math.round(window.innerWidth),
-    height: Math.round(window.innerHeight),
+    width: Math.round(vv?.width ?? window.innerWidth),
+    height: Math.round(vv?.height ?? window.innerHeight),
   };
 }
 
@@ -177,7 +178,10 @@ export function AttendeeMobileExperience({
     : undefined;
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden bg-neutral-900 text-neutral-100">
+    <div
+      className="relative overflow-hidden bg-neutral-900 text-neutral-100"
+      style={{ height: viewportSize.height > 0 ? viewportSize.height : "100dvh" }}
+    >
       <div className={shellClassName} style={shellStyle}>
         <section
           className={
@@ -230,7 +234,7 @@ export function AttendeeMobileExperience({
         >
           <main
             ref={scrollRef}
-            className="flex-1 overflow-y-auto overscroll-y-auto touch-pan-y"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-y-auto touch-pan-y"
           >
             <ChatMessages scrollRef={scrollRef} autoStick />
           </main>

@@ -48,7 +48,7 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !autoStick) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    el.scrollTop = el.scrollHeight;
   }, [chatItems, autoStick, scrollRef, offerView]);
 
   const pinnedAnnouncements = chatConfig?.pinned_announcements ?? [];
