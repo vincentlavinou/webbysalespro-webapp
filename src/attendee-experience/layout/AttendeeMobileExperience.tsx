@@ -41,11 +41,26 @@ function readLayoutViewport(): ViewportSize {
     return FALLBACK_VIEWPORT;
   }
 
-  const vv = window.visualViewport;
   return {
-    width: Math.round(vv?.width ?? window.innerWidth),
-    height: Math.round(vv?.height ?? window.innerHeight),
+    width: Math.round(window.innerWidth),
+    height: Math.round(window.innerHeight),
   };
+}
+
+function readKeyboardInset(): number {
+  if (typeof window === "undefined") {
+    return 0;
+  }
+
+  const vv = window.visualViewport;
+  if (!vv) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.round(window.innerHeight - vv.height - vv.offsetTop),
+  );
 }
 
 export function AttendeeMobileExperience({
@@ -58,6 +73,7 @@ export function AttendeeMobileExperience({
   const playerRef = useRef<AttendeeStreamRecoveryHandle | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState<ViewportSize>(readLayoutViewport);
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const { setStatus } = usePlaybackRuntime();
   const channelStream =
     playbackToken.stream?.kind === "channel" ? playbackToken.stream : undefined;
@@ -82,32 +98,39 @@ export function AttendeeMobileExperience({
     const vv = window.visualViewport;
     let frameId: number | null = null;
 
-    const commitViewport = () => {
+    const commitLayout = () => {
       frameId = null;
-      const next = readLayoutViewport();
+      const nextViewport = readLayoutViewport();
+      const nextKeyboardInset = readKeyboardInset();
+
       setViewportSize((current) =>
-        current.width === next.width && current.height === next.height
+        current.width === nextViewport.width && current.height === nextViewport.height
           ? current
-          : next,
+          : nextViewport,
+      );
+      setKeyboardInset((current) =>
+        current === nextKeyboardInset ? current : nextKeyboardInset,
       );
     };
 
-    const updateViewport = () => {
+    const updateLayout = () => {
       if (frameId !== null) return;
-      frameId = window.requestAnimationFrame(commitViewport);
+      frameId = window.requestAnimationFrame(commitLayout);
     };
 
-    commitViewport();
+    commitLayout();
 
-    vv?.addEventListener("resize", updateViewport);
-    window.addEventListener("resize", updateViewport);
+    vv?.addEventListener("resize", updateLayout);
+    vv?.addEventListener("scroll", updateLayout);
+    window.addEventListener("resize", updateLayout);
 
     return () => {
       if (frameId !== null) {
         window.cancelAnimationFrame(frameId);
       }
-      vv?.removeEventListener("resize", updateViewport);
-      window.removeEventListener("resize", updateViewport);
+      vv?.removeEventListener("resize", updateLayout);
+      vv?.removeEventListener("scroll", updateLayout);
+      window.removeEventListener("resize", updateLayout);
     };
   }, []);
 
@@ -178,10 +201,7 @@ export function AttendeeMobileExperience({
     : undefined;
 
   return (
-    <div
-      className="relative overflow-hidden bg-neutral-900 text-neutral-100"
-      style={{ height: viewportSize.height > 0 ? viewportSize.height : "100dvh" }}
-    >
+    <div className="relative h-[100dvh] overflow-hidden bg-neutral-900 text-neutral-100">
       <div className={shellClassName} style={shellStyle}>
         <section
           className={
@@ -258,7 +278,12 @@ export function AttendeeMobileExperience({
             )}
           </AnimatePresence>
 
-          <footer className="shrink-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur">
+          <footer
+            className="shrink-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur"
+            style={{
+              paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${keyboardInset}px)`,
+            }}
+          >
             <ChatComposer />
           </footer>
         </section>
