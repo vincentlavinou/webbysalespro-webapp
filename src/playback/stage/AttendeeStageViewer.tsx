@@ -89,7 +89,7 @@ export const AttendeeStageViewer = forwardRef<
     if (!video || !container) return;
 
     video.style.cssText =
-      "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;";
+      "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;";
     if (video.parentElement !== container) {
       container.appendChild(video);
     }

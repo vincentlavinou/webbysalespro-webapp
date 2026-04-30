@@ -68,7 +68,7 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       poster,
       ariaLabel,
       attachedStyle:
-        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;",
+        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;pointer-events:none;",
       detachedStyle:
         "position:absolute;width:0;height:0;opacity:0;pointer-events:none;",
     });

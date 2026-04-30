@@ -67,7 +67,7 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       poster,
       ariaLabel,
       attachedStyle:
-        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;touch-action:manipulation;",
+        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;touch-action:manipulation;pointer-events:none;",
       detachedStyle:
         "position:absolute;width:0;height:0;opacity:0;pointer-events:none;",
     });

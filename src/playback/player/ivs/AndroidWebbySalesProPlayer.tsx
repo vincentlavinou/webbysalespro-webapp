@@ -70,7 +70,7 @@ export const AndroidWebbySalesProPlayer =
       poster,
       ariaLabel,
       attachedStyle:
-        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;",
+        "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;",
       detachedStyle:
         "position:absolute;width:0;height:0;opacity:0;pointer-events:none;",
     });
