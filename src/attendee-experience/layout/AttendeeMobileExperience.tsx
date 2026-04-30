@@ -52,15 +52,27 @@ function readKeyboardInset(): number {
     return 0;
   }
 
+  const activeElement = document.activeElement;
+  const isTextEntryActive =
+    activeElement instanceof HTMLInputElement ||
+    activeElement instanceof HTMLTextAreaElement ||
+    (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+  if (!isTextEntryActive) {
+    return 0;
+  }
+
   const vv = window.visualViewport;
   if (!vv) {
     return 0;
   }
 
-  return Math.max(
+  const overlap = Math.max(
     0,
     Math.round(window.innerHeight - vv.height - vv.offsetTop),
   );
+
+  return overlap >= 120 ? overlap : 0;
 }
 
 export function AttendeeMobileExperience({
@@ -102,6 +114,10 @@ export function AttendeeMobileExperience({
       frameId = null;
       const nextViewport = readLayoutViewport();
       const nextKeyboardInset = readKeyboardInset();
+
+      if (nextKeyboardInset > 0 && window.scrollY !== 0) {
+        window.scrollTo(0, 0);
+      }
 
       setViewportSize((current) =>
         current.width === nextViewport.width && current.height === nextViewport.height
@@ -255,6 +271,9 @@ export function AttendeeMobileExperience({
           <main
             ref={scrollRef}
             className="min-h-0 flex-1 overflow-y-auto overscroll-y-auto touch-pan-y"
+            style={{
+              paddingBottom: keyboardInset > 0 ? keyboardInset : undefined,
+            }}
           >
             <ChatMessages scrollRef={scrollRef} autoStick />
           </main>
@@ -281,7 +300,8 @@ export function AttendeeMobileExperience({
           <footer
             className="shrink-0 border-t border-white/10 bg-neutral-900/95 backdrop-blur"
             style={{
-              paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${keyboardInset}px)`,
+              paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : undefined,
             }}
           >
             <ChatComposer />
