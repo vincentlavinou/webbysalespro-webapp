@@ -21,6 +21,7 @@ export function FullscreenOverlayButton({
     >
       <button
         type="button"
+        onPointerUp={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
           onClick();
