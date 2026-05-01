@@ -46,14 +46,6 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
 
     const { attendanceId, joinSessionToken: attendeeToken, refresh: refreshJoinToken } = useAttendeeSession();
     const router = useRouter();
-    const { execute: getSession } = useAction(getSessionAction, {
-        onSuccess: async ({ data }) => {
-            handleUpdateSession(data)
-        },
-        onError: ({ error: { serverError } }) => {
-            notifyErrorUiMessage(serverError, "Unable to refresh webinar session details.");
-        }
-    })
 
     const mountedRef = useRef<boolean>(false);
     const lastPresenceRelevantEventAtRef = useRef<number | null>(null);
@@ -140,6 +132,23 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
         },
         [sessionId]
     );
+
+    const { execute: getSession } = useAction(getSessionAction, {
+        onSuccess: async ({ data }) => {
+            handleUpdateSession(data);
+
+            // A hidden waiting-room tab can miss the live-status SSE event that
+            // normally refreshes the stream token. When a reconnect/refetch finds
+            // the session already live, regenerate the token here as well so the
+            // room can redirect to /live immediately.
+            if (data?.status === WebinarSessionStatus.IN_PROGRESS) {
+                await regenerateBroadcastToken();
+            }
+        },
+        onError: ({ error: { serverError } }) => {
+            notifyErrorUiMessage(serverError, "Unable to refresh webinar session details.");
+        }
+    })
 
     const handleUpdateSession = useCallback((session: SeriesSession) => {
         setSession(session);
