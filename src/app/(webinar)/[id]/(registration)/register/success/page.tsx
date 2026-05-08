@@ -8,11 +8,7 @@ import BookmarkButton from "@/webinar/components/BookmarkButton";
 import ShareButton from "@/webinar/components/ShareButton";
 import { SessionDetailCard } from "@/webinar/components/SessionDetailCard";
 import { WebinarDetailCard } from "@/webinar/components/WebinarDetailCard";
-import { JoinResolveResponse } from "@/attendee-session/service/type";
-
-const webinarApiUrl = process.env.WEBINAR_BASE_API_URL
-  ?? process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL
-  ?? "https://api.webisalespro.com/api";
+import { resolveJoin } from "@/attendee-session/service/resolve-join";
 
 interface RegistrationSuccessProps {
   params: Promise<{ id: string }>;
@@ -20,17 +16,8 @@ interface RegistrationSuccessProps {
 }
 
 async function resolveEffectiveSession(rawJoinToken: string) {
-  const response = await fetch(
-    `${webinarApiUrl}/v2/join/resolve?t=${encodeURIComponent(rawJoinToken)}`,
-    { cache: "no-store" }
-  );
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const data = await response.json() as JoinResolveResponse;
-  return data.effective_session;
+  const data = await resolveJoin(rawJoinToken);
+  return data?.effective_session ?? null;
 }
 
 export default async function RegistrationSuccessPage(props: RegistrationSuccessProps) {

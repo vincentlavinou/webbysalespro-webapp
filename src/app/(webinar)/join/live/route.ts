@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { JoinResolveResponse } from '@/attendee-session/service/type'
+import { resolveJoin } from '@/attendee-session/service/resolve-join'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { getWebinar } from '@/webinar/service'
 import { isWebinarPayload } from '@/webinar/service/guards'
 import { DateTime } from 'luxon'
-
-const webinarApiUrl = process.env.WEBINAR_BASE_API_URL
-    ?? process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL
-    ?? 'https://api.webisalespro.com/api'
 
 const webinarAppUrl = (
     process.env.WEBINAR_APP_URL
@@ -34,18 +30,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    let data: JoinResolveResponse
-    try {
-        const response = await fetch(
-            `${webinarApiUrl}/v2/join/resolve?t=${encodeURIComponent(rawJoinToken)}`,
-            { cache: 'no-store' }
-        )
-        if (!response.ok) {
-            const url = createRedirectUrl(`/${webinarId}/register`)
-            return NextResponse.redirect(url)
-        }
-        data = await response.json() as JoinResolveResponse
-    } catch {
+    const data = await resolveJoin(rawJoinToken).catch(() => null)
+    if (!data) {
         const url = createRedirectUrl(`/${webinarId}/register`)
         return NextResponse.redirect(url)
     }

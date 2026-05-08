@@ -1,9 +1,9 @@
 'use server'
 
 import { actionClient } from '@/lib/safe-action'
-import { handleStatus } from '@/lib/http'
 import { clearAttendeeSessionCookie, getAttendeeSessionCookie, setAttendeeSessionCookie } from '@/lib/attendee-cookie'
 import { JoinResolveResponse, JoinSessionRefreshResponse } from './type'
+import { resolveJoin } from './resolve-join'
 import { z } from 'zod'
 
 const webinarApiUrl = process.env.WEBINAR_BASE_API_URL
@@ -18,12 +18,11 @@ const resolveJoinSchema = z.object({
 export const resolveJoinAction = actionClient
     .inputSchema(resolveJoinSchema)
     .action(async ({ parsedInput }) => {
-        const response = await fetch(
-            `${webinarApiUrl}/v2/join/resolve?t=${encodeURIComponent(parsedInput.rawJoinToken)}`,
-            { cache: 'no-store' }
-        )
-        const checked = await handleStatus(response)
-        return await checked.json() as JoinResolveResponse
+        const data = await resolveJoin(parsedInput.rawJoinToken)
+        if (!data) {
+            throw new Error('Join token could not be resolved.')
+        }
+        return data as JoinResolveResponse
     })
 
 export const refreshJoinSessionAction = actionClient

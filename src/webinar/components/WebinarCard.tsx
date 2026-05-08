@@ -91,11 +91,6 @@ export function WebinarCard({ webinar, type = 'upcoming' }: WebinarCardProps) {
                   <span className="italic">No speakers assigned</span>
                 )}
               </div>
-            <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs">
-                  Total Registered {sessions?.map((session) => session.registered_count).reduce((total, curr) => (total||0) + (curr||0), 0)}
-                </Badge>
-            </div>
           </CardFooter>
       </Card>
 

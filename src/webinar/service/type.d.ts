@@ -69,7 +69,6 @@ export type SeriesSession = {
     status: WebinarSessionStatus
     scheduled_start: string
     timezone: string
-    registered_count: number
     attendee_count: number
     is_attendee_count_visible: boolean
     offer_visible: boolean
