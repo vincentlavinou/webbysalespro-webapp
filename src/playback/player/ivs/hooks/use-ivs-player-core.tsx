@@ -106,6 +106,13 @@ export function useIvsPlayerCore({
     }
   }, []);
 
+  const clearStartAttempt = useCallback(() => {
+    if (startAttemptTimerRef.current) {
+      clearTimeout(startAttemptTimerRef.current);
+      startAttemptTimerRef.current = null;
+    }
+  }, []);
+
   const armFirstFrameDetection = useCallback(() => {
     const v = videoRef.current;
     firstFrameCleanupRef.current?.();
@@ -127,13 +134,6 @@ export function useIvsPlayerCore({
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
-    }
-  }, []);
-
-  const clearStartAttempt = useCallback(() => {
-    if (startAttemptTimerRef.current) {
-      clearTimeout(startAttemptTimerRef.current);
-      startAttemptTimerRef.current = null;
     }
   }, []);
 
