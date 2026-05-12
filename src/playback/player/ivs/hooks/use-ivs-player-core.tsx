@@ -37,6 +37,8 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 const STARTUP_TIMEOUT_MS = 7000;
+const START_RETRY_INTERVAL_MS = 1000;
+const START_RETRY_WINDOW_MS = 10000;
 
 type Options = {
   src: string;
@@ -74,6 +76,7 @@ export function useIvsPlayerCore({
   const disposedRef = useRef(false);
 
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startAttemptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffRef = useRef<number>(START_BACKOFF);
   const lastRestoreRef = useRef<number>(0);
   const lastForcedReloadRef = useRef<number>(0);
@@ -114,8 +117,9 @@ export function useIvsPlayerCore({
       firstFrameRenderedRef.current = true;
       setFirstFrameRendered(true);
       clearStartupTimeout();
+      clearStartAttempt();
     });
-  }, [clearStartupTimeout, videoRef]);
+  }, [clearStartAttempt, clearStartupTimeout, videoRef]);
 
   // ─── Retry helpers ────────────────────────────────────────────────────────
 
@@ -123,6 +127,13 @@ export function useIvsPlayerCore({
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
+    }
+  }, []);
+
+  const clearStartAttempt = useCallback(() => {
+    if (startAttemptTimerRef.current) {
+      clearTimeout(startAttemptTimerRef.current);
+      startAttemptTimerRef.current = null;
     }
   }, []);
 
@@ -333,6 +344,7 @@ export function useIvsPlayerCore({
     setIsMuted(false);
     setMode("idle");
     clearRetry();
+    clearStartAttempt();
     backoffRef.current = START_BACKOFF;
     try {
       armFirstFrameDetection();
@@ -358,21 +370,49 @@ export function useIvsPlayerCore({
       setLastErrorMessage("Couldn't start the stream. Tap to try again.");
       setMode("gate");
       manualPlayInFlightRef.current = false;
+      clearStartAttempt();
     }, STARTUP_TIMEOUT_MS);
 
-    try {
-      await v.play();
-      setLastErrorMessage(null);
-    } catch (error) {
-      const message = getErrorMessage(error, "Browser blocked playback.");
-      console.warn("IVS manual play failed:", message, error);
-      setLastErrorMessage(message);
-      setMode("gate");
-      clearStartupTimeout();
-    } finally {
-      manualPlayInFlightRef.current = false;
-    }
-  }, [armFirstFrameDetection, clearStartupTimeout, videoRef, src, clearRetry, scheduleRetry]);
+    const deadline = Date.now() + START_RETRY_WINDOW_MS;
+
+    const attemptPlay = async () => {
+      if (disposedRef.current || firstFrameRenderedRef.current) {
+        manualPlayInFlightRef.current = false;
+        clearStartAttempt();
+        return;
+      }
+
+      try {
+        await v.play();
+        setLastErrorMessage(null);
+      } catch (error) {
+        const message = getErrorMessage(error, "Browser blocked playback.");
+        console.warn("IVS manual play attempt failed:", message, error);
+        setLastErrorMessage(message);
+      }
+
+      if (disposedRef.current || firstFrameRenderedRef.current) {
+        manualPlayInFlightRef.current = false;
+        clearStartAttempt();
+        return;
+      }
+
+      if (Date.now() >= deadline) {
+        clearStartupTimeout();
+        clearStartAttempt();
+        manualPlayInFlightRef.current = false;
+        setLastErrorMessage("Couldn't start the stream. Tap to try again.");
+        setMode("gate");
+        return;
+      }
+
+      startAttemptTimerRef.current = setTimeout(() => {
+        void attemptPlay();
+      }, START_RETRY_INTERVAL_MS);
+    };
+
+    void attemptPlay();
+  }, [armFirstFrameDetection, clearStartAttempt, clearStartupTimeout, videoRef, src, clearRetry, scheduleRetry]);
 
   // ─── Tap to unmute ────────────────────────────────────────────────────────
 
@@ -484,6 +524,7 @@ export function useIvsPlayerCore({
         updateStats();
         hasPlayedRef.current = true;
         manualPlayInFlightRef.current = false;
+        clearStartAttempt();
         setLastErrorMessage(null);
         onPlaying?.();
         if (v) setSharedAudioContext(v);
@@ -491,12 +532,14 @@ export function useIvsPlayerCore({
       };
 
       const onEndedInternal = () => {
+        clearStartAttempt();
         setMode("ended");
         updateStats();
         onEnded?.();
       };
 
       const onErrorInternal = (e: PlayerError) => {
+        clearStartAttempt();
         updateStats();
         const message = e?.message || `${e?.source ?? "IVS"} error ${e?.code ?? ""}`.trim();
         console.warn("IVS player error:", e);
@@ -544,13 +587,14 @@ export function useIvsPlayerCore({
     return () => {
       disposedRef.current = true;
       clearRetry();
+      clearStartAttempt();
       clearStartupTimeout();
       firstFrameCleanupRef.current?.();
       firstFrameCleanupRef.current = null;
       playerRef.current = null;
       cleanup?.();
     };
-  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry, armFirstFrameDetection, clearStartupTimeout]);
+  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry, clearStartAttempt, armFirstFrameDetection, clearStartupTimeout]);
 
   return {
     playerRef,

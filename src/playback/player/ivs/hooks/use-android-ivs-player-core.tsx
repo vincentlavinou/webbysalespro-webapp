@@ -24,6 +24,8 @@ export type AndroidPlaybackMode =
 
 const RESTORE_COOLDOWN_MS = 3000;
 const FORCE_RELOAD_COOLDOWN_MS = 1500;
+const START_RETRY_INTERVAL_MS = 1000;
+const START_RETRY_WINDOW_MS = 10000;
 
 type Options = {
   src: string;
@@ -47,6 +49,7 @@ export function useAndroidIvsPlayerCore({
 }: Options) {
   const playerRef = useRef<Player | null>(null);
   const detachRef = useRef<(() => void) | null>(null);
+  const startAttemptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRestoreRef = useRef(0);
   const lastForcedReloadRef = useRef(0);
   const firstFrameRenderedRef = useRef(false);
@@ -59,6 +62,13 @@ export function useAndroidIvsPlayerCore({
   const [isMuted, setIsMuted] = useState(true);
   const [firstFrameRendered, setFirstFrameRendered] = useState(false);
 
+  const clearStartAttempt = useCallback(() => {
+    if (startAttemptTimerRef.current) {
+      clearTimeout(startAttemptTimerRef.current);
+      startAttemptTimerRef.current = null;
+    }
+  }, []);
+
   const armFirstFrameDetection = useCallback(() => {
     const v = videoRef.current;
     firstFrameCleanupRef.current?.();
@@ -69,8 +79,9 @@ export function useAndroidIvsPlayerCore({
     firstFrameCleanupRef.current = detectFirstFrame(v, () => {
       firstFrameRenderedRef.current = true;
       setFirstFrameRendered(true);
+      clearStartAttempt();
     });
-  }, [videoRef]);
+  }, [clearStartAttempt, videoRef]);
 
   const seekHtmlVideoToLive = useCallback((video: HTMLVideoElement) => {
     try {
@@ -139,6 +150,7 @@ export function useAndroidIvsPlayerCore({
 
       firstFrameCleanupRef.current?.();
       firstFrameCleanupRef.current = null;
+      clearStartAttempt();
 
       if (playerRef.current) {
         try {
@@ -224,6 +236,7 @@ export function useAndroidIvsPlayerCore({
         const onPlayingInternal = () => {
           setErrorMessage(null);
           setIsMuted(video.muted);
+          clearStartAttempt();
           setMode(video.muted ? "playing-muted" : "playing");
           onPlaying?.();
           console.log("[IVS] PLAYING");
@@ -245,6 +258,7 @@ export function useAndroidIvsPlayerCore({
         };
 
         const onEndedInternal = () => {
+          clearStartAttempt();
           setMode("ended");
           onEnded?.();
           console.log("[IVS] ENDED");
@@ -289,6 +303,7 @@ export function useAndroidIvsPlayerCore({
             "Unknown IVS playback error.";
 
           setErrorMessage(message);
+          clearStartAttempt();
           setMode("error");
           console.error("[IVS] ERROR", error);
         };
@@ -386,7 +401,7 @@ export function useAndroidIvsPlayerCore({
       cancelled = true;
       cleanup();
     };
-  }, [armFirstFrameDetection, onEnded, onPlaying, onTextMetadata, src, videoRef]);
+  }, [armFirstFrameDetection, clearStartAttempt, onEnded, onPlaying, onTextMetadata, src, videoRef]);
 
   const restoreToLive = useCallback(async (options?: {
     forceReload?: boolean;
@@ -461,15 +476,53 @@ export function useAndroidIvsPlayerCore({
 
   const handleStartWithSound = () => {
     const player = playerRef.current;
-    if (!player) return;
+    const video = videoRef.current;
+    if (!player || !video) return;
 
     try {
       player.setMuted(false);
       setIsMuted(false);
       setErrorMessage(null);
       armFirstFrameDetection();
-      player.play();
       setMode("buffering");
+      clearStartAttempt();
+
+      const deadline = Date.now() + START_RETRY_WINDOW_MS;
+
+      const attemptPlay = async () => {
+        if (firstFrameRenderedRef.current) {
+          clearStartAttempt();
+          return;
+        }
+
+        try {
+          player.play();
+          await video.play();
+          setErrorMessage(null);
+        } catch (error) {
+          setErrorMessage(
+            getErrorMessage(error, "Playback could not start with sound.")
+          );
+        }
+
+        if (firstFrameRenderedRef.current) {
+          clearStartAttempt();
+          return;
+        }
+
+        if (Date.now() >= deadline) {
+          clearStartAttempt();
+          setErrorMessage("Couldn't start the stream. Tap to try again.");
+          setMode("ready");
+          return;
+        }
+
+        startAttemptTimerRef.current = setTimeout(() => {
+          void attemptPlay();
+        }, START_RETRY_INTERVAL_MS);
+      };
+
+      void attemptPlay();
     } catch (error) {
       setErrorMessage(
         getErrorMessage(error, "Playback could not start with sound.")
@@ -486,6 +539,7 @@ export function useAndroidIvsPlayerCore({
       player.setMuted(false);
       setIsMuted(false);
       setErrorMessage(null);
+      clearStartAttempt();
       player.play();
     } catch (error) {
       setErrorMessage(
