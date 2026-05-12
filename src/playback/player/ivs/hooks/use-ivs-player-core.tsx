@@ -37,7 +37,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 const STARTUP_TIMEOUT_MS = 7000;
-const PRE_BUFFER_TIMEOUT_MS = 10000;
 
 type Options = {
   src: string;
@@ -84,10 +83,6 @@ export function useIvsPlayerCore({
   const firstFrameRenderedRef = useRef(false);
   const firstFrameCleanupRef = useRef<(() => void) | null>(null);
   const startupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Tracks whether the user has clicked the gate. The first-frame detector
-  // uses this to decide whether to land on "gate" (initial pre-buffer) or
-  // "playing" (slow-path recovery after a user click).
-  const userInitiatedPlayRef = useRef(false);
 
   const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
@@ -119,13 +114,6 @@ export function useIvsPlayerCore({
       firstFrameRenderedRef.current = true;
       setFirstFrameRendered(true);
       clearStartupTimeout();
-      // Pre-buffer just landed a frame. If the user has not clicked yet,
-      // show the gate so they can start with sound. If they have already
-      // clicked (slow-path recovery), go straight to playing.
-      setMode(current => {
-        if (current !== "idle") return current;
-        return userInitiatedPlayRef.current ? "playing" : "gate";
-      });
     });
   }, [clearStartupTimeout, videoRef]);
 
@@ -163,10 +151,10 @@ export function useIvsPlayerCore({
         }
         p.load(src);
         setLastErrorMessage(null);
-        if (v) {
+        if (v && hasPlayedRef.current) {
           // Always attempt to resume after a retry. If the user hasn't clicked
-          // yet, v.muted is still true (muted preload succeeds everywhere). If
-          // they have, gesture context may be missing — fall back to the gate.
+          // yet, keep the first-load UX in "loading" until READY exposes the
+          // start button.
           await v.play().catch((error) => {
             const message = getErrorMessage(error, "Browser blocked playback.");
             console.warn("IVS retry play failed:", message, error);
@@ -337,42 +325,20 @@ export function useIvsPlayerCore({
     const v = videoRef.current;
     if (!p || !v || manualPlayInFlightRef.current) return;
     manualPlayInFlightRef.current = true;
-    userInitiatedPlayRef.current = true;
 
     // Synchronously unmute in the click gesture context. Critical for iOS
     // audio unlock — must happen in the same call stack as the click event.
     try { p.setMuted(false); } catch {}
     try { v.muted = false; } catch {}
     setIsMuted(false);
-
-    if (firstFrameRenderedRef.current) {
-      // Fast path: pre-buffer already finished. The video is playing muted
-      // under the gate overlay. Unmute + ensure it's still rolling.
-      setMode("playing");
-      clearStartupTimeout();
-      try {
-        try { p.setMuted(false); } catch {}
-        await v.play();
-        setLastErrorMessage(null);
-      } catch (error) {
-        const message = getErrorMessage(error, "Browser blocked playback.");
-        console.warn("IVS resume after gate failed:", message, error);
-        setLastErrorMessage(message);
-        setMode("gate");
-      } finally {
-        manualPlayInFlightRef.current = false;
-      }
-      return;
-    }
-
-    // Slow path: pre-buffer never landed a frame. Do a fresh load + play and
-    // guard with a timeout so the user isn't stuck on an endless spinner.
     setMode("idle");
     clearRetry();
     backoffRef.current = START_BACKOFF;
     try {
       armFirstFrameDetection();
-      p.load(src);
+      if (p.getState() === IvsPlayerState.IDLE) {
+        p.load(src);
+      }
       setLastErrorMessage(null);
     } catch (error) {
       const message = getErrorMessage(error, "Failed to load the playback URL.");
@@ -397,9 +363,6 @@ export function useIvsPlayerCore({
     try {
       await v.play();
       setLastErrorMessage(null);
-      // Stay in "idle" until first frame paints. Detector flips mode → "gate"
-      // (or, if frame painted and the user is already past the gate, the
-      // fast path above will have handled the transition).
     } catch (error) {
       const message = getErrorMessage(error, "Browser blocked playback.");
       console.warn("IVS manual play failed:", message, error);
@@ -468,20 +431,12 @@ export function useIvsPlayerCore({
     hasPlayedRef.current = false;
     manualPlayInFlightRef.current = false;
     firstFrameRenderedRef.current = false;
-    userInitiatedPlayRef.current = false;
     setMode("idle");
-    setIsMuted(true);
+    setIsMuted(false);
     setPlayerState("INIT");
     setStats({});
     setLastErrorMessage(null);
     setFirstFrameRendered(false);
-
-    // Pre-buffer the stream muted so the first frame is decoded before the
-    // user clicks anything. Muted inline autoplay is permitted on every
-    // major engine (incl. iOS Safari with playsInline). The user's click on
-    // the gate later unmutes synchronously to satisfy iOS audio-unlock.
-    const videoEl = videoRef.current;
-    if (videoEl) videoEl.muted = true;
 
     let cleanup: (() => void) | undefined;
 
@@ -507,23 +462,25 @@ export function useIvsPlayerCore({
       p.attachHTMLVideoElement(v);
       setPlayerVersion(n => n + 1);
 
-      p.setAutoplay(true);
-      try { p.setMuted(true); } catch {}
+      p.setAutoplay(false);
+      try { p.setMuted(false); } catch {}
       p.setAutoQualityMode(true);
       p.setLiveLowLatencyEnabled(true);
       p.setRebufferToLive(true);
 
-      const onReady = () => updateStats();
+      const onReady = () => {
+        updateStats();
+        setMode(current => {
+          if (current === "playing" || current === "playing-muted" || current === "ended") {
+            return current;
+          }
+          return "gate";
+        });
+      };
 
       const onPlayingInternal = () => {
         backoffRef.current = START_BACKOFF;
-        // During pre-buffer (idle) and ready-to-start (gate), don't flip to
-        // "playing" — we're intentionally waiting on the user. The mode
-        // transition happens in handleManualPlay when the user clicks.
-        setMode(current => {
-          if (current === "idle" || current === "gate") return current;
-          return v.muted ? "playing-muted" : "playing";
-        });
+        setMode(v.muted ? "playing-muted" : "playing");
         updateStats();
         hasPlayedRef.current = true;
         manualPlayInFlightRef.current = false;
@@ -562,7 +519,6 @@ export function useIvsPlayerCore({
       p.addEventListener(PlayerEventType.ERROR, onErrorInternal);
       p.addEventListener(PlayerEventType.TEXT_METADATA_CUE, onMeta);
 
-      armFirstFrameDetection();
       try {
         p.load(src);
         setLastErrorMessage(null);
@@ -571,32 +527,6 @@ export function useIvsPlayerCore({
         console.warn("IVS initial load failed:", message, error);
         setLastErrorMessage(message);
         scheduleRetry();
-      }
-
-      // Pre-buffer fallback: if no first frame arrives within the timeout,
-      // flip to gate anyway so the user can manually retry instead of
-      // staring at a spinner.
-      clearStartupTimeout();
-      startupTimeoutRef.current = setTimeout(() => {
-        startupTimeoutRef.current = null;
-        if (disposedRef.current || firstFrameRenderedRef.current) return;
-        console.warn("IVS pre-buffer: no first frame within timeout.");
-        setMode(current => (current === "idle" ? "gate" : current));
-      }, PRE_BUFFER_TIMEOUT_MS);
-
-      try {
-        await v.play();
-        setLastErrorMessage(null);
-        // Stay in "idle" until first frame paints. The detector callback
-        // transitions mode → "gate" once a frame is on screen.
-      } catch (error) {
-        const message = getErrorMessage(error, "Browser blocked playback.");
-        console.warn("IVS muted preload failed:", message, error);
-        setLastErrorMessage(message);
-        // Muted autoplay shouldn't normally be blocked, but if it is, show
-        // the gate immediately so the user's click can start playback.
-        setMode(current => (current === "idle" ? "gate" : current));
-        clearStartupTimeout();
       }
 
       cleanup = () => {

@@ -107,7 +107,7 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
     // "gate", and the live preview shows behind the start button.
     const showLoadingOverlay =
       mode === "idle" || isBuffering || (isLiveMode && !firstFrameRendered);
-    const shouldBlur = !firstFrameRendered;
+    const shouldBlur = !isLiveMode;
     const showUnmuteNudge =
       mode === "playing-muted" && isMuted && firstFrameRendered;
     const canShowFullscreenControl = isLiveMode && firstFrameRendered;

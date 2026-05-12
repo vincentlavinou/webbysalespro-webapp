@@ -180,8 +180,8 @@ export function useAndroidIvsPlayerCore({
 
         playerRef.current = player;
 
-        video.autoplay = true;
-        video.muted = true;
+        video.autoplay = false;
+        video.muted = false;
         video.playsInline = true;
         video.setAttribute("playsinline", "");
         video.setAttribute("webkit-playsinline", "");
@@ -189,8 +189,8 @@ export function useAndroidIvsPlayerCore({
 
         player.attachHTMLVideoElement(video);
 
-        player.setAutoplay(true);
-        player.setMuted(true);
+        player.setAutoplay(false);
+        player.setMuted(false);
         player.setAutoQualityMode(true);
         player.setLiveLowLatencyEnabled(true);
 

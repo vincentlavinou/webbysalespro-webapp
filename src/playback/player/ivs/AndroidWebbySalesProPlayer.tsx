@@ -50,7 +50,6 @@ export const AndroidWebbySalesProPlayer =
       syncTimeMs,
       isMuted,
       firstFrameRendered,
-      handleStartMuted,
       handleStartWithSound,
       handleUnmute,
       restoreToLive,
@@ -102,15 +101,12 @@ export const AndroidWebbySalesProPlayer =
     });
 
     const isLiveMode = mode === "playing" || mode === "playing-muted";
-    const showBlockedStart = mode === "blocked";
+    const showStartButton = mode === "ready" || mode === "blocked";
     const showUnmuteButton =
       mode === "playing-muted" && isMuted && firstFrameRendered;
-    // Keep loading overlay up until a real frame is on screen — IVS "PLAYING"
-    // alone doesn't guarantee pixels.
     const showLoading =
       mode === "idle" ||
       mode === "loading" ||
-      mode === "ready" ||
       mode === "buffering" ||
       (isLiveMode && !firstFrameRendered);
     const canShowFullscreenControl =
@@ -150,22 +146,14 @@ export const AndroidWebbySalesProPlayer =
             </div>
           )}
 
-          {showBlockedStart && (
+          {showStartButton && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/45 backdrop-blur-sm">
               <button
                 type="button"
-                onClick={handleStartMuted}
+                onClick={handleStartWithSound}
                 className="rounded-full bg-white/95 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                Tap to start
-              </button>
-
-              <button
-                type="button"
-                onClick={handleStartWithSound}
-                className="rounded-full bg-black/80 px-5 py-3 text-sm font-semibold text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60"
-              >
-                Tap to start with sound
+                Tap to start the live webinar
               </button>
             </div>
           )}
