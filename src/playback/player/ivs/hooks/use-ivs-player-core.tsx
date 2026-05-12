@@ -10,6 +10,7 @@ import type {
 } from "amazon-ivs-player";
 import { PlayerEventType, PlayerState as IvsPlayerState } from "amazon-ivs-player";
 import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
+import { detectFirstFrame } from "./detect-first-frame";
 
 // ─── Player mode ────────────────────────────────────────────────────────────
 // Single source of truth for what the player is doing from a UI/behavior perspective.
@@ -33,137 +34,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error) return error;
   return fallback;
-}
-
-// Watches a <video> element and fires `onFrame` exactly once when the first
-// real frame is on screen. Primary signal is requestVideoFrameCallback (fires
-// on composited frame). Fallback: HTML5 events + a slow poll for browsers
-// without rVFC.
-type RvfcVideo = HTMLVideoElement & {
-  requestVideoFrameCallback?: (
-    cb: (now: number, metadata?: { presentedFrames?: number }) => void,
-  ) => number;
-  cancelVideoFrameCallback?: (id: number) => void;
-  getVideoPlaybackQuality?: () => { totalVideoFrames?: number };
-  webkitDecodedFrameCount?: number;
-  webkitPresentedFrameCount?: number;
-  mozPresentedFrames?: number;
-  msDecodedFrameCount?: number;
-};
-
-function getPresentedFrameCount(video: HTMLVideoElement): number {
-  const rvfcVideo = video as RvfcVideo;
-
-  try {
-    const quality = rvfcVideo.getVideoPlaybackQuality?.();
-    if (typeof quality?.totalVideoFrames === "number") {
-      return quality.totalVideoFrames;
-    }
-  } catch {}
-
-  if (typeof rvfcVideo.webkitPresentedFrameCount === "number") {
-    return rvfcVideo.webkitPresentedFrameCount;
-  }
-
-  if (typeof rvfcVideo.webkitDecodedFrameCount === "number") {
-    return rvfcVideo.webkitDecodedFrameCount;
-  }
-
-  if (typeof rvfcVideo.mozPresentedFrames === "number") {
-    return rvfcVideo.mozPresentedFrames;
-  }
-
-  if (typeof rvfcVideo.msDecodedFrameCount === "number") {
-    return rvfcVideo.msDecodedFrameCount;
-  }
-
-  return 0;
-}
-
-function detectFirstFrame(
-  video: HTMLVideoElement,
-  onFrame: () => void,
-): () => void {
-  let done = false;
-  let rvfcHandle: number | undefined;
-  const startTime = video.currentTime;
-  const startFrames = getPresentedFrameCount(video);
-
-  const isFramePainted = () =>
-    video.readyState >= 2 /* HAVE_CURRENT_DATA */ &&
-    video.videoWidth > 0 &&
-    video.videoHeight > 0 &&
-    !video.paused &&
-    (
-      getPresentedFrameCount(video) > startFrames ||
-      Math.abs(video.currentTime - startTime) > 0.01 ||
-      video.currentTime > 0.01
-    );
-
-  const fire = () => {
-    if (done) return;
-    done = true;
-    cleanup();
-    onFrame();
-  };
-
-  const maybeFire = () => {
-    if (done) return;
-    if (isFramePainted() && !video.paused) fire();
-  };
-
-  const cleanup = () => {
-    const rvfcVideo = video as RvfcVideo;
-    if (rvfcHandle !== undefined && typeof rvfcVideo.cancelVideoFrameCallback === "function") {
-      try { rvfcVideo.cancelVideoFrameCallback(rvfcHandle); } catch {}
-    }
-    clearInterval(pollHandle);
-    video.removeEventListener("loadeddata", maybeFire);
-    video.removeEventListener("playing", maybeFire);
-    video.removeEventListener("timeupdate", maybeFire);
-    video.removeEventListener("canplay", maybeFire);
-  };
-
-  const rvfcVideo = video as RvfcVideo;
-  if (typeof rvfcVideo.requestVideoFrameCallback === "function") {
-    const requestFrame = () => {
-      rvfcHandle = rvfcVideo.requestVideoFrameCallback?.((_now, metadata) => {
-        if (done) return;
-        const frameCount =
-          typeof metadata?.presentedFrames === "number"
-            ? metadata.presentedFrames
-            : getPresentedFrameCount(video);
-
-        if (
-          video.readyState >= 2 &&
-          video.videoWidth > 0 &&
-          video.videoHeight > 0 &&
-          !video.paused &&
-          (
-            frameCount > startFrames ||
-            Math.abs(video.currentTime - startTime) > 0.01 ||
-            video.currentTime > 0.01
-          )
-        ) {
-          fire();
-          return;
-        }
-
-        requestFrame();
-      });
-    };
-
-    requestFrame();
-  }
-
-  video.addEventListener("loadeddata", maybeFire);
-  video.addEventListener("playing", maybeFire);
-  video.addEventListener("timeupdate", maybeFire);
-  video.addEventListener("canplay", maybeFire);
-  const pollHandle = setInterval(maybeFire, 250);
-
-  maybeFire();
-  return cleanup;
 }
 
 const STARTUP_TIMEOUT_MS = 7000;
@@ -218,21 +88,6 @@ export function useIvsPlayerCore({
   // uses this to decide whether to land on "gate" (initial pre-buffer) or
   // "playing" (slow-path recovery after a user click).
   const userInitiatedPlayRef = useRef(false);
-
-  const canResumeWarmPlayback = useCallback(() => {
-    const p = playerRef.current;
-    const v = videoRef.current;
-    if (!p || !v) return false;
-    if (firstFrameRenderedRef.current) return true;
-
-    const state = p.getState();
-    return (
-      !v.paused &&
-      (state === IvsPlayerState.PLAYING ||
-        state === IvsPlayerState.BUFFERING ||
-        state === IvsPlayerState.READY)
-    );
-  }, [videoRef]);
 
   const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
@@ -303,6 +158,9 @@ export function useIvsPlayerCore({
 
       try {
         armFirstFrameDetection();
+        if (v) {
+          try { p.setMuted(v.muted); } catch {}
+        }
         p.load(src);
         setLastErrorMessage(null);
         if (v) {
@@ -360,6 +218,7 @@ export function useIvsPlayerCore({
       backoffRef.current = START_BACKOFF;
       try {
         armFirstFrameDetection();
+        try { p.setMuted(v.muted); } catch {}
         p.load(src);
         setLastErrorMessage(null);
       } catch (error) {
@@ -448,6 +307,7 @@ export function useIvsPlayerCore({
     backoffRef.current = START_BACKOFF;
     try {
       armFirstFrameDetection();
+      try { p.setMuted(false); } catch {}
       p.load(src);
       setLastErrorMessage(null);
     } catch (error) {
@@ -481,16 +341,17 @@ export function useIvsPlayerCore({
 
     // Synchronously unmute in the click gesture context. Critical for iOS
     // audio unlock — must happen in the same call stack as the click event.
+    try { p.setMuted(false); } catch {}
     try { v.muted = false; } catch {}
     setIsMuted(false);
 
-    if (canResumeWarmPlayback()) {
+    if (firstFrameRenderedRef.current) {
       // Fast path: pre-buffer already finished. The video is playing muted
-      // or is otherwise already warm under the gate overlay. Unmute + ensure
-      // it's still rolling instead of forcing a fresh network load.
+      // under the gate overlay. Unmute + ensure it's still rolling.
       setMode("playing");
       clearStartupTimeout();
       try {
+        try { p.setMuted(false); } catch {}
         await v.play();
         setLastErrorMessage(null);
       } catch (error) {
@@ -548,7 +409,7 @@ export function useIvsPlayerCore({
     } finally {
       manualPlayInFlightRef.current = false;
     }
-  }, [armFirstFrameDetection, canResumeWarmPlayback, clearStartupTimeout, videoRef, src, clearRetry, scheduleRetry]);
+  }, [armFirstFrameDetection, clearStartupTimeout, videoRef, src, clearRetry, scheduleRetry]);
 
   // ─── Tap to unmute ────────────────────────────────────────────────────────
 
@@ -557,6 +418,7 @@ export function useIvsPlayerCore({
     const v = videoRef.current;
     if (!p || !v) return;
     try {
+      try { p.setMuted(false); } catch {}
       v.muted = false;
     } catch {}
     setIsMuted(v.muted);
@@ -646,6 +508,7 @@ export function useIvsPlayerCore({
       setPlayerVersion(n => n + 1);
 
       p.setAutoplay(true);
+      try { p.setMuted(true); } catch {}
       p.setAutoQualityMode(true);
       p.setLiveLowLatencyEnabled(true);
       p.setRebufferToLive(true);
