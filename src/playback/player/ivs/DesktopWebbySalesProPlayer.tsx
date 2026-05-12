@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from "react";
 import { PlayerState } from "amazon-ivs-player";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
@@ -106,6 +107,19 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
     const showUnmuteNudge = mode === "playing-muted" && isMuted;
     const canShowFullscreenControl =
       mode === "playing" || mode === "playing-muted" || isBuffering;
+
+    // While waiting on the stream to become loadable, swap the spinner copy
+    // after a short delay so the user knows the system isn't stuck.
+    const isWaiting = mode === "waiting";
+    const [hostNotLiveYet, setHostNotLiveYet] = useState(false);
+    useEffect(() => {
+      if (!isWaiting) {
+        setHostNotLiveYet(false);
+        return;
+      }
+      const timer = window.setTimeout(() => setHostNotLiveYet(true), 6000);
+      return () => window.clearTimeout(timer);
+    }, [isWaiting]);
     const {
       isVisible: isFullscreenControlVisible,
       toggleControls,
@@ -137,13 +151,15 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
             />
           </div>
 
-          {(mode === "idle" || isBuffering) && (
+          {(mode === "idle" || isWaiting || isBuffering) && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
               <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
               <p className="text-xs font-medium uppercase tracking-wide text-white/80">
                 {isBuffering
                   ? "Connecting to live webinar…"
-                  : "Preparing live webinar…"}
+                  : isWaiting && hostNotLiveYet
+                    ? "Waiting for the host to go live…"
+                    : "Preparing live webinar…"}
               </p>
             </div>
           )}
