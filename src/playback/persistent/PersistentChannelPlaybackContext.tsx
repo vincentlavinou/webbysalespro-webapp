@@ -20,7 +20,6 @@ export type PersistentPlaybackState = {
   isMuted: boolean;
   hasPlayedRef: React.RefObject<boolean>;
   lastErrorMessage: string | null;
-  firstFrameRendered: boolean;
   playerVersion: number;
   playerRef: React.RefObject<import("amazon-ivs-player").Player | null>;
   updateStats: () => void;

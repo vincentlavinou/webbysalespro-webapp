@@ -47,7 +47,6 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       stats,
       playerState,
       isMuted,
-      firstFrameRendered,
       restoreToLive,
       handleManualPlay,
       tapToUnmute,
@@ -83,14 +82,13 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       [enterFullscreen, exitFullscreen, restoreToLive],
     );
 
-    const isLiveMode = mode === "playing" || mode === "playing-muted";
-    const isBuffering = isLiveMode && playerState === PlayerState.BUFFERING;
-    const showLoadingOverlay =
-      mode === "idle" || isBuffering || (isLiveMode && !firstFrameRendered);
-    const shouldBlur = !isLiveMode;
-    const showUnmuteNudge =
-      mode === "playing-muted" && isMuted && firstFrameRendered;
-    const canShowFullscreenControl = isLiveMode && firstFrameRendered;
+    const isBuffering =
+      (mode === "playing" || mode === "playing-muted") &&
+      playerState === PlayerState.BUFFERING;
+    const shouldBlur = mode !== "playing" && mode !== "playing-muted";
+    const showUnmuteNudge = mode === "playing-muted" && isMuted;
+    const canShowFullscreenControl =
+      mode === "playing" || mode === "playing-muted" || isBuffering;
     const {
       isVisible: isFullscreenControlVisible,
       toggleControls,
@@ -129,7 +127,7 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
             />
           </div>
 
-          {showLoadingOverlay && (
+          {(mode === "idle" || isBuffering) && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
               <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
               <p className="text-xs font-medium uppercase tracking-wide text-white/80">

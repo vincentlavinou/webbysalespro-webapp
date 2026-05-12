@@ -10,7 +10,6 @@ import type {
 } from "amazon-ivs-player";
 import { PlayerEventType, PlayerState as IvsPlayerState } from "amazon-ivs-player";
 import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
-import { detectFirstFrame } from "./detect-first-frame";
 
 // ─── Player mode ────────────────────────────────────────────────────────────
 // Single source of truth for what the player is doing from a UI/behavior perspective.
@@ -35,10 +34,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === "string" && error) return error;
   return fallback;
 }
-
-const STARTUP_TIMEOUT_MS = 7000;
-const START_RETRY_INTERVAL_MS = 1000;
-const START_RETRY_WINDOW_MS = 10000;
 
 type Options = {
   src: string;
@@ -76,16 +71,12 @@ export function useIvsPlayerCore({
   const disposedRef = useRef(false);
 
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startAttemptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffRef = useRef<number>(START_BACKOFF);
   const lastRestoreRef = useRef<number>(0);
   const lastForcedReloadRef = useRef<number>(0);
   const manualPlayInFlightRef = useRef(false);
 
   const hasPlayedRef = useRef(false);
-  const firstFrameRenderedRef = useRef(false);
-  const firstFrameCleanupRef = useRef<(() => void) | null>(null);
-  const startupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
@@ -93,40 +84,6 @@ export function useIvsPlayerCore({
   const [isMuted, setIsMuted] = useState(false);
   const [playerVersion, setPlayerVersion] = useState(0);
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
-  const [firstFrameRendered, setFirstFrameRendered] = useState(false);
-
-  // ─── First-frame detection ────────────────────────────────────────────────
-  // Reset and rearm whenever we issue a new p.load(src), so the spinner stays
-  // visible until a real frame is on screen — not just when IVS reports PLAYING.
-
-  const clearStartupTimeout = useCallback(() => {
-    if (startupTimeoutRef.current) {
-      clearTimeout(startupTimeoutRef.current);
-      startupTimeoutRef.current = null;
-    }
-  }, []);
-
-  const clearStartAttempt = useCallback(() => {
-    if (startAttemptTimerRef.current) {
-      clearTimeout(startAttemptTimerRef.current);
-      startAttemptTimerRef.current = null;
-    }
-  }, []);
-
-  const armFirstFrameDetection = useCallback(() => {
-    const v = videoRef.current;
-    firstFrameCleanupRef.current?.();
-    firstFrameCleanupRef.current = null;
-    firstFrameRenderedRef.current = false;
-    setFirstFrameRendered(false);
-    if (!v) return;
-    firstFrameCleanupRef.current = detectFirstFrame(v, () => {
-      firstFrameRenderedRef.current = true;
-      setFirstFrameRendered(true);
-      clearStartupTimeout();
-      clearStartAttempt();
-    });
-  }, [clearStartAttempt, clearStartupTimeout, videoRef]);
 
   // ─── Retry helpers ────────────────────────────────────────────────────────
 
@@ -156,21 +113,14 @@ export function useIvsPlayerCore({
       if (disposedRef.current || !p) return;
 
       try {
-        armFirstFrameDetection();
-        if (v) {
-          try { p.setMuted(v.muted); } catch {}
-        }
         p.load(src);
         setLastErrorMessage(null);
-        if (v && hasPlayedRef.current) {
-          // Always attempt to resume after a retry. If the user hasn't clicked
-          // yet, keep the first-load UX in "loading" until READY exposes the
-          // start button.
+        if (autoPlay && v) {
           await v.play().catch((error) => {
             const message = getErrorMessage(error, "Browser blocked playback.");
-            console.warn("IVS retry play failed:", message, error);
+            console.warn("IVS autoplay failed:", message, error);
             setLastErrorMessage(message);
-            setMode(current => (current === "playing" ? "gate" : current));
+            setMode("gate");
           });
         }
         backoffRef.current = START_BACKOFF;
@@ -181,7 +131,7 @@ export function useIvsPlayerCore({
         scheduleRetry();
       }
     }, delay);
-  }, [armFirstFrameDetection, src, videoRef]);
+  }, [autoPlay, src, videoRef]);
 
   // ─── Stats ────────────────────────────────────────────────────────────────
 
@@ -216,8 +166,6 @@ export function useIvsPlayerCore({
       clearRetry();
       backoffRef.current = START_BACKOFF;
       try {
-        armFirstFrameDetection();
-        try { p.setMuted(v.muted); } catch {}
         p.load(src);
         setLastErrorMessage(null);
       } catch (error) {
@@ -305,8 +253,6 @@ export function useIvsPlayerCore({
     clearRetry();
     backoffRef.current = START_BACKOFF;
     try {
-      armFirstFrameDetection();
-      try { p.setMuted(false); } catch {}
       p.load(src);
       setLastErrorMessage(null);
     } catch (error) {
@@ -327,7 +273,7 @@ export function useIvsPlayerCore({
       setLastErrorMessage(message);
       setMode("gate");
     }
-  }, [armFirstFrameDetection, src, videoRef, clearRetry, scheduleRetry]);
+  }, [src, videoRef, clearRetry, scheduleRetry]);
 
   // ─── Manual play (user tap / click) ──────────────────────────────────────
 
@@ -337,20 +283,14 @@ export function useIvsPlayerCore({
     if (!p || !v || manualPlayInFlightRef.current) return;
     manualPlayInFlightRef.current = true;
 
-    // Synchronously unmute in the click gesture context. Critical for iOS
-    // audio unlock — must happen in the same call stack as the click event.
-    try { p.setMuted(false); } catch {}
-    try { v.muted = false; } catch {}
-    setIsMuted(false);
+    // Dismiss the gate immediately while play is initiating — prevents the iOS
+    // race where p.load() briefly re-triggers "gate" state during startup.
     setMode("idle");
+
     clearRetry();
-    clearStartAttempt();
     backoffRef.current = START_BACKOFF;
     try {
-      armFirstFrameDetection();
-      if (p.getState() === IvsPlayerState.IDLE) {
-        p.load(src);
-      }
+      p.load(src);
       setLastErrorMessage(null);
     } catch (error) {
       const message = getErrorMessage(error, "Failed to load the playback URL.");
@@ -362,57 +302,19 @@ export function useIvsPlayerCore({
       return;
     }
 
-    clearStartupTimeout();
-    startupTimeoutRef.current = setTimeout(() => {
-      startupTimeoutRef.current = null;
-      if (disposedRef.current || firstFrameRenderedRef.current) return;
-      console.warn("IVS manual play: no first frame within timeout.");
-      setLastErrorMessage("Couldn't start the stream. Tap to try again.");
+    try {
+      await v.play();
+      setLastErrorMessage(null);
+      // onPlayingInternal will transition mode → "playing"
+    } catch (error) {
+      const message = getErrorMessage(error, "Browser blocked playback.");
+      console.warn("IVS manual play failed:", message, error);
+      setLastErrorMessage(message);
       setMode("gate");
+    } finally {
       manualPlayInFlightRef.current = false;
-      clearStartAttempt();
-    }, STARTUP_TIMEOUT_MS);
-
-    const deadline = Date.now() + START_RETRY_WINDOW_MS;
-
-    const attemptPlay = async () => {
-      if (disposedRef.current || firstFrameRenderedRef.current) {
-        manualPlayInFlightRef.current = false;
-        clearStartAttempt();
-        return;
-      }
-
-      try {
-        await v.play();
-        setLastErrorMessage(null);
-      } catch (error) {
-        const message = getErrorMessage(error, "Browser blocked playback.");
-        console.warn("IVS manual play attempt failed:", message, error);
-        setLastErrorMessage(message);
-      }
-
-      if (disposedRef.current || firstFrameRenderedRef.current) {
-        manualPlayInFlightRef.current = false;
-        clearStartAttempt();
-        return;
-      }
-
-      if (Date.now() >= deadline) {
-        clearStartupTimeout();
-        clearStartAttempt();
-        manualPlayInFlightRef.current = false;
-        setLastErrorMessage("Couldn't start the stream. Tap to try again.");
-        setMode("gate");
-        return;
-      }
-
-      startAttemptTimerRef.current = setTimeout(() => {
-        void attemptPlay();
-      }, START_RETRY_INTERVAL_MS);
-    };
-
-    void attemptPlay();
-  }, [armFirstFrameDetection, clearStartAttempt, clearStartupTimeout, videoRef, src, clearRetry, scheduleRetry]);
+    }
+  }, [videoRef, src, clearRetry, scheduleRetry]);
 
   // ─── Tap to unmute ────────────────────────────────────────────────────────
 
@@ -421,7 +323,6 @@ export function useIvsPlayerCore({
     const v = videoRef.current;
     if (!p || !v) return;
     try {
-      try { p.setMuted(false); } catch {}
       v.muted = false;
     } catch {}
     setIsMuted(v.muted);
@@ -470,13 +371,11 @@ export function useIvsPlayerCore({
     disposedRef.current = false;
     hasPlayedRef.current = false;
     manualPlayInFlightRef.current = false;
-    firstFrameRenderedRef.current = false;
     setMode("idle");
     setIsMuted(false);
     setPlayerState("INIT");
     setStats({});
     setLastErrorMessage(null);
-    setFirstFrameRendered(false);
 
     let cleanup: (() => void) | undefined;
 
@@ -502,21 +401,12 @@ export function useIvsPlayerCore({
       p.attachHTMLVideoElement(v);
       setPlayerVersion(n => n + 1);
 
-      p.setAutoplay(false);
-      try { p.setMuted(false); } catch {}
+      p.setAutoplay(autoPlay);
       p.setAutoQualityMode(true);
       p.setLiveLowLatencyEnabled(true);
       p.setRebufferToLive(true);
 
-      const onReady = () => {
-        updateStats();
-        setMode(current => {
-          if (current === "playing" || current === "playing-muted" || current === "ended") {
-            return current;
-          }
-          return "gate";
-        });
-      };
+      const onReady = () => updateStats();
 
       const onPlayingInternal = () => {
         backoffRef.current = START_BACKOFF;
@@ -524,7 +414,6 @@ export function useIvsPlayerCore({
         updateStats();
         hasPlayedRef.current = true;
         manualPlayInFlightRef.current = false;
-        clearStartAttempt();
         setLastErrorMessage(null);
         onPlaying?.();
         if (v) setSharedAudioContext(v);
@@ -532,14 +421,12 @@ export function useIvsPlayerCore({
       };
 
       const onEndedInternal = () => {
-        clearStartAttempt();
         setMode("ended");
         updateStats();
         onEnded?.();
       };
 
       const onErrorInternal = (e: PlayerError) => {
-        clearStartAttempt();
         updateStats();
         const message = e?.message || `${e?.source ?? "IVS"} error ${e?.code ?? ""}`.trim();
         console.warn("IVS player error:", e);
@@ -572,6 +459,25 @@ export function useIvsPlayerCore({
         scheduleRetry();
       }
 
+      if (autoPlay) {
+        // Desktop: try autoplay with sound. Browser blocks it → show click-to-play.
+        // Never fall back to muted autoplay.
+        try {
+          await v.play();
+          setLastErrorMessage(null);
+          // mode → "playing" via onPlayingInternal
+        } catch (error) {
+          const message = getErrorMessage(error, "Browser blocked playback.");
+          console.warn("IVS autoplay play failed:", message, error);
+          setLastErrorMessage(message);
+          setMode("gate");
+        }
+      } else {
+        // iOS / Android: skip autoplay entirely — show tap-to-play immediately
+        // so the user's first tap is in a clean gesture context for audio unlock.
+        setMode("gate");
+      }
+
       cleanup = () => {
         p.removeEventListener(ivs.PlayerState.READY, onReady);
         p.removeEventListener(ivs.PlayerState.PLAYING, onPlayingInternal);
@@ -587,14 +493,10 @@ export function useIvsPlayerCore({
     return () => {
       disposedRef.current = true;
       clearRetry();
-      clearStartAttempt();
-      clearStartupTimeout();
-      firstFrameCleanupRef.current?.();
-      firstFrameCleanupRef.current = null;
       playerRef.current = null;
       cleanup?.();
     };
-  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry, clearStartAttempt, armFirstFrameDetection, clearStartupTimeout]);
+  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
 
   return {
     playerRef,
@@ -604,7 +506,6 @@ export function useIvsPlayerCore({
     playerState,
     isMuted,
     lastErrorMessage,
-    firstFrameRendered,
     hasPlayedRef,
     updateStats,
     scheduleRetry,

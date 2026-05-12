@@ -49,7 +49,7 @@ export const AndroidWebbySalesProPlayer =
       qualityName,
       syncTimeMs,
       isMuted,
-      firstFrameRendered,
+      handleStartMuted,
       handleStartWithSound,
       handleUnmute,
       restoreToLive,
@@ -100,17 +100,15 @@ export const AndroidWebbySalesProPlayer =
       onPlaybackStatusChange,
     });
 
-    const isLiveMode = mode === "playing" || mode === "playing-muted";
-    const showStartButton = mode === "ready" || mode === "blocked";
-    const showUnmuteButton =
-      mode === "playing-muted" && isMuted && firstFrameRendered;
+    const showBlockedStart = mode === "blocked";
+    const showUnmuteButton = mode === "playing-muted" && isMuted;
     const showLoading =
       mode === "idle" ||
       mode === "loading" ||
-      mode === "buffering" ||
-      (isLiveMode && !firstFrameRendered);
+      mode === "ready" ||
+      mode === "buffering";
     const canShowFullscreenControl =
-      (isLiveMode && firstFrameRendered) || mode === "buffering";
+      mode === "playing" || mode === "playing-muted" || mode === "buffering";
     const {
       isVisible: isFullscreenControlVisible,
       toggleControls,
@@ -146,14 +144,22 @@ export const AndroidWebbySalesProPlayer =
             </div>
           )}
 
-          {showStartButton && (
+          {showBlockedStart && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/45 backdrop-blur-sm">
               <button
                 type="button"
-                onClick={handleStartWithSound}
+                onClick={handleStartMuted}
                 className="rounded-full bg-white/95 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                Tap to start the live webinar
+                Tap to start
+              </button>
+
+              <button
+                type="button"
+                onClick={handleStartWithSound}
+                className="rounded-full bg-black/80 px-5 py-3 text-sm font-semibold text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60"
+              >
+                Tap to start with sound
               </button>
             </div>
           )}
