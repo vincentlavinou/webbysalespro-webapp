@@ -120,6 +120,7 @@ export type OfferClientUser = {
   email?: string;
   first_name?: string;
   last_name?: string;
+  phone?: string
 }
 
 export type OfferVisibilityMetadata = z.infer<typeof offerVisibilityMetadataSchema>;

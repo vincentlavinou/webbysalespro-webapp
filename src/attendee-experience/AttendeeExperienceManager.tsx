@@ -48,6 +48,8 @@ export function AttendeeExperienceManager({
         email: playbackToken.email,
         first_name: playbackToken.first_name,
         last_name: playbackToken.last_name,
+        phone: playbackToken.phone
+  
       }}
     >
       <AttendeeExperienceShell playbackToken={playbackToken} title={title} />

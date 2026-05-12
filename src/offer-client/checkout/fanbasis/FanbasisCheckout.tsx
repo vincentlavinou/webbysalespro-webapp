@@ -98,12 +98,19 @@ export function FanBasisCheckout() {
         width: '100%',
         height: '480px',
       },
+      collectPhone: true,
       theme: {
         theme: (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark',
         show_product_info: false,
         product_layout: 'above' as const,
         show_coupon_row: false,
         ...(accentColor ? { accent_color: accentColor } : {}),
+        prefill: {
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone
+        }
       },
     } as CheckoutConfig;
   }, [
@@ -118,6 +125,7 @@ export function FanBasisCheckout() {
     user?.email,
     user?.first_name,
     user?.last_name,
+    user?.phone
   ]);
 
   const handleClose = cancelCheckout;
