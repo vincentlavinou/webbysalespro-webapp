@@ -102,11 +102,12 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
 
     const isLiveMode = mode === "playing" || mode === "playing-muted";
     const isBuffering = isLiveMode && playerState === PlayerState.BUFFERING;
-    // Show loading overlay until a real frame is on screen — IVS "PLAYING"
-    // alone doesn't guarantee pixels, so trust firstFrameRendered.
+    // Spinner stays up during pre-buffer (mode === "idle") and any live-mode
+    // re-buffering. Once the first frame is decoded the stream switches to
+    // "gate", and the live preview shows behind the start button.
     const showLoadingOverlay =
       mode === "idle" || isBuffering || (isLiveMode && !firstFrameRendered);
-    const shouldBlur = !isLiveMode || !firstFrameRendered;
+    const shouldBlur = !firstFrameRendered;
     const showUnmuteNudge =
       mode === "playing-muted" && isMuted && firstFrameRendered;
     const canShowFullscreenControl = isLiveMode && firstFrameRendered;

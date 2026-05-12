@@ -87,7 +87,7 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
     const isBuffering = isLiveMode && playerState === PlayerState.BUFFERING;
     const showLoadingOverlay =
       mode === "idle" || isBuffering || (isLiveMode && !firstFrameRendered);
-    const shouldBlur = !isLiveMode || !firstFrameRendered;
+    const shouldBlur = !firstFrameRendered;
     const showUnmuteNudge =
       mode === "playing-muted" && isMuted && firstFrameRendered;
     const canShowFullscreenControl = isLiveMode && firstFrameRendered;
