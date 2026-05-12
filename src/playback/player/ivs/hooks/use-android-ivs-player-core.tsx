@@ -12,9 +12,45 @@ import {
 // Watches a <video> element and fires `onFrame` exactly once when the first
 // real frame is on screen — IVS "PLAYING" alone doesn't guarantee pixels.
 type RvfcVideo = HTMLVideoElement & {
-  requestVideoFrameCallback?: (cb: () => void) => number;
+  requestVideoFrameCallback?: (
+    cb: (now: number, metadata?: { presentedFrames?: number }) => void,
+  ) => number;
   cancelVideoFrameCallback?: (id: number) => void;
+  getVideoPlaybackQuality?: () => { totalVideoFrames?: number };
+  webkitDecodedFrameCount?: number;
+  webkitPresentedFrameCount?: number;
+  mozPresentedFrames?: number;
+  msDecodedFrameCount?: number;
 };
+
+function getPresentedFrameCount(video: HTMLVideoElement): number {
+  const rvfcVideo = video as RvfcVideo;
+
+  try {
+    const quality = rvfcVideo.getVideoPlaybackQuality?.();
+    if (typeof quality?.totalVideoFrames === "number") {
+      return quality.totalVideoFrames;
+    }
+  } catch {}
+
+  if (typeof rvfcVideo.webkitPresentedFrameCount === "number") {
+    return rvfcVideo.webkitPresentedFrameCount;
+  }
+
+  if (typeof rvfcVideo.webkitDecodedFrameCount === "number") {
+    return rvfcVideo.webkitDecodedFrameCount;
+  }
+
+  if (typeof rvfcVideo.mozPresentedFrames === "number") {
+    return rvfcVideo.mozPresentedFrames;
+  }
+
+  if (typeof rvfcVideo.msDecodedFrameCount === "number") {
+    return rvfcVideo.msDecodedFrameCount;
+  }
+
+  return 0;
+}
 
 function detectFirstFrame(
   video: HTMLVideoElement,
@@ -22,11 +58,19 @@ function detectFirstFrame(
 ): () => void {
   let done = false;
   let rvfcHandle: number | undefined;
+  const startTime = video.currentTime;
+  const startFrames = getPresentedFrameCount(video);
 
   const isFramePainted = () =>
-    video.readyState >= 3 /* HAVE_FUTURE_DATA */ &&
+    video.readyState >= 2 /* HAVE_CURRENT_DATA */ &&
     video.videoWidth > 0 &&
-    video.videoHeight > 0;
+    video.videoHeight > 0 &&
+    !video.paused &&
+    (
+      getPresentedFrameCount(video) > startFrames ||
+      Math.abs(video.currentTime - startTime) > 0.01 ||
+      video.currentTime > 0.01
+    );
 
   const fire = () => {
     if (done) return;
@@ -54,7 +98,34 @@ function detectFirstFrame(
 
   const rvfcVideo = video as RvfcVideo;
   if (typeof rvfcVideo.requestVideoFrameCallback === "function") {
-    rvfcHandle = rvfcVideo.requestVideoFrameCallback(() => fire());
+    const requestFrame = () => {
+      rvfcHandle = rvfcVideo.requestVideoFrameCallback?.((_now, metadata) => {
+        if (done) return;
+        const frameCount =
+          typeof metadata?.presentedFrames === "number"
+            ? metadata.presentedFrames
+            : getPresentedFrameCount(video);
+
+        if (
+          video.readyState >= 2 &&
+          video.videoWidth > 0 &&
+          video.videoHeight > 0 &&
+          !video.paused &&
+          (
+            frameCount > startFrames ||
+            Math.abs(video.currentTime - startTime) > 0.01 ||
+            video.currentTime > 0.01
+          )
+        ) {
+          fire();
+          return;
+        }
+
+        requestFrame();
+      });
+    };
+
+    requestFrame();
   }
 
   video.addEventListener("loadeddata", maybeFire);

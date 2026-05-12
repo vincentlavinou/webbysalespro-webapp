@@ -40,9 +40,45 @@ function getErrorMessage(error: unknown, fallback: string): string {
 // on composited frame). Fallback: HTML5 events + a slow poll for browsers
 // without rVFC.
 type RvfcVideo = HTMLVideoElement & {
-  requestVideoFrameCallback?: (cb: () => void) => number;
+  requestVideoFrameCallback?: (
+    cb: (now: number, metadata?: { presentedFrames?: number }) => void,
+  ) => number;
   cancelVideoFrameCallback?: (id: number) => void;
+  getVideoPlaybackQuality?: () => { totalVideoFrames?: number };
+  webkitDecodedFrameCount?: number;
+  webkitPresentedFrameCount?: number;
+  mozPresentedFrames?: number;
+  msDecodedFrameCount?: number;
 };
+
+function getPresentedFrameCount(video: HTMLVideoElement): number {
+  const rvfcVideo = video as RvfcVideo;
+
+  try {
+    const quality = rvfcVideo.getVideoPlaybackQuality?.();
+    if (typeof quality?.totalVideoFrames === "number") {
+      return quality.totalVideoFrames;
+    }
+  } catch {}
+
+  if (typeof rvfcVideo.webkitPresentedFrameCount === "number") {
+    return rvfcVideo.webkitPresentedFrameCount;
+  }
+
+  if (typeof rvfcVideo.webkitDecodedFrameCount === "number") {
+    return rvfcVideo.webkitDecodedFrameCount;
+  }
+
+  if (typeof rvfcVideo.mozPresentedFrames === "number") {
+    return rvfcVideo.mozPresentedFrames;
+  }
+
+  if (typeof rvfcVideo.msDecodedFrameCount === "number") {
+    return rvfcVideo.msDecodedFrameCount;
+  }
+
+  return 0;
+}
 
 function detectFirstFrame(
   video: HTMLVideoElement,
@@ -50,11 +86,19 @@ function detectFirstFrame(
 ): () => void {
   let done = false;
   let rvfcHandle: number | undefined;
+  const startTime = video.currentTime;
+  const startFrames = getPresentedFrameCount(video);
 
   const isFramePainted = () =>
-    video.readyState >= 3 /* HAVE_FUTURE_DATA */ &&
+    video.readyState >= 2 /* HAVE_CURRENT_DATA */ &&
     video.videoWidth > 0 &&
-    video.videoHeight > 0;
+    video.videoHeight > 0 &&
+    !video.paused &&
+    (
+      getPresentedFrameCount(video) > startFrames ||
+      Math.abs(video.currentTime - startTime) > 0.01 ||
+      video.currentTime > 0.01
+    );
 
   const fire = () => {
     if (done) return;
@@ -82,7 +126,34 @@ function detectFirstFrame(
 
   const rvfcVideo = video as RvfcVideo;
   if (typeof rvfcVideo.requestVideoFrameCallback === "function") {
-    rvfcHandle = rvfcVideo.requestVideoFrameCallback(() => fire());
+    const requestFrame = () => {
+      rvfcHandle = rvfcVideo.requestVideoFrameCallback?.((_now, metadata) => {
+        if (done) return;
+        const frameCount =
+          typeof metadata?.presentedFrames === "number"
+            ? metadata.presentedFrames
+            : getPresentedFrameCount(video);
+
+        if (
+          video.readyState >= 2 &&
+          video.videoWidth > 0 &&
+          video.videoHeight > 0 &&
+          !video.paused &&
+          (
+            frameCount > startFrames ||
+            Math.abs(video.currentTime - startTime) > 0.01 ||
+            video.currentTime > 0.01
+          )
+        ) {
+          fire();
+          return;
+        }
+
+        requestFrame();
+      });
+    };
+
+    requestFrame();
   }
 
   video.addEventListener("loadeddata", maybeFire);
@@ -147,6 +218,21 @@ export function useIvsPlayerCore({
   // uses this to decide whether to land on "gate" (initial pre-buffer) or
   // "playing" (slow-path recovery after a user click).
   const userInitiatedPlayRef = useRef(false);
+
+  const canResumeWarmPlayback = useCallback(() => {
+    const p = playerRef.current;
+    const v = videoRef.current;
+    if (!p || !v) return false;
+    if (firstFrameRenderedRef.current) return true;
+
+    const state = p.getState();
+    return (
+      !v.paused &&
+      (state === IvsPlayerState.PLAYING ||
+        state === IvsPlayerState.BUFFERING ||
+        state === IvsPlayerState.READY)
+    );
+  }, [videoRef]);
 
   const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
@@ -398,9 +484,10 @@ export function useIvsPlayerCore({
     try { v.muted = false; } catch {}
     setIsMuted(false);
 
-    if (firstFrameRenderedRef.current) {
+    if (canResumeWarmPlayback()) {
       // Fast path: pre-buffer already finished. The video is playing muted
-      // under the gate overlay. Unmute + ensure it's still rolling.
+      // or is otherwise already warm under the gate overlay. Unmute + ensure
+      // it's still rolling instead of forcing a fresh network load.
       setMode("playing");
       clearStartupTimeout();
       try {
@@ -461,7 +548,7 @@ export function useIvsPlayerCore({
     } finally {
       manualPlayInFlightRef.current = false;
     }
-  }, [armFirstFrameDetection, clearStartupTimeout, videoRef, src, clearRetry, scheduleRetry]);
+  }, [armFirstFrameDetection, canResumeWarmPlayback, clearStartupTimeout, videoRef, src, clearRetry, scheduleRetry]);
 
   // ─── Tap to unmute ────────────────────────────────────────────────────────
 
