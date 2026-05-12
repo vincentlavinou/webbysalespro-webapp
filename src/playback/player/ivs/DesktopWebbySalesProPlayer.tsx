@@ -48,6 +48,7 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       stats,
       playerState,
       isMuted,
+      firstFrameRendered,
       restoreToLive,
       handleManualPlay,
       tapToUnmute,
@@ -99,13 +100,16 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
         document.removeEventListener("fullscreenchange", handleFullscreenChange);
     }, [videoRef, restoreToLive]);
 
-    const isBuffering =
-      (mode === "playing" || mode === "playing-muted") &&
-      playerState === PlayerState.BUFFERING;
-    const shouldBlur = mode !== "playing" && mode !== "playing-muted";
-    const showUnmuteNudge = mode === "playing-muted" && isMuted;
-    const canShowFullscreenControl =
-      mode === "playing" || mode === "playing-muted" || isBuffering;
+    const isLiveMode = mode === "playing" || mode === "playing-muted";
+    const isBuffering = isLiveMode && playerState === PlayerState.BUFFERING;
+    // Show loading overlay until a real frame is on screen — IVS "PLAYING"
+    // alone doesn't guarantee pixels, so trust firstFrameRendered.
+    const showLoadingOverlay =
+      mode === "idle" || isBuffering || (isLiveMode && !firstFrameRendered);
+    const shouldBlur = !isLiveMode || !firstFrameRendered;
+    const showUnmuteNudge =
+      mode === "playing-muted" && isMuted && firstFrameRendered;
+    const canShowFullscreenControl = isLiveMode && firstFrameRendered;
     const {
       isVisible: isFullscreenControlVisible,
       toggleControls,
@@ -137,7 +141,7 @@ const DesktopWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
             />
           </div>
 
-          {(mode === "idle" || isBuffering) && (
+          {showLoadingOverlay && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
               <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
               <p className="text-xs font-medium uppercase tracking-wide text-white/80">

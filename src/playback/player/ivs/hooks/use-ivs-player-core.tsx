@@ -35,6 +35,68 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+// Watches a <video> element and fires `onFrame` exactly once when the first
+// real frame is on screen. Primary signal is requestVideoFrameCallback (fires
+// on composited frame). Fallback: HTML5 events + a slow poll for browsers
+// without rVFC.
+type RvfcVideo = HTMLVideoElement & {
+  requestVideoFrameCallback?: (cb: () => void) => number;
+  cancelVideoFrameCallback?: (id: number) => void;
+};
+
+function detectFirstFrame(
+  video: HTMLVideoElement,
+  onFrame: () => void,
+): () => void {
+  let done = false;
+  let rvfcHandle: number | undefined;
+
+  const isFramePainted = () =>
+    video.readyState >= 3 /* HAVE_FUTURE_DATA */ &&
+    video.videoWidth > 0 &&
+    video.videoHeight > 0;
+
+  const fire = () => {
+    if (done) return;
+    done = true;
+    cleanup();
+    onFrame();
+  };
+
+  const maybeFire = () => {
+    if (done) return;
+    if (isFramePainted() && !video.paused) fire();
+  };
+
+  const cleanup = () => {
+    const rvfcVideo = video as RvfcVideo;
+    if (rvfcHandle !== undefined && typeof rvfcVideo.cancelVideoFrameCallback === "function") {
+      try { rvfcVideo.cancelVideoFrameCallback(rvfcHandle); } catch {}
+    }
+    clearInterval(pollHandle);
+    video.removeEventListener("loadeddata", maybeFire);
+    video.removeEventListener("playing", maybeFire);
+    video.removeEventListener("timeupdate", maybeFire);
+    video.removeEventListener("canplay", maybeFire);
+  };
+
+  const rvfcVideo = video as RvfcVideo;
+  if (typeof rvfcVideo.requestVideoFrameCallback === "function") {
+    rvfcHandle = rvfcVideo.requestVideoFrameCallback(() => fire());
+  }
+
+  video.addEventListener("loadeddata", maybeFire);
+  video.addEventListener("playing", maybeFire);
+  video.addEventListener("timeupdate", maybeFire);
+  video.addEventListener("canplay", maybeFire);
+  const pollHandle = setInterval(maybeFire, 250);
+
+  maybeFire();
+  return cleanup;
+}
+
+const STARTUP_TIMEOUT_MS = 7000;
+
 type Options = {
   src: string;
   autoPlay: boolean;
@@ -77,6 +139,9 @@ export function useIvsPlayerCore({
   const manualPlayInFlightRef = useRef(false);
 
   const hasPlayedRef = useRef(false);
+  const firstFrameRenderedRef = useRef(false);
+  const firstFrameCleanupRef = useRef<(() => void) | null>(null);
+  const startupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
@@ -84,6 +149,32 @@ export function useIvsPlayerCore({
   const [isMuted, setIsMuted] = useState(false);
   const [playerVersion, setPlayerVersion] = useState(0);
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
+  const [firstFrameRendered, setFirstFrameRendered] = useState(false);
+
+  // ─── First-frame detection ────────────────────────────────────────────────
+  // Reset and rearm whenever we issue a new p.load(src), so the spinner stays
+  // visible until a real frame is on screen — not just when IVS reports PLAYING.
+
+  const clearStartupTimeout = useCallback(() => {
+    if (startupTimeoutRef.current) {
+      clearTimeout(startupTimeoutRef.current);
+      startupTimeoutRef.current = null;
+    }
+  }, []);
+
+  const armFirstFrameDetection = useCallback(() => {
+    const v = videoRef.current;
+    firstFrameCleanupRef.current?.();
+    firstFrameCleanupRef.current = null;
+    firstFrameRenderedRef.current = false;
+    setFirstFrameRendered(false);
+    if (!v) return;
+    firstFrameCleanupRef.current = detectFirstFrame(v, () => {
+      firstFrameRenderedRef.current = true;
+      setFirstFrameRendered(true);
+      clearStartupTimeout();
+    });
+  }, [clearStartupTimeout, videoRef]);
 
   // ─── Retry helpers ────────────────────────────────────────────────────────
 
@@ -113,6 +204,7 @@ export function useIvsPlayerCore({
       if (disposedRef.current || !p) return;
 
       try {
+        armFirstFrameDetection();
         p.load(src);
         setLastErrorMessage(null);
         if (autoPlay && v) {
@@ -131,7 +223,7 @@ export function useIvsPlayerCore({
         scheduleRetry();
       }
     }, delay);
-  }, [autoPlay, src, videoRef]);
+  }, [armFirstFrameDetection, autoPlay, src, videoRef]);
 
   // ─── Stats ────────────────────────────────────────────────────────────────
 
@@ -166,6 +258,7 @@ export function useIvsPlayerCore({
       clearRetry();
       backoffRef.current = START_BACKOFF;
       try {
+        armFirstFrameDetection();
         p.load(src);
         setLastErrorMessage(null);
       } catch (error) {
@@ -253,6 +346,7 @@ export function useIvsPlayerCore({
     clearRetry();
     backoffRef.current = START_BACKOFF;
     try {
+      armFirstFrameDetection();
       p.load(src);
       setLastErrorMessage(null);
     } catch (error) {
@@ -273,7 +367,7 @@ export function useIvsPlayerCore({
       setLastErrorMessage(message);
       setMode("gate");
     }
-  }, [src, videoRef, clearRetry, scheduleRetry]);
+  }, [armFirstFrameDetection, src, videoRef, clearRetry, scheduleRetry]);
 
   // ─── Manual play (user tap / click) ──────────────────────────────────────
 
@@ -290,6 +384,7 @@ export function useIvsPlayerCore({
     clearRetry();
     backoffRef.current = START_BACKOFF;
     try {
+      armFirstFrameDetection();
       p.load(src);
       setLastErrorMessage(null);
     } catch (error) {
@@ -302,19 +397,33 @@ export function useIvsPlayerCore({
       return;
     }
 
+    // Safety net: if no real frame paints within STARTUP_TIMEOUT_MS, drop back
+    // to the gate so the user can retry instead of staring at a black <video>.
+    clearStartupTimeout();
+    startupTimeoutRef.current = setTimeout(() => {
+      startupTimeoutRef.current = null;
+      if (disposedRef.current || firstFrameRenderedRef.current) return;
+      console.warn("IVS manual play: no first frame within timeout.");
+      setLastErrorMessage("Couldn't start the stream. Tap to try again.");
+      setMode("gate");
+      manualPlayInFlightRef.current = false;
+    }, STARTUP_TIMEOUT_MS);
+
     try {
       await v.play();
       setLastErrorMessage(null);
-      // onPlayingInternal will transition mode → "playing"
+      // onPlayingInternal will transition mode → "playing"; the spinner stays
+      // up until firstFrameRendered flips.
     } catch (error) {
       const message = getErrorMessage(error, "Browser blocked playback.");
       console.warn("IVS manual play failed:", message, error);
       setLastErrorMessage(message);
       setMode("gate");
+      clearStartupTimeout();
     } finally {
       manualPlayInFlightRef.current = false;
     }
-  }, [videoRef, src, clearRetry, scheduleRetry]);
+  }, [armFirstFrameDetection, clearStartupTimeout, videoRef, src, clearRetry, scheduleRetry]);
 
   // ─── Tap to unmute ────────────────────────────────────────────────────────
 
@@ -371,11 +480,13 @@ export function useIvsPlayerCore({
     disposedRef.current = false;
     hasPlayedRef.current = false;
     manualPlayInFlightRef.current = false;
+    firstFrameRenderedRef.current = false;
     setMode("idle");
     setIsMuted(false);
     setPlayerState("INIT");
     setStats({});
     setLastErrorMessage(null);
+    setFirstFrameRendered(false);
 
     let cleanup: (() => void) | undefined;
 
@@ -450,6 +561,7 @@ export function useIvsPlayerCore({
       p.addEventListener(PlayerEventType.TEXT_METADATA_CUE, onMeta);
 
       try {
+        armFirstFrameDetection();
         p.load(src);
         setLastErrorMessage(null);
       } catch (error) {
@@ -493,10 +605,13 @@ export function useIvsPlayerCore({
     return () => {
       disposedRef.current = true;
       clearRetry();
+      clearStartupTimeout();
+      firstFrameCleanupRef.current?.();
+      firstFrameCleanupRef.current = null;
       playerRef.current = null;
       cleanup?.();
     };
-  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
+  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry, armFirstFrameDetection, clearStartupTimeout]);
 
   return {
     playerRef,
@@ -506,6 +621,7 @@ export function useIvsPlayerCore({
     playerState,
     isMuted,
     lastErrorMessage,
+    firstFrameRendered,
     hasPlayedRef,
     updateStats,
     scheduleRetry,

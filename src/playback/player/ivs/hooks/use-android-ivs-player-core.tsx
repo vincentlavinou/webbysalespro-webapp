@@ -9,6 +9,64 @@ import {
   TextMetadataCue,
 } from "amazon-ivs-player";
 
+// Watches a <video> element and fires `onFrame` exactly once when the first
+// real frame is on screen — IVS "PLAYING" alone doesn't guarantee pixels.
+type RvfcVideo = HTMLVideoElement & {
+  requestVideoFrameCallback?: (cb: () => void) => number;
+  cancelVideoFrameCallback?: (id: number) => void;
+};
+
+function detectFirstFrame(
+  video: HTMLVideoElement,
+  onFrame: () => void,
+): () => void {
+  let done = false;
+  let rvfcHandle: number | undefined;
+
+  const isFramePainted = () =>
+    video.readyState >= 3 /* HAVE_FUTURE_DATA */ &&
+    video.videoWidth > 0 &&
+    video.videoHeight > 0;
+
+  const fire = () => {
+    if (done) return;
+    done = true;
+    cleanup();
+    onFrame();
+  };
+
+  const maybeFire = () => {
+    if (done) return;
+    if (isFramePainted() && !video.paused) fire();
+  };
+
+  const cleanup = () => {
+    const rvfcVideo = video as RvfcVideo;
+    if (rvfcHandle !== undefined && typeof rvfcVideo.cancelVideoFrameCallback === "function") {
+      try { rvfcVideo.cancelVideoFrameCallback(rvfcHandle); } catch {}
+    }
+    clearInterval(pollHandle);
+    video.removeEventListener("loadeddata", maybeFire);
+    video.removeEventListener("playing", maybeFire);
+    video.removeEventListener("timeupdate", maybeFire);
+    video.removeEventListener("canplay", maybeFire);
+  };
+
+  const rvfcVideo = video as RvfcVideo;
+  if (typeof rvfcVideo.requestVideoFrameCallback === "function") {
+    rvfcHandle = rvfcVideo.requestVideoFrameCallback(() => fire());
+  }
+
+  video.addEventListener("loadeddata", maybeFire);
+  video.addEventListener("playing", maybeFire);
+  video.addEventListener("timeupdate", maybeFire);
+  video.addEventListener("canplay", maybeFire);
+  const pollHandle = setInterval(maybeFire, 250);
+
+  maybeFire();
+  return cleanup;
+}
+
 export type AndroidPlaybackMode =
   | "idle"
   | "loading"
@@ -48,12 +106,28 @@ export function useAndroidIvsPlayerCore({
   const detachRef = useRef<(() => void) | null>(null);
   const lastRestoreRef = useRef(0);
   const lastForcedReloadRef = useRef(0);
+  const firstFrameRenderedRef = useRef(false);
+  const firstFrameCleanupRef = useRef<(() => void) | null>(null);
 
   const [mode, setMode] = useState<AndroidPlaybackMode>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [qualityName, setQualityName] = useState<string | null>(null);
   const [syncTimeMs, setSyncTimeMs] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const [firstFrameRendered, setFirstFrameRendered] = useState(false);
+
+  const armFirstFrameDetection = useCallback(() => {
+    const v = videoRef.current;
+    firstFrameCleanupRef.current?.();
+    firstFrameCleanupRef.current = null;
+    firstFrameRenderedRef.current = false;
+    setFirstFrameRendered(false);
+    if (!v) return;
+    firstFrameCleanupRef.current = detectFirstFrame(v, () => {
+      firstFrameRenderedRef.current = true;
+      setFirstFrameRendered(true);
+    });
+  }, [videoRef]);
 
   const seekHtmlVideoToLive = useCallback((video: HTMLVideoElement) => {
     try {
@@ -101,6 +175,7 @@ export function useAndroidIvsPlayerCore({
 
     setErrorMessage(null);
     setMode("buffering");
+    armFirstFrameDetection();
 
     if (player) {
       player.load(src);
@@ -110,7 +185,7 @@ export function useAndroidIvsPlayerCore({
     }
 
     await video.play();
-  }, [seekHtmlVideoToLive, src, videoRef]);
+  }, [armFirstFrameDetection, seekHtmlVideoToLive, src, videoRef]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +193,9 @@ export function useAndroidIvsPlayerCore({
     const cleanup = () => {
       detachRef.current?.();
       detachRef.current = null;
+
+      firstFrameCleanupRef.current?.();
+      firstFrameCleanupRef.current = null;
 
       if (playerRef.current) {
         try {
@@ -140,6 +218,8 @@ export function useAndroidIvsPlayerCore({
       setQualityName(null);
       setSyncTimeMs(null);
       setIsMuted(true);
+      firstFrameRenderedRef.current = false;
+      setFirstFrameRendered(false);
 
       try {
         const IVSPlayer = await import("amazon-ivs-player");
@@ -301,6 +381,8 @@ export function useAndroidIvsPlayerCore({
         );
         player.addEventListener(IVSPlayer.PlayerEventType.ERROR, onError);
 
+        armFirstFrameDetection();
+
         detachRef.current = () => {
           player.removeEventListener(IVSPlayer.PlayerState.READY, onReady);
           player.removeEventListener(
@@ -361,7 +443,7 @@ export function useAndroidIvsPlayerCore({
       cancelled = true;
       cleanup();
     };
-  }, [onEnded, onPlaying, onTextMetadata, src, videoRef]);
+  }, [armFirstFrameDetection, onEnded, onPlaying, onTextMetadata, src, videoRef]);
 
   const restoreToLive = useCallback(async (options?: {
     forceReload?: boolean;
@@ -425,6 +507,7 @@ export function useAndroidIvsPlayerCore({
       player.setMuted(true);
       setIsMuted(true);
       setErrorMessage(null);
+      armFirstFrameDetection();
       player.play();
       setMode("buffering");
     } catch (error) {
@@ -441,6 +524,7 @@ export function useAndroidIvsPlayerCore({
       player.setMuted(false);
       setIsMuted(false);
       setErrorMessage(null);
+      armFirstFrameDetection();
       player.play();
       setMode("buffering");
     } catch (error) {
@@ -490,6 +574,7 @@ export function useAndroidIvsPlayerCore({
     qualityName,
     syncTimeMs,
     isMuted,
+    firstFrameRendered,
     handleStartMuted,
     handleStartWithSound,
     handleUnmute,

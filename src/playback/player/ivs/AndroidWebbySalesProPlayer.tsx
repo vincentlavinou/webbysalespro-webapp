@@ -49,6 +49,7 @@ export const AndroidWebbySalesProPlayer =
       qualityName,
       syncTimeMs,
       isMuted,
+      firstFrameRendered,
       handleStartMuted,
       handleStartWithSound,
       handleUnmute,
@@ -100,15 +101,20 @@ export const AndroidWebbySalesProPlayer =
       onPlaybackStatusChange,
     });
 
+    const isLiveMode = mode === "playing" || mode === "playing-muted";
     const showBlockedStart = mode === "blocked";
-    const showUnmuteButton = mode === "playing-muted" && isMuted;
+    const showUnmuteButton =
+      mode === "playing-muted" && isMuted && firstFrameRendered;
+    // Keep loading overlay up until a real frame is on screen — IVS "PLAYING"
+    // alone doesn't guarantee pixels.
     const showLoading =
       mode === "idle" ||
       mode === "loading" ||
       mode === "ready" ||
-      mode === "buffering";
+      mode === "buffering" ||
+      (isLiveMode && !firstFrameRendered);
     const canShowFullscreenControl =
-      mode === "playing" || mode === "playing-muted" || mode === "buffering";
+      (isLiveMode && firstFrameRendered) || mode === "buffering";
     const {
       isVisible: isFullscreenControlVisible,
       toggleControls,
