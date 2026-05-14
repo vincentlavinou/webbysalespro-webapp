@@ -69,10 +69,15 @@ type RegistrationSuccessState = {
 };
 
 const embedFieldClassName =
-  "!border-gray-200 !bg-white !text-gray-900 placeholder:!text-gray-400 shadow-none dark:!border-gray-200 dark:!bg-white dark:!text-gray-900 dark:placeholder:!text-gray-400";
+  "!border-gray-200 !bg-white !text-gray-900 placeholder:!text-gray-400 shadow-none dark:!border-slate-600 dark:!bg-slate-900 dark:!text-slate-100 dark:placeholder:!text-slate-500";
 
 const embedAutofillClassName =
-  "[&:-webkit-autofill]:[box-shadow:0_0_0px_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#111827] [&:-webkit-autofill]:[caret-color:#111827] [&:-webkit-autofill:hover]:[box-shadow:0_0_0px_1000px_white_inset] [&:-webkit-autofill:focus]:[box-shadow:0_0_0px_1000px_white_inset]";
+  "[&:-webkit-autofill]:[box-shadow:0_0_0px_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#111827] [&:-webkit-autofill]:[caret-color:#111827] [&:-webkit-autofill:hover]:[box-shadow:0_0_0px_1000px_white_inset] [&:-webkit-autofill:focus]:[box-shadow:0_0_0px_1000px_white_inset] dark:[&:-webkit-autofill]:[box-shadow:0_0_0px_1000px_#0f172a_inset] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:#f8fafc] dark:[&:-webkit-autofill]:[caret-color:#f8fafc] dark:[&:-webkit-autofill:hover]:[box-shadow:0_0_0px_1000px_#0f172a_inset] dark:[&:-webkit-autofill:focus]:[box-shadow:0_0_0px_1000px_#0f172a_inset]";
+
+const panelTone = (accent: string) => ({
+  borderColor: `${accent}33`,
+  backgroundColor: `${accent}11`,
+});
 
 export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor, embedSource, embedSuccessUrl }: DefaultRegistrationFormProps) => {
   const router = useRouter();
@@ -334,21 +339,18 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
     return (
       <div
         className="rounded-2xl border px-5 py-6 text-center"
-        style={{
-          borderColor: `${(secondaryColor ?? primaryColor ?? "#059669")}33`,
-          backgroundColor: `${(secondaryColor ?? primaryColor ?? "#059669")}11`,
-        }}
+        style={panelTone(secondaryColor ?? primaryColor ?? "#059669")}
       >
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50">
-          <CheckCircle className="h-7 w-7 text-emerald-600" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/40">
+          <CheckCircle className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
         </div>
-        <h3 className="mt-4 text-xl font-bold text-gray-900">You&apos;re Registered!</h3>
-        <p className="mt-2 text-sm text-gray-600">
+        <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-slate-100">You&apos;re Registered!</h3>
+        <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">
           Check your email for your confirmation and join link.
         </p>
-        <div className="mt-5 rounded-xl border border-white/70 bg-white/80 px-4 py-3">
-          <p className="text-sm font-semibold text-gray-800">Your session is reserved for:</p>
-          <p className="mt-1 text-sm text-gray-700">
+        <div className="mt-5 rounded-xl border border-white/70 bg-white/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70">
+          <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">Your session is reserved for:</p>
+          <p className="mt-1 text-sm text-gray-700 dark:text-slate-300">
             {sessionDt.toFormat("cccc, LLLL d yyyy, h:mm a ZZZZ")}
           </p>
         </div>
@@ -365,7 +367,7 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
     >
       {allowsSessionSelection ? (
         <div className="flex flex-col gap-2">
-          <Label className="text-gray-700">Select a Session</Label>
+          <Label className="text-gray-700 dark:text-slate-300">Select a Session</Label>
           <Controller
             name="session_id"
             control={control}
@@ -382,7 +384,7 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
                         <span className="flex items-center gap-2">
                           {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
                           {isLive && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
                               <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
@@ -402,14 +404,11 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
         </div>
       ) : autoAssignedSession ? (
         <div
-          className="rounded-xl px-4 py-3"
-          style={{
-            border: `1px solid ${(secondaryColor ?? primaryColor ?? '#059669')}33`,
-            backgroundColor: `${(secondaryColor ?? primaryColor ?? '#059669')}11`,
-          }}
+          className="rounded-xl border px-4 py-3"
+          style={panelTone(secondaryColor ?? primaryColor ?? '#059669')}
         >
-          <p className="text-sm font-semibold text-gray-800">You&apos;ll be registered for the next available session.</p>
-          <p className="mt-1 text-sm text-gray-700">
+          <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">You&apos;ll be registered for the next available session.</p>
+          <p className="mt-1 text-sm text-gray-700 dark:text-slate-300">
             {DateTime.fromISO(autoAssignedSession.scheduled_start, { zone: autoAssignedSession.timezone || "utc" }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
           </p>
         </div>
@@ -418,7 +417,7 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
       {/* First & Last name side-by-side */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <Label htmlFor="first_name" className="text-gray-700">First Name</Label>
+          <Label htmlFor="first_name" className="text-gray-700 dark:text-slate-300">First Name</Label>
           <Input
             id="first_name"
             placeholder="Jane"
@@ -432,7 +431,7 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
           )}
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="last_name" className="text-gray-700">Last Name</Label>
+          <Label htmlFor="last_name" className="text-gray-700 dark:text-slate-300">Last Name</Label>
           <Input
             id="last_name"
             placeholder="Doe"
@@ -449,7 +448,7 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
 
       {/* Email */}
       <div className="flex flex-col gap-1">
-        <Label htmlFor="email" className="text-gray-700">Email Address</Label>
+        <Label htmlFor="email" className="text-gray-700 dark:text-slate-300">Email Address</Label>
         <Input
           id="email"
             type="email"
@@ -466,7 +465,7 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
 
       {/* Phone */}
       <div className="flex flex-col gap-1">
-        <Label htmlFor="phone" className="text-gray-700">Phone</Label>
+        <Label htmlFor="phone" className="text-gray-700 dark:text-slate-300">Phone</Label>
         <Input
           id="phone"
             type="tel"

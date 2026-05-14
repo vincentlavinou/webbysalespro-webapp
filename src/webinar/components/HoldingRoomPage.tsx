@@ -89,8 +89,8 @@ export function HoldingRoomPage({
   return (
     <div>
       {isRedirecting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="flex items-center gap-3 rounded-2xl bg-white/90 px-8 py-6 shadow-xl dark:bg-slate-800/90">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 backdrop-blur-sm">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/60 bg-white/90 px-8 py-6 shadow-xl dark:border-slate-700 dark:bg-slate-800/90">
             <Loader2 className="h-5 w-5 animate-spin text-emerald-600 dark:text-emerald-400" />
             <span className="text-base font-medium text-gray-800 dark:text-slate-200">
               Connecting to session...
@@ -177,7 +177,7 @@ export function HoldingRoomPage({
                   <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
                     You&apos;ll be automatically redirected
                   </p>
-                  <p className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-500">
+                  <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
                     When the session starts, you&apos;ll be taken to the live room. Please don&apos;t close this window.
                   </p>
                 </>
