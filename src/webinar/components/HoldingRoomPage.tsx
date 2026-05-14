@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { DateTime } from 'luxon'
 import { Loader2, Play } from 'lucide-react'
+import { motion, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { useManualWakeLock } from '@/hooks/use-manual-wake-lock'
 import { useAttendeeSession } from '@/attendee-session/hooks/use-attendee-session'
@@ -16,6 +17,9 @@ import { WebinarDetailCard } from '@/webinar/components/WebinarDetailCard'
 import CalendarButton from '@/webinar/components/CalendarButton'
 import BookmarkButton from '@/webinar/components/BookmarkButton'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
+
+const LIVE_REDIRECT_DELAY_MS = 10_000
+const LIVE_REDIRECT_JITTER_MS = 5_000
 
 type HoldingRoomPageProps = {
   loadingTitle: string
@@ -31,12 +35,34 @@ export function HoldingRoomPage({
   const [timeLeft, setTimeLeft] = useState('')
   const [isRedirecting, setIsRedirecting] = useState(false)
   const hasRedirectedRef = useRef(false)
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const promptControls = useAnimation()
 
   const { isActive, request, status } = useManualWakeLock()
   const router = useRouter()
   const { session, webinar, broadcastServiceToken } = useWebinar()
   const { joinUrl } = useAttendeeSession()
   const { markRoom } = useSessionPresence()
+
+  useEffect(() => {
+    if (isActive) return
+
+    const pulse = () => {
+      promptControls.start({
+        opacity: [1, 0.25, 1, 0.25, 1],
+        scale: [1, 1.03, 1, 1.03, 1],
+        transition: { duration: 0.75, ease: 'easeInOut' },
+      })
+    }
+
+    const timers = [
+      setTimeout(pulse, 1200),
+      setTimeout(pulse, 7000),
+      setTimeout(pulse, 15000),
+    ]
+
+    return () => timers.forEach(clearTimeout)
+  }, [isActive, promptControls])
 
   useEffect(() => {
     markRoom(presenceRoom)
@@ -71,7 +97,18 @@ export function HoldingRoomPage({
     if (session.status === WebinarSessionStatus.IN_PROGRESS && broadcastServiceToken?.stream) {
       hasRedirectedRef.current = true
       setIsRedirecting(true)
-      router.replace(`/${session.id}/live?ready=1`)
+      const redirectDelayMs = LIVE_REDIRECT_DELAY_MS + Math.floor(Math.random() * LIVE_REDIRECT_JITTER_MS)
+
+      redirectTimeoutRef.current = setTimeout(() => {
+        router.replace(`/${session.id}/live?ready=1`)
+      }, redirectDelayMs)
+    }
+
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
+        redirectTimeoutRef.current = null
+      }
     }
   }, [broadcastServiceToken, router, session])
 
@@ -119,13 +156,17 @@ export function HoldingRoomPage({
 
             <div className="absolute inset-0 flex flex-col justify-between p-5 sm:p-6">
               <div className="flex items-start justify-between gap-3">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+                {isActive ? (
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+                    </span>
+                    {roomLabel}
                   </span>
-                  {roomLabel}
-                </span>
+                ) : (
+                  <span />
+                )}
               </div>
 
               <div className="flex flex-1 items-center justify-center">
@@ -148,9 +189,9 @@ export function HoldingRoomPage({
 
               <div className="space-y-1 text-center">
                 {!isActive ? (
-                  <p className="text-sm text-white/85">
-                    Press play to keep this page active while you wait for the session to start.
-                  </p>
+                  <motion.p animate={promptControls} className="text-sm font-semibold text-white/90">
+                    Press play
+                  </motion.p>
                 ) : null}
                 {status === 'unsupported' ? (
                   <p className="text-xs text-amber-200/90">
