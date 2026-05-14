@@ -136,121 +136,125 @@ export function HoldingRoomPage({
         </div>
       )}
 
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8">
-        <section className="overflow-hidden rounded-3xl border border-white/60 bg-slate-950 shadow-xl dark:border-slate-700">
-          <div className="relative aspect-video">
-            {thumbnail?.file_url ? (
-              <>
-                <Image
-                  src={thumbnail.file_url}
-                  alt={`${webinar.title} thumbnail`}
-                  fill
-                  priority
-                  className="object-cover blur-md scale-105"
-                />
-                <div className="absolute inset-0 bg-slate-950/45" />
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black" />
-            )}
+      <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-6 px-4 py-8 md:grid-cols-2">
+        <div className="order-2 md:order-1">
+          <WebinarDetailCard
+            webinar={webinar}
+            badge={
+              <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
+                </span>
+                {roomLabel}
+              </span>
+            }
+          />
+        </div>
 
-            <div className="absolute inset-0 flex flex-col justify-between p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-3">
-                {isActive ? (
-                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+        <div className="order-1 space-y-6 md:order-2">
+          <section className="overflow-hidden rounded-3xl border border-white/60 bg-slate-950 shadow-xl dark:border-slate-700">
+            <div className="relative aspect-video">
+              {thumbnail?.file_url ? (
+                <>
+                  <Image
+                    src={thumbnail.file_url}
+                    alt={`${webinar.title} thumbnail`}
+                    fill
+                    priority
+                    className="scale-105 object-cover blur-md"
+                  />
+                  <div className="absolute inset-0 bg-slate-950/45" />
+                </>
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black" />
+              )}
+
+              <div className="absolute inset-0 flex flex-col justify-between p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-3">
+                  {isActive ? (
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+                      </span>
+                      {roomLabel}
                     </span>
-                    {roomLabel}
-                  </span>
-                ) : (
-                  <span />
-                )}
-              </div>
+                  ) : (
+                    <span />
+                  )}
+                </div>
 
-              <div className="flex flex-1 items-center justify-center">
-                {isActive ? (
-                  <p className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
-                    {timeLeft}
-                  </p>
-                ) : (
-                  <Button
-                    type="button"
-                    size="icon"
-                    className="size-18 rounded-full bg-white text-slate-950 shadow-lg hover:bg-emerald-50 sm:size-20"
-                    onClick={() => void request()}
-                    aria-label="Keep screen awake"
-                  >
-                    <Play className="size-8 fill-current sm:size-9" />
-                  </Button>
-                )}
-              </div>
+                <div className="flex flex-1 items-center justify-center">
+                  {isActive ? (
+                    <p className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
+                      {timeLeft}
+                    </p>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="icon"
+                      className="size-18 rounded-full bg-white text-slate-950 shadow-lg hover:bg-emerald-50 sm:size-20"
+                      onClick={() => void request()}
+                      aria-label="Keep screen awake"
+                    >
+                      <Play className="size-8 fill-current sm:size-9" />
+                    </Button>
+                  )}
+                </div>
 
-              <div className="space-y-1 text-center">
-                {!isActive ? (
-                  <motion.p animate={promptControls} className="text-sm font-semibold text-white/90">
-                    Press play
-                  </motion.p>
-                ) : null}
-                {status === 'unsupported' ? (
-                  <p className="text-xs text-amber-200/90">
-                    Keep-awake could not be enabled on this browser.
-                  </p>
-                ) : null}
-                {status === 'error' ? (
-                  <p className="text-xs text-amber-200/90">
-                    Keep-awake was blocked. Keep this tab in the foreground for best results.
-                  </p>
-                ) : null}
+                <div className="space-y-1 text-center">
+                  {!isActive ? (
+                    <motion.p animate={promptControls} className="text-sm font-semibold text-white/90">
+                      Press play
+                    </motion.p>
+                  ) : null}
+                  {status === 'unsupported' ? (
+                    <p className="text-xs text-amber-200/90">
+                      Keep-awake could not be enabled on this browser.
+                    </p>
+                  ) : null}
+                  {status === 'error' ? (
+                    <p className="text-xs text-amber-200/90">
+                      Keep-awake was blocked. Keep this tab in the foreground for best results.
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="rounded-2xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-800/80">
-          <div className="space-y-5">
-            <SessionDetailCard
-              formattedDate={formattedDate}
-              timezone={timezone}
-              clockContent={
-                <>
-                  <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                    You&apos;ll be automatically redirected
-                  </p>
-                  <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
-                    When the session starts, you&apos;ll be taken to the live room. Please don&apos;t close this window.
-                  </p>
-                </>
-              }
-            />
+          <section className="rounded-2xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-800/80">
+            <div className="space-y-5">
+              <SessionDetailCard
+                formattedDate={formattedDate}
+                timezone={timezone}
+                clockContent={
+                  <>
+                    <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                      You&apos;ll be automatically redirected
+                    </p>
+                    <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
+                      When the session starts, you&apos;ll be taken to the live room. Please don&apos;t close this window.
+                    </p>
+                  </>
+                }
+              />
 
-            <hr className="border-gray-100 dark:border-slate-700" />
+              <hr className="border-gray-100 dark:border-slate-700" />
 
-            <CalendarButton
-              title={webinar.title}
-              description={webinar.description ?? ''}
-              startIso={session.scheduled_start}
-              timezone={session.timezone || 'utc'}
-              uid={session.id}
-              url={joinUrl}
-            />
-            <BookmarkButton livePath={joinUrl} />
-          </div>
-        </section>
-
-        <WebinarDetailCard
-          webinar={webinar}
-          badge={
-            <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
-              </span>
-              {roomLabel}
-            </span>
-          }
-        />
+              <CalendarButton
+                title={webinar.title}
+                description={webinar.description ?? ''}
+                startIso={session.scheduled_start}
+                timezone={session.timezone || 'utc'}
+                uid={session.id}
+                url={joinUrl}
+              />
+              <BookmarkButton livePath={joinUrl} />
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   )
