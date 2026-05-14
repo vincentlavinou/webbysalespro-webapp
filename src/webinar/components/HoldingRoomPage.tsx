@@ -96,10 +96,10 @@ export function HoldingRoomPage({
 
     if (session.status === WebinarSessionStatus.IN_PROGRESS && broadcastServiceToken?.stream) {
       hasRedirectedRef.current = true
-      setIsRedirecting(true)
       const redirectDelayMs = LIVE_REDIRECT_DELAY_MS + Math.floor(Math.random() * LIVE_REDIRECT_JITTER_MS)
 
       redirectTimeoutRef.current = setTimeout(() => {
+        setIsRedirecting(true)
         router.replace(`/${session.id}/live?ready=1`)
       }, redirectDelayMs)
     }
