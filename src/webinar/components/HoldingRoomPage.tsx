@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { DateTime } from 'luxon'
-import { Loader2, Pause, Play } from 'lucide-react'
+import { Loader2, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useManualWakeLock } from '@/hooks/use-manual-wake-lock'
 import { useAttendeeSession } from '@/attendee-session/hooks/use-attendee-session'
@@ -32,7 +32,7 @@ export function HoldingRoomPage({
   const [isRedirecting, setIsRedirecting] = useState(false)
   const hasRedirectedRef = useRef(false)
 
-  const { isActive, method, release, request, status } = useManualWakeLock()
+  const { isActive, request, status } = useManualWakeLock()
   const router = useRouter()
   const { session, webinar, broadcastServiceToken } = useWebinar()
   const { joinUrl } = useAttendeeSession()
@@ -126,60 +126,42 @@ export function HoldingRoomPage({
                   </span>
                   {roomLabel}
                 </span>
-
-                {isActive ? (
-                  <div className="rounded-full border border-emerald-400/20 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 backdrop-blur-sm">
-                    {method === 'video' ? 'iPhone/iPad keep-awake active' : 'Screen stay-awake active'}
-                  </div>
-                ) : null}
               </div>
 
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
-                    Session starts in
-                  </p>
-                  <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-                    {isActive ? timeLeft : '--:--'}
-                  </p>
-                </div>
-
+              <div className="flex flex-1 items-center justify-center">
                 {isActive ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="rounded-full bg-white/12 px-5 text-white backdrop-blur-sm hover:bg-white/20"
-                    onClick={() => void release()}
-                  >
-                    <Pause className="size-4" />
-                    Pause keep-awake
-                  </Button>
+                  <p className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
+                    {timeLeft}
+                  </p>
                 ) : (
                   <Button
                     type="button"
-                    className="h-16 rounded-full bg-white px-7 text-base font-semibold text-slate-950 shadow-lg hover:bg-emerald-50"
+                    size="icon"
+                    className="size-18 rounded-full bg-white text-slate-950 shadow-lg hover:bg-emerald-50 sm:size-20"
                     onClick={() => void request()}
+                    aria-label="Keep screen awake"
                   >
-                    <Play className="size-5 fill-current" />
-                    Keep screen awake
+                    <Play className="size-8 fill-current sm:size-9" />
                   </Button>
                 )}
+              </div>
 
-                <div className="max-w-xl space-y-1">
+              <div className="space-y-1 text-center">
+                {!isActive ? (
                   <p className="text-sm text-white/85">
                     Press play to keep this page active while you wait for the session to start.
                   </p>
-                  {status === 'unsupported' ? (
-                    <p className="text-xs text-amber-200/90">
-                      Keep-awake could not be enabled on this browser.
-                    </p>
-                  ) : null}
-                  {status === 'error' ? (
-                    <p className="text-xs text-amber-200/90">
-                      Keep-awake was blocked. Keep this tab in the foreground for best results.
-                    </p>
-                  ) : null}
-                </div>
+                ) : null}
+                {status === 'unsupported' ? (
+                  <p className="text-xs text-amber-200/90">
+                    Keep-awake could not be enabled on this browser.
+                  </p>
+                ) : null}
+                {status === 'error' ? (
+                  <p className="text-xs text-amber-200/90">
+                    Keep-awake was blocked. Keep this tab in the foreground for best results.
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
