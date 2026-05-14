@@ -3,10 +3,8 @@
 
 import React, {
   forwardRef,
-  useEffect,
   useImperativeHandle,
   useRef,
-  useState,
 } from "react";
 import { PlayerState } from "amazon-ivs-player";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
@@ -91,19 +89,6 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
     const showUnmuteNudge = mode === "playing-muted" && isMuted;
     const canShowFullscreenControl =
       mode === "playing" || mode === "playing-muted" || isBuffering;
-
-    // While waiting on the stream to become loadable, swap the spinner copy
-    // after a short delay so the user knows the system isn't stuck.
-    const isWaiting = mode === "waiting";
-    const [hostNotLiveYet, setHostNotLiveYet] = useState(false);
-    useEffect(() => {
-      if (!isWaiting) {
-        setHostNotLiveYet(false);
-        return;
-      }
-      const timer = window.setTimeout(() => setHostNotLiveYet(true), 6000);
-      return () => window.clearTimeout(timer);
-    }, [isWaiting]);
     const {
       isVisible: isFullscreenControlVisible,
       toggleControls,
@@ -142,15 +127,13 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
             />
           </div>
 
-          {(mode === "idle" || isWaiting || isBuffering) && (
+          {(mode === "idle" || isBuffering) && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm">
               <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
               <p className="text-xs font-medium uppercase tracking-wide text-white/80">
                 {isBuffering
                   ? "Connecting to live webinar…"
-                  : isWaiting && hostNotLiveYet
-                    ? "Waiting for the host to go live…"
-                    : "Preparing live webinar…"}
+                  : "Preparing live webinar…"}
               </p>
             </div>
           )}

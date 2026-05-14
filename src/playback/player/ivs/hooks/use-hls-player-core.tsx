@@ -172,9 +172,6 @@ export function useHlsPlayerCore({
   const lastForcedReloadRef = useRef<number>(0);
   const manualPlayInFlightRef = useRef(false);
   const hasPlayedRef = useRef(false);
-  // Tracks whether the current source's manifest has been parsed at least
-  // once. Used by requestGate to decide between "gate" and "waiting".
-  const hasManifestRef = useRef(false);
 
   const [mode, setMode] = useState<PlayerMode>("idle");
   const [stats, setStats] = useState<StatsState>({});
@@ -195,17 +192,6 @@ export function useHlsPlayerCore({
     const d = ms * JITTER;
     return Math.round(ms + (Math.random() * 2 - 1) * d);
   };
-
-  // Show the gate ("tap to play") only when the stream is actually playable;
-  // otherwise show "waiting" so a tap that would no-op is never offered. The
-  // MANIFEST_PARSED handler promotes "waiting" → "gate" once the stream loads.
-  const requestGate = useCallback(() => {
-    if (hasManifestRef.current) {
-      setMode("gate");
-      return;
-    }
-    setMode("waiting");
-  }, []);
 
   const updateStats = useCallback(() => {
     const hls = hlsRef.current;
@@ -252,7 +238,7 @@ export function useHlsPlayerCore({
           void video.play().catch((error) => {
             const message = getErrorMessage(error, "Browser blocked playback.");
             setLastErrorMessage(message);
-            requestGate();
+            setMode("gate");
           });
         }
         backoffRef.current = START_BACKOFF;
@@ -262,7 +248,7 @@ export function useHlsPlayerCore({
         scheduleRetry();
       }
     }, delay);
-  }, [attachSource, autoPlay, videoRef, requestGate]);
+  }, [attachSource, autoPlay, videoRef]);
 
   const restoreToLive = useCallback(async (options?: { forceReload?: boolean; gracePeriodMs?: number }) => {
     const hls = hlsRef.current;
@@ -286,7 +272,7 @@ export function useHlsPlayerCore({
         const message = getErrorMessage(error, "Failed to reload the playback URL.");
         setLastErrorMessage(message);
         scheduleRetry();
-        requestGate();
+        setMode("gate");
         return;
       }
 
@@ -298,7 +284,7 @@ export function useHlsPlayerCore({
       } catch (error) {
         const message = getErrorMessage(error, "Browser blocked playback.");
         setLastErrorMessage(message);
-        requestGate();
+        setMode("gate");
       }
       return;
     }
@@ -322,9 +308,9 @@ export function useHlsPlayerCore({
     } catch (error) {
       const message = getErrorMessage(error, "Browser blocked playback.");
       setLastErrorMessage(message);
-      requestGate();
+      setMode("gate");
     }
-  }, [attachSource, clearRetry, scheduleRetry, videoRef, requestGate]);
+  }, [attachSource, clearRetry, scheduleRetry, videoRef]);
 
   const handleManualPlay = useCallback(async () => {
     const video = videoRef.current;
@@ -345,11 +331,11 @@ export function useHlsPlayerCore({
     } catch (error) {
       const message = getErrorMessage(error, "Browser blocked playback.");
       setLastErrorMessage(message);
-      requestGate();
+      setMode("gate");
     } finally {
       manualPlayInFlightRef.current = false;
     }
-  }, [attachSource, clearRetry, videoRef, requestGate]);
+  }, [attachSource, clearRetry, videoRef]);
 
   const tapToUnmute = useCallback(() => {
     const video = videoRef.current;
@@ -398,7 +384,6 @@ export function useHlsPlayerCore({
     disposedRef.current = false;
     hasPlayedRef.current = false;
     manualPlayInFlightRef.current = false;
-    hasManifestRef.current = false;
     setMode("idle");
     setIsMuted(false);
     setPlayerState("INIT");
@@ -438,22 +423,16 @@ export function useHlsPlayerCore({
         void video.play().catch((error) => {
           const message = getErrorMessage(error, "Browser blocked playback.");
           setLastErrorMessage(message);
-          requestGate();
+          setMode("gate");
         });
       } else {
-        // No autoplay: wait for the manifest to parse before offering the gate
-        // so the user's first tap actually starts playback.
-        requestGate();
+        setMode("gate");
       }
     };
 
     const onManifestParsed = () => {
-      hasManifestRef.current = true;
       setPlayerState("READY");
       updateStats();
-      // Stream is loadable now — promote a pending waiting state to gate so
-      // the user is offered a tap that will actually start playback.
-      setMode((current) => (current === "waiting" ? "gate" : current));
     };
 
     const onLevelUpdated = () => {
@@ -539,7 +518,7 @@ export function useHlsPlayerCore({
           scheduleRetry();
           break;
         default:
-          requestGate();
+          setMode("gate");
       }
     };
 
@@ -571,7 +550,7 @@ export function useHlsPlayerCore({
       hls.destroy();
       hlsRef.current = null;
     };
-  }, [attachSource, autoPlay, clearRetry, onEnded, onPlaying, onTextMetadata, scheduleRetry, updateStats, videoRef, requestGate]);
+  }, [attachSource, autoPlay, clearRetry, onEnded, onPlaying, onTextMetadata, scheduleRetry, updateStats, videoRef]);
 
   return {
     playerRef: hlsRef,

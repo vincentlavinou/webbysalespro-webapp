@@ -16,7 +16,6 @@ import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
 // IVS internal state (BUFFERING, IDLE, etc.) is kept separately for latency/stats only.
 export type PlayerMode =
   | "idle"        // initialising — show loading spinner
-  | "waiting"     // load attempted, but stream isn't playable yet (host not live, manifest not ready)
   | "gate"        // ready, waiting for user tap / click
   | "playing"     // live and playing
   | "playing-muted" // live and playing, but the media element is muted
@@ -100,27 +99,6 @@ export function useIvsPlayerCore({
     return Math.round(ms + (Math.random() * 2 - 1) * d);
   };
 
-  // Show the gate ("tap to play") only when the stream is actually playable;
-  // otherwise show "waiting" so a tap that would no-op is never offered. The
-  // READY event handler promotes "waiting" → "gate" once the manifest loads.
-  const requestGate = useCallback(() => {
-    const p = playerRef.current;
-    if (p) {
-      try {
-        const s = p.getState();
-        if (
-          s === IvsPlayerState.READY ||
-          s === IvsPlayerState.PLAYING ||
-          s === IvsPlayerState.BUFFERING
-        ) {
-          setMode("gate");
-          return;
-        }
-      } catch {}
-    }
-    setMode("waiting");
-  }, []);
-
   const scheduleRetry = useCallback(() => {
     if (disposedRef.current) return;
     if (retryTimerRef.current) return;
@@ -142,7 +120,7 @@ export function useIvsPlayerCore({
             const message = getErrorMessage(error, "Browser blocked playback.");
             console.warn("IVS autoplay failed:", message, error);
             setLastErrorMessage(message);
-            requestGate();
+            setMode("gate");
           });
         }
         backoffRef.current = START_BACKOFF;
@@ -153,7 +131,7 @@ export function useIvsPlayerCore({
         scheduleRetry();
       }
     }, delay);
-  }, [autoPlay, src, videoRef, requestGate]);
+  }, [autoPlay, src, videoRef]);
 
   // ─── Stats ────────────────────────────────────────────────────────────────
 
@@ -195,7 +173,7 @@ export function useIvsPlayerCore({
         console.warn("IVS force reload failed:", message, error);
         setLastErrorMessage(message);
         scheduleRetry();
-        requestGate();
+        setMode("gate");
         return;
       }
       try {
@@ -205,7 +183,7 @@ export function useIvsPlayerCore({
         const message = getErrorMessage(error, "Browser blocked playback.");
         console.warn("IVS force reload play failed:", message, error);
         setLastErrorMessage(message);
-        requestGate();
+        setMode("gate");
       }
       return;
     }
@@ -224,7 +202,7 @@ export function useIvsPlayerCore({
           const message = getErrorMessage(error, "Browser blocked playback.");
           console.warn("IVS restore play failed from PLAYING:", message, error);
           setLastErrorMessage(message);
-          requestGate();
+          setMode("gate");
         }
       }
       return;
@@ -265,7 +243,7 @@ export function useIvsPlayerCore({
           setLastErrorMessage(message);
           // IVS recovered but video element needs a user gesture — show gate,
           // don't reload the healthy stream.
-          requestGate();
+          setMode("gate");
           return;
         }
       }
@@ -282,7 +260,7 @@ export function useIvsPlayerCore({
       console.warn("IVS restore load failed:", message, error);
       setLastErrorMessage(message);
       scheduleRetry();
-      requestGate();
+      setMode("gate");
       return;
     }
     try {
@@ -293,9 +271,9 @@ export function useIvsPlayerCore({
       const message = getErrorMessage(error, "Browser blocked playback.");
       console.warn("IVS restore play failed:", message, error);
       setLastErrorMessage(message);
-      requestGate();
+      setMode("gate");
     }
-  }, [src, videoRef, clearRetry, scheduleRetry, requestGate]);
+  }, [src, videoRef, clearRetry, scheduleRetry]);
 
   // ─── Manual play (user tap / click) ──────────────────────────────────────
 
@@ -319,7 +297,7 @@ export function useIvsPlayerCore({
       console.warn("IVS manual load failed:", message, error);
       setLastErrorMessage(message);
       scheduleRetry();
-      requestGate();
+      setMode("gate");
       manualPlayInFlightRef.current = false;
       return;
     }
@@ -332,11 +310,11 @@ export function useIvsPlayerCore({
       const message = getErrorMessage(error, "Browser blocked playback.");
       console.warn("IVS manual play failed:", message, error);
       setLastErrorMessage(message);
-      requestGate();
+      setMode("gate");
     } finally {
       manualPlayInFlightRef.current = false;
     }
-  }, [videoRef, src, clearRetry, scheduleRetry, requestGate]);
+  }, [videoRef, src, clearRetry, scheduleRetry]);
 
   // ─── Tap to unmute ────────────────────────────────────────────────────────
 
@@ -428,12 +406,7 @@ export function useIvsPlayerCore({
       p.setLiveLowLatencyEnabled(true);
       p.setRebufferToLive(true);
 
-      const onReady = () => {
-        updateStats();
-        // Manifest is loadable now — promote a pending waiting state to gate
-        // so the user is offered a tap that will actually start playback.
-        setMode((current) => (current === "waiting" ? "gate" : current));
-      };
+      const onReady = () => updateStats();
 
       const onPlayingInternal = () => {
         backoffRef.current = START_BACKOFF;
@@ -497,13 +470,12 @@ export function useIvsPlayerCore({
           const message = getErrorMessage(error, "Browser blocked playback.");
           console.warn("IVS autoplay play failed:", message, error);
           setLastErrorMessage(message);
-          requestGate();
+          setMode("gate");
         }
       } else {
-        // iOS / Android: skip autoplay entirely — show tap-to-play once the
-        // stream is loadable so the user's first tap is in a clean gesture
-        // context AND actually starts playback.
-        requestGate();
+        // iOS / Android: skip autoplay entirely — show tap-to-play immediately
+        // so the user's first tap is in a clean gesture context for audio unlock.
+        setMode("gate");
       }
 
       cleanup = () => {
@@ -524,7 +496,7 @@ export function useIvsPlayerCore({
       playerRef.current = null;
       cleanup?.();
     };
-  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry, requestGate]);
+  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
 
   return {
     playerRef,
