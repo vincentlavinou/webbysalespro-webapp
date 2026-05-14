@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { DateTime } from 'luxon'
-import { Loader2, Play } from 'lucide-react'
+import { Hand, Loader2 } from 'lucide-react'
 import { motion, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { useManualWakeLock } from '@/hooks/use-manual-wake-lock'
@@ -198,9 +198,9 @@ export function HoldingRoomPage({
                       size="icon"
                       className="size-18 rounded-full bg-white text-slate-950 shadow-lg hover:bg-emerald-50 sm:size-20"
                       onClick={() => void request()}
-                      aria-label="Keep screen awake"
+                      aria-label="Tap to reveal the countdown"
                     >
-                      <Play className="size-8 fill-current sm:size-9" />
+                      <Hand className="size-8 sm:size-9" />
                     </Button>
                   )}
                 </div>
@@ -208,7 +208,7 @@ export function HoldingRoomPage({
                 <div className="space-y-1 text-center">
                   {!isActive ? (
                     <motion.p animate={promptControls} className="text-sm font-semibold text-white/90">
-                      Press play
+                      Tap to see...
                     </motion.p>
                   ) : null}
                   {status === 'unsupported' ? (
