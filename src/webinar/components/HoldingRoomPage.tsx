@@ -19,7 +19,6 @@ import BookmarkButton from '@/webinar/components/BookmarkButton'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 
 const LIVE_REDIRECT_DELAY_MS = 10_000
-const LIVE_REDIRECT_JITTER_MS = 5_000
 
 type HoldingRoomPageProps = {
   loadingTitle: string
@@ -92,17 +91,20 @@ export function HoldingRoomPage({
   }, [session])
 
   useEffect(() => {
-    if (!session || hasRedirectedRef.current) return
+    const sessionId = session?.id
+    const canRedirectToLive =
+      session?.status === WebinarSessionStatus.IN_PROGRESS && !!broadcastServiceToken?.stream
 
-    if (session.status === WebinarSessionStatus.IN_PROGRESS && broadcastServiceToken?.stream) {
-      hasRedirectedRef.current = true
-      const redirectDelayMs = LIVE_REDIRECT_DELAY_MS + Math.floor(Math.random() * LIVE_REDIRECT_JITTER_MS)
-
-      redirectTimeoutRef.current = setTimeout(() => {
-        setIsRedirecting(true)
-        router.replace(`/${session.id}/live?ready=1`)
-      }, redirectDelayMs)
+    if (!sessionId || hasRedirectedRef.current || !canRedirectToLive || redirectTimeoutRef.current) {
+      return
     }
+
+    redirectTimeoutRef.current = setTimeout(() => {
+      hasRedirectedRef.current = true
+      redirectTimeoutRef.current = null
+      setIsRedirecting(true)
+      router.replace(`/${sessionId}/live?ready=1`)
+    }, LIVE_REDIRECT_DELAY_MS)
 
     return () => {
       if (redirectTimeoutRef.current) {
@@ -110,7 +112,7 @@ export function HoldingRoomPage({
         redirectTimeoutRef.current = null
       }
     }
-  }, [broadcastServiceToken, router, session])
+  }, [broadcastServiceToken?.stream, router, session?.id, session?.status])
 
   if (!session || !webinar) {
     return <WaitingRoomShimmer title={loadingTitle} />
