@@ -8,13 +8,17 @@ import {
   useRef,
 } from "react";
 import { WebinarMainLayoutLoading } from "@/broadcast/components/views/WebinarMainLayoutLoading";
+import { getSessionAction } from "@/webinar/service/action";
+import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { usePersistentStagePlayback } from "@/playback/persistent/use-persistent-stage-playback";
 import { FullscreenOverlayButton } from "@/playback/player/ivs/FullscreenOverlayButton";
 import { useTransientFullscreenControl } from "@/playback/player/ivs/hooks/use-transient-fullscreen-control";
 import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
 import { useFullscreen } from "../player/ivs/hooks/use-fullscreen";
+import { useRouter } from "next/navigation";
 
 type AttendeeStageViewerProps = {
+  sessionId: string;
   onPlaybackStatusChange?: (status: PlaybackStatus) => void;
 };
 
@@ -54,9 +58,11 @@ function StageParticipantFallback({
 export const AttendeeStageViewer = forwardRef<
   AttendeeStageViewerHandle,
   AttendeeStageViewerProps
->(function AttendeeStageViewer({ onPlaybackStatusChange }, ref) {
+>(function AttendeeStageViewer({ sessionId, onPlaybackStatusChange }, ref) {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const playerSurfaceRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const hasSeenLiveStageRef = useRef(false);
 
   const {
     videoRef,
@@ -134,6 +140,40 @@ export const AttendeeStageViewer = forwardRef<
     mainParticipantHasActiveVideo,
     onPlaybackStatusChange,
   ]);
+
+  useEffect(() => {
+    if (mainParticipantHasActiveVideo) {
+      hasSeenLiveStageRef.current = true;
+      return;
+    }
+
+    const stageLooksInactive = !isConnected || !mainParticipant;
+    if (!hasSeenLiveStageRef.current || !stageLooksInactive) return;
+
+    let cancelled = false;
+
+    const checkForCompletedSession = async () => {
+      const result = await getSessionAction({ id: sessionId });
+      if (cancelled || !result?.data) return;
+
+      if (
+        result.data.status === WebinarSessionStatus.COMPLETED ||
+        result.data.status === WebinarSessionStatus.CANCELED
+      ) {
+        router.replace(`/${sessionId}/completed`);
+      }
+    };
+
+    void checkForCompletedSession();
+    const intervalId = window.setInterval(() => {
+      void checkForCompletedSession();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isConnected, mainParticipant, mainParticipantHasActiveVideo, router, sessionId]);
 
   const {
     isVisible: isFullscreenControlVisible,

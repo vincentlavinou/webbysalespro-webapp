@@ -243,6 +243,7 @@ export function AttendeeMobileExperience({
       ) : realtimeStream ? (
         <AttendeeStageViewer
           ref={playerRef}
+          sessionId={playbackToken.session.id}
           onPlaybackStatusChange={setStatus}
         />
       ) : null}
