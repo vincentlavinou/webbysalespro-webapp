@@ -9,6 +9,7 @@ import ShareButton from "@/webinar/components/ShareButton";
 import { SessionDetailCard } from "@/webinar/components/SessionDetailCard";
 import { WebinarDetailCard } from "@/webinar/components/WebinarDetailCard";
 import { resolveJoin } from "@/attendee-session/service/resolve-join";
+import { sanitizeJoinToken, sanitizeWebinarId } from "@/webinar/service/join-params";
 
 interface RegistrationSuccessProps {
   params: Promise<{ id: string }>;
@@ -22,7 +23,9 @@ async function resolveEffectiveSession(rawJoinToken: string) {
 
 export default async function RegistrationSuccessPage(props: RegistrationSuccessProps) {
   const webinarId = (await props.params).id;
-  const { session_id: sessionId, t: rawJoinToken, webinar_id } = await props.searchParams;
+  const { session_id: sessionId, t: rawJoinToken, webinar_id: rawWebinarId } = await props.searchParams;
+  const joinToken = sanitizeJoinToken(rawJoinToken);
+  const webinarIdFromSearch = sanitizeWebinarId(rawWebinarId);
 
   const webinar = await getWebinar(webinarId, { fresh: true });
   if (!isWebinarPayload(webinar)) {
@@ -33,7 +36,7 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
   const sessionFromWebinar = sessionId
     ? sessions.find((s) => s.id === sessionId)
     : undefined;
-  const session = sessionFromWebinar ?? (rawJoinToken ? await resolveEffectiveSession(rawJoinToken) : null);
+  const session = sessionFromWebinar ?? (joinToken ? await resolveEffectiveSession(joinToken) : null);
 
   if (!session) {
     notFound();
@@ -44,9 +47,9 @@ export default async function RegistrationSuccessPage(props: RegistrationSuccess
   const timezone = sessionDt.offsetNameLong ?? session.timezone ?? sessionDt.zoneName;
 
   // Build the join path server-side — never constructed client-side
-  const effectiveWebinarId = webinar_id ?? webinarId;
-  const joinPath = rawJoinToken
-    ? `/join/live?t=${encodeURIComponent(rawJoinToken)}&webinar_id=${effectiveWebinarId}`
+  const effectiveWebinarId = webinarIdFromSearch ?? webinarId;
+  const joinPath = joinToken
+    ? `/join/live?t=${encodeURIComponent(joinToken)}&webinar_id=${encodeURIComponent(effectiveWebinarId)}`
     : undefined;
 
   return (

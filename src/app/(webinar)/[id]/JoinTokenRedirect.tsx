@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 import WaitingRoomShimmer from '@/webinar/components/WaitingRoomShimmer'
 import { getPublicWebinarIdFromSessionAction } from '@/webinar/service/action'
+import { sanitizeJoinToken, sanitizeWebinarId } from '@/webinar/service/join-params'
 import { webinarAppUrl } from '@/webinar/service'
 
 /**
@@ -36,8 +37,8 @@ export function JoinTokenRedirect({ sessionId }: { sessionId: string }) {
         hasStartedRef.current = true
 
         const params = new URLSearchParams(window.location.search)
-        const t = params.get('t')
-        const webinarId = params.get('webinar_id')
+        const t = sanitizeJoinToken(params.get('t'))
+        const webinarId = sanitizeWebinarId(params.get('webinar_id'))
 
         if (t && webinarId) {
             window.location.replace(
