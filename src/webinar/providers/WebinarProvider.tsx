@@ -12,7 +12,7 @@ import { createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
 import { BroadcastServiceToken } from "@/broadcast/service/type";
 import { onPlaybackEnded } from "@/emitter/playback";
 import { WebinarSessionStatus } from "../service/enum";
-import { useEventSource } from "@/sse";
+import { useRealtimeChannel } from "@/realtime";
 import { getSessionAction } from "../service/action";
 import { useAction } from "next-safe-action/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";
@@ -170,16 +170,16 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
         });
     }, [sessionId, router]);
 
-    // ---- SSE event handlers (webinar-specific) ----
+    // ---- Realtime event handlers (webinar-specific) ----
     const handleEventUpdateSession = useCallback(
-        (event: MessageEvent) => {
-            try {
-                const data = JSON.parse(event.data) as { status: WebinarSessionStatus };
-                handleUpdateSession({ ...(session || {}), status: data.status } as SeriesSession)
-                if (data.status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken()
-            } catch (e) {
-                console.error("[SSE] Parse error (session:update)", e, event.data);
+        (data: unknown) => {
+            const status = (data as { status?: WebinarSessionStatus } | null)?.status;
+            if (!status) {
+                console.error("[Realtime] missing status on session:update", data);
+                return;
             }
+            handleUpdateSession({ ...(session || {}), status } as SeriesSession);
+            if (status === WebinarSessionStatus.IN_PROGRESS) regenerateBroadcastToken();
         },
         [session, handleUpdateSession, regenerateBroadcastToken]
     );
@@ -203,10 +203,8 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
         },
     });
 
-    // ---- Build SSE URL (generic for hook) ----
-    // NOTE: EventSource does not support custom headers, so auth is passed as
-    // ?token= query param here. The backend accepts Bearer on all v1 endpoints
-    // but EventSource is the one caller that can't use the header form.
+    // ---- Build SSE fallback URL ----
+    // EventSource cannot send custom headers, so auth is passed via ?token=.
     const buildSseUrl = useCallback(
         (lastEventId: string | null) => {
             if (!broadcastServiceToken) return "";
@@ -223,28 +221,26 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
         [broadcastServiceToken, sessionId, attendeeToken]
     );
 
-    const sseEnabled =
+    const realtimeEnabled =
         !disableSse &&
         !!attendeeToken &&
         !!broadcastServiceToken &&
         mountedRef.current &&
         session?.status !== WebinarSessionStatus.COMPLETED;
 
-    // ---- Use generic SSE hook ----
-    const { } = useEventSource({
-        enabled: sseEnabled,
-        buildUrl: buildSseUrl,
+    useRealtimeChannel({
+        enabled: realtimeEnabled,
+        sessionId: broadcastServiceToken?.session?.id || sessionId,
+        attendeeToken,
+        buildSseUrl,
         eventHandlers: {
-            "webinar:session:update": handleEventUpdateSession
-        },
-        onMessage: () => {
-            // no-op, hook already counts this as activity
+            "webinar:session:update": handleEventUpdateSession,
         },
         onOpen: async () => {
             await getSession({ id: sessionId })
         },
-        onError: (err: Event) => {
-            console.error("[SSE] Error in WebinarProvider", err);
+        onError: (err) => {
+            console.error("[Realtime] Error in WebinarProvider", err);
         },
         onTokenExpired: refreshJoinToken,
         heartbeatTimeoutMs: HEARTBEAT_TIMEOUT_MS,
