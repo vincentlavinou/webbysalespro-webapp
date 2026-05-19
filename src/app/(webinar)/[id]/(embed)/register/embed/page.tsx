@@ -1,10 +1,10 @@
-import Script from 'next/script'
 import { notFound } from 'next/navigation'
 import { getWebinar, getRegistrationEmbedConfig } from '@/webinar/service/action'
 import { isWebinarPayload, allowsManualSessionSelection } from '@/webinar/service/guards'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { DefaultRegistrationForm } from '../../../(registration)/register/form'
 import { NoAvailableSessionsMessage } from '@/webinar/components/NoAvailableSessionsMessage'
+import { EmbedHeaderScripts } from '@/webinar/lib/embed-header-scripts'
 
 interface EmbedRegistrationPageProps {
   params: Promise<{ id: string }>
@@ -36,13 +36,7 @@ export default async function EmbedRegistrationPage({ params, searchParams }: Em
 
   return (
     <>
-      {headerScripts ? (
-        <Script
-          id="embed-header-scripts"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{ __html: headerScripts }}
-        />
-      ) : null}
+      {headerScripts ? <EmbedHeaderScripts value={headerScripts} /> : null}
 
       <div className="p-4" style={bgColor ? { backgroundColor: bgColor } : undefined}>
         <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-6">
