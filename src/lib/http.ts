@@ -1,5 +1,11 @@
 // http.ts
-import { ApiError, NotFoundError, UnauthorizedError, safeDecodeErrorPayload } from "./error";
+import {
+  ApiError,
+  NotFoundError,
+  UnauthorizedError,
+  fallbackErrorMessage,
+  safeDecodeErrorPayload,
+} from "./error";
 
 export async function handleStatus(response: Response): Promise<Response> {
   if (response.ok) return response;
@@ -18,7 +24,6 @@ export async function handleStatus(response: Response): Promise<Response> {
     throw new NotFoundError();
   }
 
-  // 400, 409, 422, 429, 5xx — build a rich ApiError from the parsed body
   if (decoded && payload) {
     throw new ApiError({
       message: payload.detail,
@@ -29,11 +34,11 @@ export async function handleStatus(response: Response): Promise<Response> {
     });
   }
 
-  const text = await response.clone().text().catch(() => "");
+  const message = await fallbackErrorMessage(response);
   throw new ApiError({
-    message: text?.trim() || response.statusText || `Request failed with status ${response.status}`,
+    message,
     status: response.status,
     url: response.url,
-    payload: { detail: text || "unknown error", code: "CLT-001" },
+    payload: { detail: message, code: "CLT-001" },
   });
 }

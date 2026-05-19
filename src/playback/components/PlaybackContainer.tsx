@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
 import { useWebinar } from "@/webinar/hooks";
@@ -14,6 +15,95 @@ import { PlaybackClient } from "../client/PlaybackClient";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 
 const AUTH_ERROR_CODES = new Set(["ATD-001", "unauthorized"]);
+
+function hasNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeStream(
+  stream: AttendeeBroadcastServiceToken["stream"],
+  fallbackRegion: string,
+): AttendeeBroadcastServiceToken["stream"] {
+  if (!stream || typeof stream !== "object") {
+    return undefined;
+  }
+
+  const region = hasNonEmptyString(stream.region) ? stream.region : fallbackRegion;
+
+  if (
+    stream.kind === "channel" &&
+    hasNonEmptyString(stream.config?.playback_url)
+  ) {
+    return {
+      kind: "channel",
+      region,
+      config: {
+        channel_arn: stream.config.channel_arn,
+        playback_url: stream.config.playback_url,
+      },
+    };
+  }
+
+  if (
+    stream.kind === "realtime" &&
+    hasNonEmptyString(stream.config?.stage_arn) &&
+    hasNonEmptyString(stream.config?.participant_token)
+  ) {
+    return {
+      kind: "realtime",
+      region,
+      config: {
+        stage_arn: stream.config.stage_arn,
+        participant_token: stream.config.participant_token,
+      },
+    };
+  }
+
+  return undefined;
+}
+
+function normalizePlaybackToken(
+  token: AttendeeBroadcastServiceToken | null | undefined,
+  fallbackTitle: string,
+): AttendeeBroadcastServiceToken | null {
+  if (!token) {
+    return null;
+  }
+
+  if (
+    !hasNonEmptyString(token.user_id) ||
+    !hasNonEmptyString(token.registrant_id) ||
+    !hasNonEmptyString(token.attendance_id) ||
+    !token.session ||
+    !hasNonEmptyString(token.session.id) ||
+    !token.webinar
+  ) {
+    return null;
+  }
+
+  const region = hasNonEmptyString(token.region)
+    ? token.region
+    : hasNonEmptyString(token.stream?.region)
+      ? token.stream.region
+      : "us-east-1";
+
+  return {
+    ...token,
+    region,
+    stream: normalizeStream(token.stream, region),
+    webinar: {
+      ...token.webinar,
+      title: hasNonEmptyString(token.webinar.title)
+        ? token.webinar.title
+        : fallbackTitle,
+      media: Array.isArray(token.webinar.media) ? token.webinar.media : [],
+      presenters: Array.isArray(token.webinar.presenters)
+        ? token.webinar.presenters
+        : [],
+      offers: Array.isArray(token.webinar.offers) ? token.webinar.offers : [],
+    },
+  };
+}
 
 type Props = {
   sessionId: string;
@@ -79,7 +169,28 @@ export function PlaybackContainer({
         return;
       }
 
-      setPlaybackToken(result.data);
+      const normalizedToken = normalizePlaybackToken(result.data, webinarTitle);
+
+      if (!normalizedToken) {
+        const raw = result.data as Partial<AttendeeBroadcastServiceToken> | null | undefined;
+        Sentry.captureMessage("malformed attendee token payload", {
+          level: "error",
+          tags: { area: "playback-bootstrap" },
+          extra: {
+            sessionId,
+            tokenKeys: raw && typeof raw === "object" ? Object.keys(raw) : [],
+            hasStream: Boolean(raw?.stream),
+            hasWebinar: Boolean(raw?.webinar),
+            streamKind: raw?.stream?.kind,
+          },
+        });
+        setPlaybackToken(null);
+        setBootstrapError("Unable to join live stream.");
+        notifyErrorUiMessage("We received incomplete webinar data. Please try again.");
+        return;
+      }
+
+      setPlaybackToken(normalizedToken);
       markRoom("live_joined");
     }
 
@@ -88,7 +199,7 @@ export function PlaybackContainer({
     return () => {
       cancelled = true;
     };
-  }, [sessionId, retryCount, markRoom]);
+  }, [sessionId, retryCount, markRoom, webinarTitle]);
 
   if (clientRedirectTo) {
     return <WaitingRoomShimmer title="Redirecting…" />;

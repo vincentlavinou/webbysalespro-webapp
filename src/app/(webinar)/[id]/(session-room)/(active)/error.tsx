@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
-import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -24,7 +23,7 @@ export default function ActiveSessionError({
   const liveRecoveryPath = useMemo(() => {
     const sessionId = getSessionIdFromPathname(pathname)
     if (!sessionId) {
-      return '/webinars'
+      return null
     }
 
     const suffix = searchParams.toString()
@@ -32,6 +31,8 @@ export default function ActiveSessionError({
   }, [pathname, searchParams])
 
   useEffect(() => {
+    if (!liveRecoveryPath) return
+
     const timeoutId = window.setTimeout(() => {
       window.location.replace(`${webinarAppUrl}${liveRecoveryPath}`)
     }, 1500)
@@ -50,18 +51,19 @@ export default function ActiveSessionError({
           We hit a problem opening this room.
         </h1>
         <p className="mt-3 text-sm text-gray-600 dark:text-slate-300">
-          We&apos;re sending you back into the webinar flow now so you still have a way in.
+          {liveRecoveryPath
+            ? "We're sending you back into the webinar flow now so you still have a way in."
+            : 'Re-click the webinar link from your email or text message, or check your email for the registration link.'}
         </p>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button onClick={() => window.location.replace(`${webinarAppUrl}${liveRecoveryPath}`)}>
-            Rejoin Webinar
-          </Button>
+          {liveRecoveryPath ? (
+            <Button onClick={() => window.location.replace(`${webinarAppUrl}${liveRecoveryPath}`)}>
+              Rejoin Webinar
+            </Button>
+          ) : null}
           <Button variant="outline" onClick={reset}>
             Retry This Room
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/webinars">Browse Webinars</Link>
           </Button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { cookies } from 'next/headers'
 import { resolveJoin } from '@/attendee-session/service/resolve-join'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     try {
         const data = await resolveJoin(joinToken).catch(() => null)
         if (!data) {
-            const url = createRedirectUrl(`/${webinarId}/register`)
+            const url = createRedirectUrl(`/${webinarId}/general/join`)
             return NextResponse.redirect(url)
         }
 
@@ -96,8 +97,16 @@ export async function GET(request: NextRequest) {
 
         const url = createRedirectUrl(`/${sessionId}/waiting-room`)
         return NextResponse.redirect(url)
-    } catch {
-        const url = createRedirectUrl(`/${webinarId}/register`)
+    } catch (error) {
+        Sentry.captureException(error, {
+            tags: {
+                route: 'join/live',
+            },
+            extra: {
+                webinarId,
+            },
+        })
+        const url = createRedirectUrl(`/${webinarId}/general/join`)
         return NextResponse.redirect(url)
     }
 }

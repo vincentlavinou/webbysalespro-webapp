@@ -1,8 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import { WebinarMediaFieldType } from "@/media";
-import type { WebinarMedia } from "@/media";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import { AttendeeCountBadge } from "@/broadcast/attendee-count/components/AttendeeCountBadge";
 import WebbySalesProPlayer from "@/playback/player/ivs/WebbySalesProPlayer";
@@ -14,6 +12,7 @@ import {
   useAttendeeStreamRefresh,
 } from "@/broadcast/hooks/use-attendee-stream-refresh";
 import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
+import { getPlaybackArtwork } from "@/playback/client/get-playback-artwork";
 
 type AttendeeDesktopExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
@@ -56,9 +55,7 @@ export function AttendeeDesktopExperience({
                   ariaLabel="Live Webinar Player"
                   title={playbackToken.webinar.title}
                   onPlaybackStatusChange={setStatus}
-                  artwork={playbackToken.webinar.media
-                    .filter((media: WebinarMedia) => media.field_type === WebinarMediaFieldType.THUMBNAIL)
-                    .map((media: WebinarMedia) => ({ src: media.file_url }))}
+                  artwork={getPlaybackArtwork(playbackToken.webinar.media)}
                 />
               ) : realtimeStream ? (
                 <AttendeeStageViewer

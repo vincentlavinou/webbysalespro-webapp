@@ -29,9 +29,7 @@ export class ApiError extends Error {
     const url = res.url;
     const { payload, decoded } = await safeDecodeErrorPayload(res);
 
-    // Prefer decoded {detail, code}
     if (decoded && payload) {
-      
       return new ApiError({
         message: payload.detail,
         status: res.status,
@@ -41,21 +39,12 @@ export class ApiError extends Error {
       });
     }
 
-    // Fallbacks by status, using statusText/body text if available
-    const text = await res.clone().text().catch(() => "");
-    const message =
-      text?.trim() ||
-      res.statusText ||
-      `Request failed with status ${res.status}`;
-
+    const message = await fallbackErrorMessage(res);
     return new ApiError({
       message,
       status: res.status,
       url,
-      payload: {
-        detail: text || "unknown error",
-        code: "CLT-001"
-      },
+      payload: { detail: message, code: "CLT-001" },
     });
   }
 }
@@ -72,6 +61,23 @@ export class NotFoundError extends ApiError {
     super({ message, status: 404, code: "not_found" });
     this.name = "NotFoundError";
   }
+}
+
+const TRANSIENT_FALLBACK_MESSAGE =
+  "Service temporarily unavailable. Please try again in a moment.";
+
+export async function fallbackErrorMessage(res: Response): Promise<string> {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (res.status >= 500 || contentType.includes("text/html")) {
+    return TRANSIENT_FALLBACK_MESSAGE;
+  }
+
+  const text = await res.clone().text().catch(() => "");
+  return (
+    text?.trim() ||
+    res.statusText ||
+    `Request failed with status ${res.status}`
+  );
 }
 
 /**

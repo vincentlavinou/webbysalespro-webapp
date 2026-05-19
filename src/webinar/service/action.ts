@@ -7,6 +7,7 @@ import { AlreadyRegisteredError } from "./error";
 import { handleStatus } from "@/lib/http";
 import { ApiError } from "@/lib/error";
 import { resolveAttendeeLocation } from "@/lib/geo";
+import { retryTransientRequest } from "@/lib/retry";
 import { z } from "zod";
 import { anonymousRegisterForWebinarInput, registerForWebinarInput } from "./schema";
 import { cache } from "react";
@@ -234,16 +235,20 @@ export const registerForWebinarAction = actionClient
             };
 
             const submitRegistration = async (requestBody: AttendeeRequestBody) => {
-                const response = await fetch(
-                    `${webinarApiUrl}/v2/webinars/${webinar_id}/registrants/`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify(requestBody),
-                        cache: "no-store",
-                    }
+                const response = await retryTransientRequest(
+                    () =>
+                        fetch(
+                            `${webinarApiUrl}/v2/webinars/${webinar_id}/registrants/`,
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify(requestBody),
+                                cache: "no-store",
+                            }
+                        ),
+                    { method: "POST" }
                 );
 
                 return handleStatus(response);
@@ -281,13 +286,17 @@ export const anonymousRegisterForWebinarAction = actionClient
             headers["X-Anonymous-Registrant-ID"] = parsedInput.anonymous_registrant_id;
         }
 
-        const response = await fetch(
-            `${webinarApiUrl}/v2/webinars/${parsedInput.webinar_id}/registrants/anonymous/`,
-            {
-                method: "POST",
-                headers,
-                cache: "no-store",
-            }
+        const response = await retryTransientRequest(
+            () =>
+                fetch(
+                    `${webinarApiUrl}/v2/webinars/${parsedInput.webinar_id}/registrants/anonymous/`,
+                    {
+                        method: "POST",
+                        headers,
+                        cache: "no-store",
+                    }
+                ),
+            { method: "POST" }
         );
 
         const checkedResponse = await handleStatus(response);

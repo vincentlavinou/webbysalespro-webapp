@@ -31,6 +31,8 @@ export function ChatManager({
 }: ChatManagerProps) {
   const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
   const [isRuntimeEnabled, setIsRuntimeEnabled] = useState(false);
+  const hasChatContext = sessionId.trim().length > 0 && registrantId.trim().length > 0;
+  const resolvedRegion = region.trim().length > 0 ? region : "us-east-1";
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
 
@@ -67,6 +69,10 @@ export function ChatManager({
   });
 
   const syncLatestChatConfig = useCallback(async () => {
+    if (!hasChatContext) {
+      return false;
+    }
+
     const result = await getAttendeeChatSession({ sessionId });
 
     if (result?.data) {
@@ -79,16 +85,21 @@ export function ChatManager({
       "Failed to load chat settings. Please try again.",
     );
     return false;
-  }, [sessionId]);
+  }, [hasChatContext, sessionId]);
 
   useEffect(() => {
+    if (!hasChatContext) {
+      setInitialChatConfig(null);
+      return;
+    }
+
     void syncLatestChatConfig();
-  }, [syncLatestChatConfig]);
+  }, [hasChatContext, syncLatestChatConfig]);
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!enabled) {
+    if (!enabled || !hasChatContext) {
       setIsRuntimeEnabled(false);
       return;
     }
@@ -104,15 +115,15 @@ export function ChatManager({
     return () => {
       cancelled = true;
     };
-  }, [enabled, syncLatestChatConfig]);
+  }, [enabled, hasChatContext, syncLatestChatConfig]);
 
   return (
-    <ChatConfigurationProvider region={region} tokenProvider={stableTokenProvider.current}>
+    <ChatConfigurationProvider region={resolvedRegion} tokenProvider={stableTokenProvider.current}>
       <ChatRuntimeProvider
         sessionId={sessionId}
         registrantId={registrantId}
         currentUserRole={currentUserRole}
-        enabled={isRuntimeEnabled}
+        enabled={isRuntimeEnabled && hasChatContext}
       >
         <ChatControlProvider
           options={[

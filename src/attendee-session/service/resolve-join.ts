@@ -2,6 +2,9 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
+import * as Sentry from "@sentry/nextjs";
+import { retryTransientRequest } from "@/lib/retry";
+
 import type { JoinResolveResponse } from "./type";
 
 const webinarApiUrl =
@@ -59,16 +62,36 @@ async function fetchJoinResolve(rawJoinToken: string, tokenHash: string): Promis
   const networkCount = incrementCounter(joinResolveNetworkCounts, tokenHash);
   logJoinResolveEvent("network_fetch", tokenHash, { networkCount });
 
-  // Deliberately no automatic retries here. Duplicate callers already fan into
-  // this single in-flight promise, and immediate retries would amplify bursts.
-  const response = await fetch(
-    `${webinarApiUrl}/v2/join/resolve?t=${encodeURIComponent(rawJoinToken)}`,
+  const response = await retryTransientRequest(
+    () =>
+      fetch(
+        `${webinarApiUrl}/v2/join/resolve?t=${encodeURIComponent(rawJoinToken)}`,
+        {
+          cache: "no-store",
+        },
+      ),
     {
-      cache: "no-store",
+      maxAttempts: 3,
+      initialDelayMs: 300,
+      maxDelayMs: 1_500,
+      shouldRetryResponse: (response) => response.status >= 500,
     },
   );
 
   if (!response.ok) {
+    if (response.status >= 500) {
+      Sentry.captureMessage("join resolve failed after retries", {
+        level: "error",
+        tags: {
+          area: "join-resolve",
+        },
+        extra: {
+          tokenHash,
+          status: response.status,
+        },
+      });
+    }
+
     logJoinResolveEvent("network_response", tokenHash, {
       networkCount,
       ok: false,
@@ -113,6 +136,14 @@ export async function resolveJoin(rawJoinToken: string): Promise<JoinResolveResp
     return await promise;
   } catch (error) {
     joinResolveCache.delete(rawJoinToken);
+    Sentry.captureException(error, {
+      tags: {
+        area: "join-resolve",
+      },
+      extra: {
+        tokenHash,
+      },
+    });
     logJoinResolveEvent("network_error", tokenHash, {
       requestCount,
       message: error instanceof Error ? error.message : "unknown",

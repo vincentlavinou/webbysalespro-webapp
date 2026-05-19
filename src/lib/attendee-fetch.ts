@@ -5,6 +5,7 @@ import {
     getAttendeeSessionCookie,
     setAttendeeSessionCookie,
 } from './attendee-cookie'
+import { retryTransientRequest } from './retry'
 
 const webinarApiUrl =
     process.env.WEBINAR_BASE_API_URL ??
@@ -18,14 +19,18 @@ async function serverRefreshToken(): Promise<string | null> {
     const session = await getAttendeeSessionCookie()
     if (!session) return null
 
-    const res = await fetch(`${webinarApiUrl}/v2/join/session/refresh`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${session.joinSessionToken}`,
-            'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
-    })
+    const res = await retryTransientRequest(
+        () =>
+            fetch(`${webinarApiUrl}/v2/join/session/refresh`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${session.joinSessionToken}`,
+                    'Content-Type': 'application/json',
+                },
+                cache: 'no-store',
+            }),
+        { method: 'POST' }
+    )
 
     if (!res.ok) {
         await clearAttendeeSessionCookie()
@@ -67,14 +72,18 @@ export async function attendeeFetch(
     }
 
     const request = (t: string | undefined) =>
-        fetch(url, {
-            ...rest,
-            headers: {
-                'Content-Type': 'application/json',
-                ...extra,
-                ...(t ? { Authorization: `Bearer ${t}` } : {}),
-            },
-        })
+        retryTransientRequest(
+            () =>
+                fetch(url, {
+                    ...rest,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...extra,
+                        ...(t ? { Authorization: `Bearer ${t}` } : {}),
+                    },
+                }),
+            { method: rest.method }
+        )
 
     const res = await request(token)
 

@@ -26,6 +26,7 @@
     "@sanity/icons": "^3.7.0",
     "@sanity/image-url": "^1.1.0",
     "@sanity/vision": "^3.90.0",
+    "@sentry/nextjs": "^10.53.1",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.5.0",
     "amazon-ivs-chat-messaging": "^1.1.1",
