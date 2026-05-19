@@ -98,7 +98,12 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
 
     const recordEventBeacon = useCallback(async (name: string, payload: Record<string, unknown> | undefined = undefined) => {
         markPresenceRelevantEvent(name);
-        fetch(`${webinarApiUrl}/v2/attendances/${attendanceId}/events/`, {
+        if (!attendanceId || !attendeeToken) {
+            return;
+        }
+
+        try {
+            await fetch(`${webinarApiUrl}/v2/attendances/${attendanceId}/events/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -111,7 +116,10 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
                 payload: payload ?? {},
             }),
             keepalive: true,
-        });
+            });
+        } catch (e) {
+            console.warn("[WebinarProvider] recordEventBeacon failed", e);
+        }
     }, [attendanceId, attendeeToken, markPresenceRelevantEvent])
 
     const getLastPresenceRelevantEventAt = useCallback(() => {
