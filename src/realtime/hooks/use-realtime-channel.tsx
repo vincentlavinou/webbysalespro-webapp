@@ -212,7 +212,32 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions) {
             setPusherConnected(false)
         })
 
+        // Backgrounded tabs can keep a socket nominally open while the OS
+        // pauses delivery, which means we can miss server-pushed events
+        // (e.g. the scheduled → in_progress transition). Mirror the SSE
+        // branch: disconnect on hidden, reconnect on visible so
+        // subscription_succeeded re-fires onOpen and consumers can refetch.
+        const onVisibilityChange = () => {
+            if (document.visibilityState === "hidden") {
+                pusher.disconnect()
+            } else if (document.visibilityState === "visible") {
+                pusher.connect()
+            }
+        }
+        const onOnline = () => {
+            pusher.connect()
+        }
+        const onOffline = () => {
+            pusher.disconnect()
+        }
+        document.addEventListener("visibilitychange", onVisibilityChange)
+        window.addEventListener("online", onOnline)
+        window.addEventListener("offline", onOffline)
+
         return () => {
+            document.removeEventListener("visibilitychange", onVisibilityChange)
+            window.removeEventListener("online", onOnline)
+            window.removeEventListener("offline", onOffline)
             for (const { name, fn } of boundHandlers) {
                 channel.unbind(name, fn)
             }
