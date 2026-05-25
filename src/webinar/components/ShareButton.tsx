@@ -25,9 +25,13 @@ export default function ShareButton({ registrationPath, title }: ShareButtonProp
       }
     }
 
-    await navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Document lost focus (e.g. share sheet dismissed) — silently ignore
+    }
   }
 
   return (

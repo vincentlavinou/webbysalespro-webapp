@@ -16,9 +16,13 @@ export default function BookmarkButton({ livePath }: BookmarkButtonProps) {
       ? `${window.location.origin}${livePath}`
       : livePath
 
-    await navigator.clipboard.writeText(url)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    try {
+      await navigator.clipboard.writeText(url)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch {
+      // Document not focused — silently ignore
+    }
   }
 
   return (

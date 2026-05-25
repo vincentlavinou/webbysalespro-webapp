@@ -6,7 +6,7 @@ import { AutoCheckout, CheckoutConfig, CheckoutProvider } from '@fanbasis/checko
 import { ArrowLeft, CreditCard, ExternalLink, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 
 function extractFanbasisMessage(error: unknown): string {
   if (error && typeof error === 'object') {
@@ -128,17 +128,21 @@ export function FanBasisCheckout() {
     user?.phone
   ]);
 
+  const frozenConfigRef = useRef<CheckoutConfig | null>(null);
+
   const handleClose = cancelCheckout;
 
   const handleCardClick = useCallback(() => {
+    if (checkoutConfig) frozenConfigRef.current = checkoutConfig;
     setCardError(null);
     setCardMode(true);
     void recordEvent('checkout_started');
-  }, [recordEvent]);
+  }, [recordEvent, checkoutConfig]);
 
   const handleCardBack = useCallback(() => {
     setCardMode(false);
     setCardError(null);
+    frozenConfigRef.current = null;
   }, []);
 
   const handleCardSuccess = useCallback((data: {transactionId: string, metadata: unknown}) => {
@@ -229,10 +233,10 @@ export function FanBasisCheckout() {
       {/* Scrollable body */}
       <div className="flex-1 min-h-0 overflow-y-auto">
       {/* Inline card checkout */}
-      {cardMode && checkoutConfig ? (
+      {cardMode && frozenConfigRef.current ? (
         <FanbasisCardCheckout
           cardError={cardError}
-          checkoutConfig={checkoutConfig}
+          checkoutConfig={frozenConfigRef.current}
           onSuccess={handleCardSuccess}
           onError={handleCardError}
         />

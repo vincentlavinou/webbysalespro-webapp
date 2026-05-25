@@ -8,6 +8,7 @@ import { handleStatus } from "@/lib/http";
 import { ApiError } from "@/lib/error";
 import { resolveAttendeeLocation } from "@/lib/geo";
 import { retryTransientRequest } from "@/lib/retry";
+import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import { anonymousRegisterForWebinarInput, registerForWebinarInput } from "./schema";
 import { cache } from "react";
@@ -50,19 +51,18 @@ type GetWebinarOptions = {
 }
 
 const getWebinarCached = cache(async (id: string, fresh: boolean): Promise<Webinar> => {
-    const response = await fetch(
-        `${webinarApiUrl}/v1/webinars/${id}/public/`,
-        fresh
-            ? {
-                cache: "no-store",
-            }
-            : {
-                next: {
-                    revalidate: 60,
-                    tags: [`webinar-${id}`],
-                },
-            }
+    const fetchOptions: RequestInit = fresh
+        ? { cache: "no-store" }
+        : { next: { revalidate: 60, tags: [`webinar-${id}`] } }
+
+    const response = await retryTransientRequest(
+        () => fetch(`${webinarApiUrl}/v1/webinars/${id}/public/`, fetchOptions),
+        { method: "GET" },
     )
+
+    if (!response.ok) {
+        return {} as Webinar
+    }
     return await response.json()
 })
 
@@ -234,41 +234,55 @@ export const registerForWebinarAction = actionClient
                 ...(location?.countryCode ? { country: location.countryCode } : {}),
             };
 
-            const submitRegistration = async (requestBody: AttendeeRequestBody) => {
-                const response = await retryTransientRequest(
-                    () =>
-                        fetch(
-                            `${webinarApiUrl}/v2/webinars/${webinar_id}/registrants/`,
-                            {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify(requestBody),
-                                cache: "no-store",
-                            }
-                        ),
-                    { method: "POST" }
-                );
-
-                return handleStatus(response);
+            const submitRegistration = async (requestBody: AttendeeRequestBody, timeoutMs: number) => {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    const response = await fetch(
+                        `${webinarApiUrl}/v2/webinars/${webinar_id}/registrants/`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(requestBody),
+                            cache: "no-store",
+                            signal: controller.signal,
+                        }
+                    );
+                    return handleStatus(response);
+                } finally {
+                    clearTimeout(timer);
+                }
             };
 
             let response: Response;
+            const requestWasEnriched =
+                enrichedRequestBody.city !== undefined ||
+                enrichedRequestBody.state !== undefined ||
+                enrichedRequestBody.country !== undefined;
 
             try {
-                response = await submitRegistration(enrichedRequestBody);
-            } catch (error) {
-                const requestWasEnriched =
-                    enrichedRequestBody.city !== undefined ||
-                    enrichedRequestBody.state !== undefined ||
-                    enrichedRequestBody.country !== undefined;
-
-                if (!requestWasEnriched || !shouldRetryWithoutLocation(error)) {
-                    throw error;
+                response = await submitRegistration(enrichedRequestBody, 5000);
+            } catch (firstError) {
+                Sentry.captureException(firstError, {
+                    level: "warning",
+                    tags: { action: "registration", attempt: "first" },
+                    extra: { webinar_id, email, session_id, requestWasEnriched },
+                });
+                // Retry: drop location fields if they caused a validation error,
+                // otherwise retry the same payload. Registration is idempotent.
+                const retryBody = requestWasEnriched && shouldRetryWithoutLocation(firstError)
+                    ? baseRequestBody
+                    : enrichedRequestBody;
+                try {
+                    response = await submitRegistration(retryBody, 2000);
+                } catch (retryError) {
+                    Sentry.captureException(retryError, {
+                        level: "error",
+                        tags: { action: "registration", attempt: "retry" },
+                        extra: { webinar_id, email, session_id, requestWasEnriched },
+                    });
+                    throw retryError;
                 }
-
-                response = await submitRegistration(baseRequestBody);
             }
 
             const result = await response.json() as RegisterV2Response

@@ -59,6 +59,7 @@ export function StripeCheckout() {
 
   const { execute: fetchCheckoutInfo } = useAction(startCheckout, {
     onSuccess: async ({ data }) => {
+      if (!data?.public_key) return;
       setStripePromise(loadStripe(data.public_key));
       setClientSecret(data.client_secret);
     },
