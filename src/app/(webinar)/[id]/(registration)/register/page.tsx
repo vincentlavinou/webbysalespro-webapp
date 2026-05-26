@@ -1,3 +1,5 @@
+export const runtime = 'edge'
+
 import { getWebinar } from '@/webinar/service'
 import { allowsManualSessionSelection, isWebinarPayload } from '@/webinar/service/guards'
 import { WebinarSessionStatus } from '@/webinar/service/enum'

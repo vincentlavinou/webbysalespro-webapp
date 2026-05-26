@@ -1,7 +1,5 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
-
 import * as Sentry from "@sentry/nextjs";
 import { retryTransientRequest } from "@/lib/retry";
 
@@ -24,8 +22,11 @@ const joinResolveCache = new Map<string, JoinResolveCacheEntry>();
 const joinResolveCallCounts = new Map<string, number>();
 const joinResolveNetworkCounts = new Map<string, number>();
 
-function hashJoinToken(rawJoinToken: string) {
-  return createHash("sha256").update(rawJoinToken).digest("hex").slice(0, 12);
+async function hashJoinToken(rawJoinToken: string) {
+  const data = new TextEncoder().encode(rawJoinToken);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 12);
 }
 
 function incrementCounter(counter: Map<string, number>, key: string) {
@@ -110,7 +111,7 @@ async function fetchJoinResolve(rawJoinToken: string, tokenHash: string): Promis
 }
 
 export async function resolveJoin(rawJoinToken: string): Promise<JoinResolveResponse | null> {
-  const tokenHash = hashJoinToken(rawJoinToken);
+  const tokenHash = await hashJoinToken(rawJoinToken);
   const requestCount = incrementCounter(joinResolveCallCounts, tokenHash);
   const now = Date.now();
 

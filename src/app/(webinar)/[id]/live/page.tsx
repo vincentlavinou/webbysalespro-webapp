@@ -7,6 +7,7 @@ import { getAttendeeSessionCookie } from "@/lib/attendee-cookie";
 import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
 import { HardRedirect } from "../HardRedirect";
 
+export const runtime = 'edge'
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

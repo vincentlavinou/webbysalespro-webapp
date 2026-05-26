@@ -1,3 +1,5 @@
+export const runtime = 'edge'
+
 import { notFound } from 'next/navigation'
 import { getWebinar, getRegistrationEmbedConfig } from '@/webinar/service/action'
 import { isWebinarPayload, allowsManualSessionSelection } from '@/webinar/service/guards'
