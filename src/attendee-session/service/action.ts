@@ -2,6 +2,7 @@
 
 import { actionClient } from '@/lib/safe-action'
 import { clearAttendeeSessionCookie, getAttendeeSessionCookie, setAttendeeSessionCookie } from '@/lib/attendee-cookie'
+import { retryTransientRequest } from '@/lib/retry'
 import { JoinResolveResponse, JoinSessionRefreshResponse } from './type'
 import { resolveJoin } from './resolve-join'
 import { z } from 'zod'
@@ -32,20 +33,25 @@ export const refreshJoinSessionAction = actionClient
             throw new Error('No active session cookie')
         }
 
-        const response = await fetch(
-            `${webinarApiUrl}/v2/join/session/refresh`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.joinSessionToken}`,
-                    'Content-Type': 'application/json',
-                },
-                cache: 'no-store',
-            }
+        const response = await retryTransientRequest(
+            () => fetch(
+                `${webinarApiUrl}/v2/join/session/refresh`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.joinSessionToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    cache: 'no-store',
+                }
+            ),
+            { method: 'POST' },
         )
 
         if (!response.ok) {
-            await clearAttendeeSessionCookie()
+            if (response.status < 500) {
+                await clearAttendeeSessionCookie()
+            }
             throw new Error(`Refresh failed: ${response.status}`)
         }
 

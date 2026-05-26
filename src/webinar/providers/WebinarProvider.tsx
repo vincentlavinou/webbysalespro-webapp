@@ -102,21 +102,28 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
             return;
         }
 
-        try {
-            await fetch(`${webinarApiUrl}/v2/attendances/${attendanceId}/events/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${attendeeToken}`,
-            },
-            body: JSON.stringify({
-                event_code: name,
-                source: 'client',
-                occurred_at: new Date().toISOString(),
-                payload: payload ?? {},
-            }),
-            keepalive: true,
+        const fire = () =>
+            fetch(`${webinarApiUrl}/v2/attendances/${attendanceId}/events/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${attendeeToken}`,
+                },
+                body: JSON.stringify({
+                    event_code: name,
+                    source: 'client',
+                    occurred_at: new Date().toISOString(),
+                    payload: payload ?? {},
+                }),
+                keepalive: true,
             });
+
+        try {
+            const res = await fire();
+            if (res.status >= 500) {
+                await new Promise((r) => setTimeout(r, 500));
+                await fire();
+            }
         } catch (e) {
             console.warn("[WebinarProvider] recordEventBeacon failed", e);
         }

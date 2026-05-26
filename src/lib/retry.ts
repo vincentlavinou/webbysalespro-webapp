@@ -29,6 +29,7 @@ function isSafeMethod(method: string | undefined) {
 function makeDefaultShouldRetryResponse(method: string | undefined) {
   return (response: Response) => {
     if (response.status >= 500) return true;
+    if (response.status === 408) return true;
     if (response.status === 429) return isSafeMethod(method);
     return false;
   };
@@ -90,6 +91,7 @@ export async function retryTransientRequest(
       }
 
       nextDelayOverrideMs = parseRetryAfterMs(response);
+      await response.body?.cancel().catch(() => {});
     } catch (error) {
       lastError = error;
 
@@ -102,10 +104,12 @@ export async function retryTransientRequest(
       initialDelayMs * Math.pow(2, attempt - 1),
       maxDelayMs,
     );
-    const baseDelay = nextDelayOverrideMs ?? backoff;
+    const finalDelay = nextDelayOverrideMs != null
+      ? nextDelayOverrideMs + Math.random() * nextDelayOverrideMs * JITTER_RATIO
+      : applyJitter(backoff);
     nextDelayOverrideMs = null;
 
-    await delay(applyJitter(baseDelay));
+    await delay(finalDelay);
   }
 
   if (lastError) {
