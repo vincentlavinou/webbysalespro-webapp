@@ -18,7 +18,8 @@ import CalendarButton from '@/webinar/components/CalendarButton'
 import BookmarkButton from '@/webinar/components/BookmarkButton'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 
-const LIVE_REDIRECT_DELAY_MS = 10_000
+const LIVE_REDIRECT_BASE_DELAY_MS = 10_000
+const LIVE_REDIRECT_JITTER_MS = 5_000
 
 type HoldingRoomPageProps = {
   loadingTitle: string
@@ -99,12 +100,15 @@ export function HoldingRoomPage({
       return
     }
 
+    const jitter = Math.round((Math.random() * 2 - 1) * LIVE_REDIRECT_JITTER_MS)
+    const delay = LIVE_REDIRECT_BASE_DELAY_MS + jitter
+
     redirectTimeoutRef.current = setTimeout(() => {
       hasRedirectedRef.current = true
       redirectTimeoutRef.current = null
       setIsRedirecting(true)
       router.replace(`/${sessionId}/live?ready=1`)
-    }, LIVE_REDIRECT_DELAY_MS)
+    }, delay)
 
     return () => {
       if (redirectTimeoutRef.current) {
