@@ -8,6 +8,8 @@ export type ModerationDecisionCode =
   | "EMPTY"
   | "TOO_LONG"
   | "HAS_URL"
+  | "HAS_EMAIL"
+  | "HAS_PHONE"
   | "SPAM_PATTERN"
   | "PROFANITY"
   | "REPEATED_CHARS"
@@ -35,6 +37,10 @@ export type ModerationOptions = {
   // Links
   blockLinksForRoles?: ModerationRole[];
 
+  // Contact info
+  blockEmailsForRoles?: ModerationRole[];
+  blockPhonesForRoles?: ModerationRole[];
+
   // Spam
   blockSpamPatterns?: boolean;
 };
@@ -46,6 +52,8 @@ const DEFAULT_OPTIONS: Required<ModerationOptions> = {
   profanityMode: "block",
   censorType: CensorType.Word,
   blockLinksForRoles: ["attendee"],
+  blockEmailsForRoles: ["attendee"],
+  blockPhonesForRoles: ["attendee"],
   blockSpamPatterns: true,
 };
 
@@ -107,6 +115,34 @@ export function moderateText(
     reasons.push({
       code: "HAS_URL",
       message: "Links are not allowed.",
+    });
+  }
+
+  // EMAIL BLOCKING — standard addresses, plus lightly obfuscated forms
+  // like "name (at) gmail dot com".
+  const containsEmail =
+    /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text) ||
+    /[a-z0-9._%+-]+\s*(?:@|\(?\s*at\s*\)?|\[\s*at\s*\])\s*[a-z0-9.-]+\s*(?:\.|\(?\s*dot\s*\)?|\[\s*dot\s*\])\s*[a-z]{2,}/i.test(
+      text
+    );
+
+  if (containsEmail && opts.blockEmailsForRoles.includes(opts.role)) {
+    reasons.push({
+      code: "HAS_EMAIL",
+      message: "Email addresses are not allowed.",
+    });
+  }
+
+  // PHONE BLOCKING — a run of 7–15 digits, allowing common separators
+  // (spaces, dashes, dots, parentheses) and an optional leading "+".
+  const phoneMatch = text.match(/\+?\d(?:[\d\s().-]{5,}\d)/);
+  const phoneDigits = phoneMatch ? phoneMatch[0].replace(/\D/g, "").length : 0;
+  const containsPhone = phoneDigits >= 7 && phoneDigits <= 15;
+
+  if (containsPhone && opts.blockPhonesForRoles.includes(opts.role)) {
+    reasons.push({
+      code: "HAS_PHONE",
+      message: "Phone numbers are not allowed.",
     });
   }
 
