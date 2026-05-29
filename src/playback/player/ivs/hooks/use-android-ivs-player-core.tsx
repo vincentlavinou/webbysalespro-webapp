@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
+import type {
   Player,
   PlayerError,
-  PlayerState,
   Quality,
   TextMetadataCue,
 } from "amazon-ivs-player";
+import { PlayerState } from "../ivs-runtime-enums";
 
 export type AndroidPlaybackMode =
   | "idle"

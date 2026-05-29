@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { PlayerState } from "amazon-ivs-player";
+import { PlayerState } from "../ivs-runtime-enums";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import type { AndroidPlaybackMode } from "./use-android-ivs-player-core";
 import type { PlayerMode } from "./use-ivs-player-core";

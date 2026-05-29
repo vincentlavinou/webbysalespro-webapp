@@ -3,7 +3,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Player } from "amazon-ivs-player";
-import { PlayerState } from "amazon-ivs-player";
+import { PlayerState } from "../ivs-runtime-enums";
 
 // Less aggressive defaults to avoid reload/rebuffer loops after tab switches.
 const LATENCY_SEEK_THRESHOLD = 8;

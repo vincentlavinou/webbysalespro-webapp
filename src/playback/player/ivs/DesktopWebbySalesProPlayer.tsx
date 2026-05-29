@@ -7,7 +7,7 @@ import React, {
   useImperativeHandle,
   useRef,
 } from "react";
-import { PlayerState } from "amazon-ivs-player";
+import { PlayerState } from "./ivs-runtime-enums";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import { usePersistentVideoAttachment } from "@/playback/hooks/use-persistent-video-attachment";
 import { usePersistentChannelPlayback } from "@/playback/persistent/use-persistent-channel-playback";
