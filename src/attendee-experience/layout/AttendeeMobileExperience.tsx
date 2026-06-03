@@ -97,6 +97,10 @@ export function AttendeeMobileExperience({
     sessionId: playbackToken.session.id,
     playerRef,
     enabled: !!playbackToken.stream,
+    // Realtime stages stay connected via PersistentStagePlaybackProvider, so a
+    // reconnect on return would just cause a visible refresh. Still re-fetch
+    // data on return, just don't tear down the stage.
+    reconnectPlayerOnReturn: !realtimeStream,
   });
 
   const {

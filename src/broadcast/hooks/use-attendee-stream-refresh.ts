@@ -21,17 +21,28 @@ type UseAttendeeStreamRefreshOptions = {
   sessionId: string;
   playerRef: React.RefObject<AttendeeStreamRecoveryHandle | null>;
   enabled?: boolean;
+  // Whether regaining focus should reconnect the player itself. Correct for HLS
+  // channel streams (which drift/stall when backgrounded), but disruptive for
+  // realtime WebRTC stages where `restoreToLive` is a full stage teardown +
+  // rejoin. The PersistentStagePlaybackProvider already keeps the stage alive
+  // and resumes via useVisibilityResilience on return, so realtime streams pass
+  // `false` here: we still re-fetch data on return, just without the reconnect.
+  reconnectPlayerOnReturn?: boolean;
 };
 
 type RefreshOptions = {
   showToast?: boolean;
   forceReload?: boolean;
+  // When false, re-fetch data + dispatch the refresh event but leave the player
+  // connection untouched (no restoreToLive).
+  reconnectPlayer?: boolean;
 };
 
 export function useAttendeeStreamRefresh({
   sessionId,
   playerRef,
   enabled = true,
+  reconnectPlayerOnReturn = true,
 }: UseAttendeeStreamRefreshOptions) {
   const [isRefreshingStream, setIsRefreshingStream] = useState(false);
   const router = useRouter();
@@ -39,7 +50,11 @@ export function useAttendeeStreamRefresh({
   const shouldRefreshOnReturnRef = useRef(false);
 
   const refreshStream = useCallback(
-    async ({ showToast = false, forceReload = false }: RefreshOptions = {}) => {
+    async ({
+      showToast = false,
+      forceReload = false,
+      reconnectPlayer = true,
+    }: RefreshOptions = {}) => {
       if (!enabled || isRefreshingStream) return;
 
       const now = Date.now();
@@ -53,7 +68,9 @@ export function useAttendeeStreamRefresh({
       try {
         const [sessionResult] = await Promise.all([
           getSessionAction({ id: sessionId }),
-          playerRef.current?.restoreToLive({ forceReload }),
+          reconnectPlayer
+            ? playerRef.current?.restoreToLive({ forceReload })
+            : Promise.resolve(),
         ]);
 
         window.dispatchEvent(new CustomEvent("webinar:stream:refresh"));
@@ -84,7 +101,7 @@ export function useAttendeeStreamRefresh({
       if (!shouldRefreshOnReturnRef.current) return;
 
       shouldRefreshOnReturnRef.current = false;
-      void refreshStream();
+      void refreshStream({ reconnectPlayer: reconnectPlayerOnReturn });
     };
 
     const onVisibilityChange = () => {
@@ -114,7 +131,7 @@ export function useAttendeeStreamRefresh({
       window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [enabled, refreshStream]);
+  }, [enabled, refreshStream, reconnectPlayerOnReturn]);
 
   const handleRefreshStream = useCallback(async () => {
     await refreshStream({ showToast: true, forceReload: true });
