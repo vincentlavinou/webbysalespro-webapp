@@ -81,8 +81,15 @@ export const AttendeeStageViewer = forwardRef<
   const { enterFullscreen, exitFullscreen } = useFullscreen({
     videoRef,
     containerRef: playerSurfaceRef,
+    // Unlike the HLS player (which the IVS SDK can leave IDLE after a
+    // fullscreen transition), a WebRTC stage keeps its MediaStream attached, so
+    // a full reconnect would just cause a visible refresh. The persistent
+    // provider already auto-resumes a paused element, so a gentle play() is all
+    // the fullscreen exit needs.
     onResumeNeeded: () => {
-      void reconnectStage();
+      const video = videoRef.current;
+      if (!video || !video.paused) return;
+      void video.play().catch(() => {});
     },
   });
 
