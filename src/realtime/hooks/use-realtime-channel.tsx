@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import Pusher, { Channel } from "pusher-js"
+import type { Channel } from "pusher-js"
 import { useEventSource } from "@/sse"
 import { webinarApiUrl } from "@/webinar/service"
 import { getRealtimeConfig } from "../service/action"
@@ -146,106 +146,122 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions) {
     useEffect(() => {
         if (!usePusher || !config) return
 
-        const channelName = `private-webinar-session-${sessionId}`
+        // pusher-js is a browser-only library: its module evaluation reads
+        // `window` at the top level, which crashes the Edge runtime during SSR
+        // of `runtime = 'edge'` routes (waiting-room, live, etc.). Load it
+        // lazily so it never lands in the server bundle.
+        let cancelled = false
+        let teardown: (() => void) | null = null
 
-        const pusher = new Pusher(config.key, {
-            cluster: config.cluster,
-            forceTLS: config.force_tls,
-            ...(config.ws_host
-                ? {
-                      wsHost: config.ws_host,
-                      ...(config.ws_port !== null ? { wsPort: config.ws_port } : {}),
-                      enabledTransports: ["ws", "wss"],
-                  }
-                : {}),
-            channelAuthorization: {
-                endpoint: `${webinarApiUrl}/v2/realtime/auth`,
-                transport: "ajax",
-                headersProvider: () => {
-                    const token = attendeeTokenRef.current
-                    return token ? { Authorization: `Bearer ${token}` } : {}
+        void import("pusher-js").then(({ default: Pusher }) => {
+            if (cancelled) return
+
+            const channelName = `private-webinar-session-${sessionId}`
+
+            const pusher = new Pusher(config.key, {
+                cluster: config.cluster,
+                forceTLS: config.force_tls,
+                ...(config.ws_host
+                    ? {
+                          wsHost: config.ws_host,
+                          ...(config.ws_port !== null ? { wsPort: config.ws_port } : {}),
+                          enabledTransports: ["ws", "wss"],
+                      }
+                    : {}),
+                channelAuthorization: {
+                    endpoint: `${webinarApiUrl}/v2/realtime/auth`,
+                    transport: "ajax",
+                    headersProvider: () => {
+                        const token = attendeeTokenRef.current
+                        return token ? { Authorization: `Bearer ${token}` } : {}
+                    },
                 },
-            },
-        })
+            })
 
-        const channel: Channel = pusher.subscribe(channelName)
+            const channel: Channel = pusher.subscribe(channelName)
 
-        const handlerNames = Object.keys(handlersRef.current ?? {})
-        const boundHandlers: Array<{ name: string; fn: (data: unknown) => void }> = []
-        for (const name of handlerNames) {
-            const fn = (data: unknown) => {
-                try {
-                    handlersRef.current?.[name]?.(data)
-                } catch (err) {
-                    console.error(`[Realtime Pusher] handler error for ${name}`, err)
+            const handlerNames = Object.keys(handlersRef.current ?? {})
+            const boundHandlers: Array<{ name: string; fn: (data: unknown) => void }> = []
+            for (const name of handlerNames) {
+                const fn = (data: unknown) => {
+                    try {
+                        handlersRef.current?.[name]?.(data)
+                    } catch (err) {
+                        console.error(`[Realtime Pusher] handler error for ${name}`, err)
+                    }
+                }
+                channel.bind(name, fn)
+                boundHandlers.push({ name, fn })
+            }
+
+            const handleSubscriptionSucceeded = () => {
+                setPusherConnected(true)
+                void onOpenRef.current?.()
+            }
+
+            const handleSubscriptionError = (err: unknown) => {
+                setPusherConnected(false)
+                const status =
+                    typeof err === "object" && err !== null && "status" in err
+                        ? (err as { status?: number }).status
+                        : undefined
+                if (status === 401 || status === 403) {
+                    void onTokenExpiredRef.current?.()
+                }
+                onErrorRef.current?.(err)
+            }
+
+            channel.bind("pusher:subscription_succeeded", handleSubscriptionSucceeded)
+            channel.bind("pusher:subscription_error", handleSubscriptionError)
+
+            pusher.connection.bind("error", (err: unknown) => {
+                onErrorRef.current?.(err)
+            })
+
+            pusher.connection.bind("disconnected", () => {
+                setPusherConnected(false)
+            })
+
+            // Backgrounded tabs can keep a socket nominally open while the OS
+            // pauses delivery, which means we can miss server-pushed events
+            // (e.g. the scheduled → in_progress transition). Mirror the SSE
+            // branch: disconnect on hidden, reconnect on visible so
+            // subscription_succeeded re-fires onOpen and consumers can refetch.
+            const onVisibilityChange = () => {
+                if (document.visibilityState === "hidden") {
+                    pusher.disconnect()
+                } else if (document.visibilityState === "visible") {
+                    pusher.connect()
                 }
             }
-            channel.bind(name, fn)
-            boundHandlers.push({ name, fn })
-        }
-
-        const handleSubscriptionSucceeded = () => {
-            setPusherConnected(true)
-            void onOpenRef.current?.()
-        }
-
-        const handleSubscriptionError = (err: unknown) => {
-            setPusherConnected(false)
-            const status =
-                typeof err === "object" && err !== null && "status" in err
-                    ? (err as { status?: number }).status
-                    : undefined
-            if (status === 401 || status === 403) {
-                void onTokenExpiredRef.current?.()
-            }
-            onErrorRef.current?.(err)
-        }
-
-        channel.bind("pusher:subscription_succeeded", handleSubscriptionSucceeded)
-        channel.bind("pusher:subscription_error", handleSubscriptionError)
-
-        pusher.connection.bind("error", (err: unknown) => {
-            onErrorRef.current?.(err)
-        })
-
-        pusher.connection.bind("disconnected", () => {
-            setPusherConnected(false)
-        })
-
-        // Backgrounded tabs can keep a socket nominally open while the OS
-        // pauses delivery, which means we can miss server-pushed events
-        // (e.g. the scheduled → in_progress transition). Mirror the SSE
-        // branch: disconnect on hidden, reconnect on visible so
-        // subscription_succeeded re-fires onOpen and consumers can refetch.
-        const onVisibilityChange = () => {
-            if (document.visibilityState === "hidden") {
-                pusher.disconnect()
-            } else if (document.visibilityState === "visible") {
+            const onOnline = () => {
                 pusher.connect()
             }
-        }
-        const onOnline = () => {
-            pusher.connect()
-        }
-        const onOffline = () => {
-            pusher.disconnect()
-        }
-        document.addEventListener("visibilitychange", onVisibilityChange)
-        window.addEventListener("online", onOnline)
-        window.addEventListener("offline", onOffline)
+            const onOffline = () => {
+                pusher.disconnect()
+            }
+            document.addEventListener("visibilitychange", onVisibilityChange)
+            window.addEventListener("online", onOnline)
+            window.addEventListener("offline", onOffline)
+
+            teardown = () => {
+                document.removeEventListener("visibilitychange", onVisibilityChange)
+                window.removeEventListener("online", onOnline)
+                window.removeEventListener("offline", onOffline)
+                for (const { name, fn } of boundHandlers) {
+                    channel.unbind(name, fn)
+                }
+                channel.unbind("pusher:subscription_succeeded", handleSubscriptionSucceeded)
+                channel.unbind("pusher:subscription_error", handleSubscriptionError)
+                pusher.unsubscribe(channelName)
+                pusher.disconnect()
+                setPusherConnected(false)
+            }
+        })
 
         return () => {
-            document.removeEventListener("visibilitychange", onVisibilityChange)
-            window.removeEventListener("online", onOnline)
-            window.removeEventListener("offline", onOffline)
-            for (const { name, fn } of boundHandlers) {
-                channel.unbind(name, fn)
-            }
-            channel.unbind("pusher:subscription_succeeded", handleSubscriptionSucceeded)
-            channel.unbind("pusher:subscription_error", handleSubscriptionError)
-            pusher.unsubscribe(channelName)
-            pusher.disconnect()
-            setPusherConnected(false)
+            cancelled = true
+            teardown?.()
         }
     }, [usePusher, config, sessionId])
 

@@ -8,7 +8,7 @@ import type {
   PlayerState,
   TextMetadataCue,
 } from "amazon-ivs-player";
-import { PlayerEventType, PlayerState as IvsPlayerState } from "amazon-ivs-player";
+import { PlayerEventType, PlayerState as IvsPlayerState } from "../ivs-runtime-enums";
 import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
 
 // ─── Player mode ────────────────────────────────────────────────────────────
