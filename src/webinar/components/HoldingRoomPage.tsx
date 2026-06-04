@@ -100,7 +100,7 @@ export function HoldingRoomPage({
       return
     }
 
-    const jitter = Math.round((Math.random() * 2 - 1) * LIVE_REDIRECT_JITTER_MS)
+    const jitter = Math.round(Math.random() * LIVE_REDIRECT_JITTER_MS)
     const delay = LIVE_REDIRECT_BASE_DELAY_MS + jitter
 
     redirectTimeoutRef.current = setTimeout(() => {
