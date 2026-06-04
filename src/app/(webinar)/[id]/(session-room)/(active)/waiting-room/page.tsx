@@ -1,5 +1,3 @@
-export const runtime = 'edge'
-
 import { HoldingRoomPage } from '@/webinar/components/HoldingRoomPage'
 
 export default function WaitingRoomPage() {

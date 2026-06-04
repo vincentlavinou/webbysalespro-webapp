@@ -1,10 +1,10 @@
 // Runtime-safe mirrors of the `amazon-ivs-player` enum *values*.
 //
 // The IVS player SDK reads `window` while its module is being evaluated, which
-// throws `ReferenceError: window is not defined` in the Edge runtime during SSR
-// (the /[id]/live page runs on `runtime = 'edge'`). Statically importing enum
-// values from "amazon-ivs-player" pulls the whole browser-only SDK into the
-// server bundle and triggers that crash at module load.
+// throws `ReferenceError: window is not defined` during server evaluation.
+// Statically importing enum values from "amazon-ivs-player" pulls the whole
+// browser-only SDK into the server bundle and triggers that crash at module
+// load.
 //
 // These local constants carry the exact same string values as the SDK enums and
 // are typed as those enums (via type-only `import(...)`, which is erased at

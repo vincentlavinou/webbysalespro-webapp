@@ -147,9 +147,8 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions) {
         if (!usePusher || !config) return
 
         // pusher-js is a browser-only library: its module evaluation reads
-        // `window` at the top level, which crashes the Edge runtime during SSR
-        // of `runtime = 'edge'` routes (waiting-room, live, etc.). Load it
-        // lazily so it never lands in the server bundle.
+        // `window` at the top level, which crashes during server evaluation.
+        // Load it lazily so it never lands in the server bundle.
         let cancelled = false
         let teardown: (() => void) | null = null
 
