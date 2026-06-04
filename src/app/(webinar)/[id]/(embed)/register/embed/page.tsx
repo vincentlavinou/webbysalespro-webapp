@@ -41,15 +41,17 @@ export default async function EmbedRegistrationPage({ params, searchParams }: Em
       <div className="p-4" style={bgColor ? { backgroundColor: bgColor } : undefined}>
         <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-6">
           {hasLiveSession ? (
-            <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-600">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
-              </span>
-              We are live right now
+            <div className="mb-4 text-center">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-600">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+                </span>
+                We are live right now
+              </div>
             </div>
           ) : (
-            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
+            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4 text-center">
               {allowsSessionSelection
                 ? `Reserve your spot for ${webinar.title}`
                 : `Register for ${webinar.title}`}
