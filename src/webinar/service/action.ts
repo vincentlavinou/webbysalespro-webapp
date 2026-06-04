@@ -74,7 +74,12 @@ export async function getRegistrationEmbedConfig(webinarId: string, source: stri
     const params = new URLSearchParams({ source })
     const response = await fetch(
         `${webinarApiUrl}/v1/webinars/${webinarId}/registration-embeds/by-source/?${params.toString()}`,
-        { cache: 'no-store' }
+        {
+            next: {
+                revalidate: 60,
+                tags: [`webinar-${webinarId}`, `registration-embed-${webinarId}`],
+            },
+        }
     )
     if (!response.ok) return null
     return await response.json() as RegistrationEmbedConfig

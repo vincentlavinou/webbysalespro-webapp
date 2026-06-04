@@ -1,5 +1,3 @@
-export const runtime = 'edge'
-
 import { notFound } from 'next/navigation'
 import { getWebinar, getRegistrationEmbedConfig } from '@/webinar/service/action'
 import { isWebinarPayload, allowsManualSessionSelection } from '@/webinar/service/guards'
@@ -18,7 +16,7 @@ export default async function EmbedRegistrationPage({ params, searchParams }: Em
   const { source } = await searchParams
 
   const [webinar, embedConfig] = await Promise.all([
-    getWebinar(id, { fresh: true }),
+    getWebinar(id),
     source ? getRegistrationEmbedConfig(id, source) : Promise.resolve(null),
   ])
 

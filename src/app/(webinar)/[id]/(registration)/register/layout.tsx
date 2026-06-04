@@ -12,7 +12,7 @@ interface RegistrationLayoutProps {
 
 export default async function RegistrationLayout(props: RegistrationLayoutProps) {
     const webinarId = (await props.params).id
-    const webinar = await getWebinar(webinarId, { fresh: true })
+    const webinar = await getWebinar(webinarId)
     if (!isWebinarPayload(webinar)) {
         notFound()
     }

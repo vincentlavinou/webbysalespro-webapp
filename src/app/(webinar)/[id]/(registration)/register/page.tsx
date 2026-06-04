@@ -1,5 +1,3 @@
-export const runtime = 'edge'
-
 import { getWebinar } from '@/webinar/service'
 import { allowsManualSessionSelection, isWebinarPayload } from '@/webinar/service/guards'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
@@ -20,7 +18,7 @@ interface DefaultRegistrationPageProps {
 
 export async function generateMetadata({ params }: DefaultRegistrationPageProps): Promise<Metadata> {
     const webinarId = (await params).id
-    const webinar = await getWebinar(webinarId, { fresh: true })
+    const webinar = await getWebinar(webinarId)
     if (!isWebinarPayload(webinar)) {
       return {
         title: 'Webinar Registration',
@@ -49,7 +47,7 @@ export async function generateMetadata({ params }: DefaultRegistrationPageProps)
 export default async function DefaultRegistrationPage(props: DefaultRegistrationPageProps) {
     
     const webinarId = (await props.params).id
-    const webinar = await getWebinar(webinarId, { fresh: true })
+    const webinar = await getWebinar(webinarId)
     if (!isWebinarPayload(webinar)) {
       notFound()
     }

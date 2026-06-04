@@ -1,5 +1,3 @@
-export const runtime = 'edge'
-
 import { ThemeToggle } from "@/components/theme"
 import Link from "next/link"
 
