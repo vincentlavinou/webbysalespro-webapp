@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, useAnimation } from "framer-motion";
 import { DateTime } from "luxon";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type Control, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAction } from "next-safe-action/hooks";
@@ -21,9 +20,11 @@ import { registerForWebinarAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { allowsManualSessionSelection } from "@/webinar/service/guards";
 import { extractJoinToken, extractJoinUrl } from "@/webinar/service/join";
+import { NoAvailableSessionsMessage } from "@/webinar/components/NoAvailableSessionsMessage";
 
 interface DefaultRegistrationFormProps {
-  webinar: Webinar;
+  webinarPromise: Promise<Webinar>;
+  webinarId: string;
   primaryColor?: string;
   secondaryColor?: string;
   embedSource?: string;
@@ -79,49 +80,188 @@ const panelTone = (accent: string) => ({
   backgroundColor: `${accent}11`,
 });
 
-export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor, embedSource, embedSuccessUrl }: DefaultRegistrationFormProps) => {
+function SessionFieldLoading() {
+  return (
+    <div className="animate-pulse rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+      <div className="h-4 w-72 max-w-full rounded bg-gray-200" />
+      <div className="mt-2 h-4 w-56 max-w-[80%] rounded bg-gray-200" />
+    </div>
+  );
+}
+
+interface SessionFieldProps {
+  webinarPromise: Promise<Webinar>;
+  control: Control<AttendeeFormData>;
+  errors: FieldErrors<AttendeeFormData>;
+  primaryColor?: string;
+  secondaryColor?: string;
+}
+
+function SessionField({
+  webinarPromise,
+  control,
+  errors,
+  primaryColor,
+  secondaryColor,
+}: SessionFieldProps) {
+  const webinar = use(webinarPromise);
+  const sessions = webinar.series?.sessions ?? [];
+  const allowsSessionSelection = allowsManualSessionSelection(webinar);
+  const autoAssignedSession =
+    sessions.find((session) => session.status === WebinarSessionStatus.IN_PROGRESS)
+    ?? sessions[0];
+
+  if (sessions.length === 0) {
+    return <NoAvailableSessionsMessage />;
+  }
+
+  if (!allowsSessionSelection) {
+    return autoAssignedSession ? (
+      <div
+        className="rounded-xl border px-4 py-3"
+        style={panelTone(secondaryColor ?? primaryColor ?? "#059669")}
+      >
+        <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+          You&apos;ll be registered for the next available session.
+        </p>
+        <p className="mt-1 text-sm text-gray-700 dark:text-slate-300">
+          {DateTime.fromISO(autoAssignedSession.scheduled_start, {
+            zone: autoAssignedSession.timezone || "utc",
+          }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
+        </p>
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label className="text-gray-700 dark:text-slate-300">Select a Session</Label>
+      <Controller
+        name="session_id"
+        control={control}
+        render={({ field }) => (
+          <Select value={field.value} onValueChange={field.onChange}>
+            <SelectTrigger className={`w-full ${embedFieldClassName}`}>
+              <SelectValue placeholder="Select a session" />
+            </SelectTrigger>
+            <SelectContent>
+              {sessions.map((session) => {
+                const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
+                return (
+                  <SelectItem key={session.id} value={session.id}>
+                    <span className="flex items-center gap-2">
+                      {DateTime.fromISO(session.scheduled_start, {
+                        zone: session.timezone || "utc",
+                      }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
+                      {isLive && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+                          </span>
+                          LIVE
+                        </span>
+                      )}
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        )}
+      />
+      {errors.session_id && (
+        <p className="text-sm text-red-500">{errors.session_id.message}</p>
+      )}
+    </div>
+  );
+}
+
+function SubmitButtonLoading({ primaryColor }: { primaryColor?: string }) {
+  return (
+    <Button
+      type="submit"
+      className={`mt-2 w-full rounded-xl py-3 text-base font-semibold text-white ${primaryColor ? "" : "bg-emerald-600"}`}
+      style={primaryColor ? { backgroundColor: primaryColor } : undefined}
+      disabled
+    >
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Loading form...
+    </Button>
+  );
+}
+
+interface SubmitButtonProps {
+  webinarPromise: Promise<Webinar>;
+  submitButtonRef: { current: HTMLDivElement | null };
+  primaryColor?: string;
+  isHydrated: boolean;
+  isPending: boolean;
+  isNavigating: boolean;
+}
+
+function SubmitButton({
+  webinarPromise,
+  submitButtonRef,
+  primaryColor,
+  isHydrated,
+  isPending,
+  isNavigating,
+}: SubmitButtonProps) {
+  const webinar = use(webinarPromise);
+  const hasSessions = Boolean(webinar.series?.sessions?.length);
+  const isBusy = isPending || isNavigating;
+
+  return (
+    <div ref={submitButtonRef}>
+      <Button
+        type="submit"
+        className={`mt-2 w-full rounded-xl py-3 text-base font-semibold text-white transition-colors ${primaryColor ? "hover:opacity-90" : "bg-emerald-600 hover:bg-emerald-700"}`}
+        style={primaryColor ? { backgroundColor: primaryColor } : undefined}
+        disabled={!isHydrated || isBusy || !hasSessions}
+        aria-busy={!isHydrated || isBusy}
+      >
+        {(!isHydrated || isBusy) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {!isHydrated
+          ? "Loading form..."
+          : isPending
+            ? "Registering..."
+            : isNavigating
+              ? "Redirecting..."
+              : "Reserve My Spot →"}
+      </Button>
+    </div>
+  );
+}
+
+export const DefaultRegistrationForm = ({
+  webinarPromise,
+  webinarId,
+  primaryColor,
+  secondaryColor,
+  embedSource,
+  embedSuccessUrl,
+}: DefaultRegistrationFormProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const refSource = searchParams.get('ref') ?? '';
   const submitLockRef = useRef(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [successState, setSuccessState] = useState<RegistrationSuccessState | null>(null);
 
-  const sessions = useMemo(
-    () => webinar.series?.sessions || [],
-    [webinar.series]
-  );
-  const allowsSessionSelection = allowsManualSessionSelection(webinar);
   const shouldShowInlineEmbedSuccess = Boolean(
     embedSource && !embedSuccessUrl
-  );
-  const autoAssignedSession = useMemo(
-    () =>
-      sessions.find((session) => session.status === WebinarSessionStatus.IN_PROGRESS)
-      ?? sessions[0],
-    [sessions]
-  );
-  const formSchema = useMemo(
-    () =>
-      attendeeSchema.superRefine((data, ctx) => {
-        if (allowsSessionSelection && !data.session_id) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["session_id"],
-            message: "Please select a session",
-          });
-        }
-      }),
-    [allowsSessionSelection]
   );
 
   const {
     register,
     handleSubmit,
     control,
+    setError,
     formState: { errors },
   } = useForm<AttendeeFormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(attendeeSchema),
   });
 
   const navigateToUrl = (url: string) => {
@@ -148,6 +288,11 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
 
   const { execute, isPending } = useAction(registerForWebinarAction, {
     onSuccess: async ({data, input}) => {
+      const webinar = await webinarPromise;
+      const sessions = webinar.series?.sessions ?? [];
+      const autoAssignedSession =
+        sessions.find((session) => session.status === WebinarSessionStatus.IN_PROGRESS)
+        ?? sessions[0];
       setIsNavigating(true);
       const registeredSessionId = input.session_id ?? autoAssignedSession?.id;
       const registeredSession = webinar.series?.sessions.find((session) => session.id === registeredSessionId)
@@ -291,15 +436,21 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
     },
   });
 
-  const onSubmit = (data: AttendeeFormData) => {
+  const onSubmit = async (data: AttendeeFormData) => {
     if (submitLockRef.current || isPending || isNavigating) {
+      return;
+    }
+
+    const webinar = await webinarPromise;
+    if (allowsManualSessionSelection(webinar) && !data.session_id) {
+      setError("session_id", { message: "Please select a session" });
       return;
     }
 
     submitLockRef.current = true;
 
     execute({
-      webinar_id: webinar.id,
+      webinar_id: webinarId,
       ...(data.session_id ? { session_id: data.session_id } : {}),
       first_name: data.first_name,
       last_name: data.last_name,
@@ -312,17 +463,26 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
 
   const isBusy = isPending || isNavigating;
 
-  const pulseControls = useAnimation();
+  const submitButtonRef = useRef<HTMLDivElement>(null);
   const isFieldFocusedRef = useRef(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     const pulse = () => {
       if (isFieldFocusedRef.current) return;
-      pulseControls.start({
-        opacity: [1, 0.25, 1, 0.25, 1],
-        scale: [1, 1.03, 1, 1.03, 1],
-        transition: { duration: 0.75, ease: "easeInOut" },
-      });
+      submitButtonRef.current?.animate(
+        [
+          { opacity: 1, transform: "scale(1)" },
+          { opacity: 0.25, transform: "scale(1.03)" },
+          { opacity: 1, transform: "scale(1)" },
+          { opacity: 0.25, transform: "scale(1.03)" },
+          { opacity: 1, transform: "scale(1)" },
+        ],
+        { duration: 750, easing: "ease-in-out" }
+      );
     };
 
     const timers = [
@@ -331,7 +491,7 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
       setTimeout(pulse, 57000),
     ];
     return () => timers.forEach(clearTimeout);
-  }, [pulseControls]);
+  }, []);
 
   if (successState) {
     const sessionDt = DateTime.fromISO(successState.scheduledStart, { zone: successState.timezone || "utc" });
@@ -365,54 +525,15 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
       onBlur={() => { isFieldFocusedRef.current = false }}
       className="space-y-4"
     >
-      {allowsSessionSelection ? (
-        <div className="flex flex-col gap-2">
-          <Label className="text-gray-700 dark:text-slate-300">Select a Session</Label>
-          <Controller
-            name="session_id"
-            control={control}
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className={`w-full ${embedFieldClassName}`}>
-                  <SelectValue placeholder="Select a session" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sessions?.map((session) => {
-                    const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
-                    return (
-                      <SelectItem key={session.id} value={session.id}>
-                        <span className="flex items-center gap-2">
-                          {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
-                          {isLive && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-                              <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
-                              </span>
-                              LIVE
-                            </span>
-                          )}
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {errors.session_id && <p className="text-red-500 text-sm">{errors.session_id.message}</p>}
-        </div>
-      ) : autoAssignedSession ? (
-        <div
-          className="rounded-xl border px-4 py-3"
-          style={panelTone(secondaryColor ?? primaryColor ?? '#059669')}
-        >
-          <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">You&apos;ll be registered for the next available session.</p>
-          <p className="mt-1 text-sm text-gray-700 dark:text-slate-300">
-            {DateTime.fromISO(autoAssignedSession.scheduled_start, { zone: autoAssignedSession.timezone || "utc" }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
-          </p>
-        </div>
-      ) : null}
+      <Suspense fallback={<SessionFieldLoading />}>
+        <SessionField
+          webinarPromise={webinarPromise}
+          control={control}
+          errors={errors}
+          primaryColor={primaryColor}
+          secondaryColor={secondaryColor}
+        />
+      </Suspense>
 
       {/* First & Last name side-by-side */}
       <div className="grid grid-cols-2 gap-3">
@@ -482,18 +603,16 @@ export const DefaultRegistrationForm = ({ webinar, primaryColor, secondaryColor,
       </div>
 
       {/* Submit */}
-      <motion.div animate={pulseControls}>
-        <Button
-          type="submit"
-          className={`w-full text-white font-semibold py-3 text-base rounded-xl transition-colors mt-2 ${primaryColor ? 'hover:opacity-90' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-          style={primaryColor ? { backgroundColor: primaryColor } : undefined}
-          disabled={isBusy || sessions.length === 0}
-          aria-busy={isBusy}
-        >
-          {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isPending ? "Registering..." : isNavigating ? "Redirecting..." : "Reserve My Spot →"}
-        </Button>
-      </motion.div>
+      <Suspense fallback={<SubmitButtonLoading primaryColor={primaryColor} />}>
+        <SubmitButton
+          webinarPromise={webinarPromise}
+          submitButtonRef={submitButtonRef}
+          primaryColor={primaryColor}
+          isHydrated={isHydrated}
+          isPending={isPending}
+          isNavigating={isNavigating}
+        />
+      </Suspense>
 
     </form>
   );

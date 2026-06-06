@@ -91,7 +91,10 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
             </p>
           )}
           {sessions && sessions[0] ? (
-            <DefaultRegistrationForm webinar={webinar} />
+            <DefaultRegistrationForm
+              webinarPromise={Promise.resolve(webinar)}
+              webinarId={webinar.id}
+            />
           ) : (
             <NoAvailableSessionsMessage />
           )}
