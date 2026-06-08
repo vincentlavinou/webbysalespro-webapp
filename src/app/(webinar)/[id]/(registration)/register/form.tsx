@@ -310,6 +310,26 @@ export const DefaultRegistrationForm = ({
 
   const { execute, isPending } = useAction(registerForWebinarAction, {
     onSuccess: async ({data, input}) => {
+      // Embeds run inside a cross-origin iframe on the customer's landing page,
+      // where ad-tracking scripts (e.g. Hyros) hold the real ad click ID. Emit
+      // the conversion to the host page so it can attribute the lead in the top
+      // window. Fired before any navigation below, since navigating the top
+      // window would unload the parent before the message is delivered.
+      if (embedSource && typeof window !== "undefined" && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            type: "wsp:registration:success",
+            webinarId,
+            source: embedSource,
+            email: input.email,
+            firstName: input.first_name,
+            lastName: input.last_name,
+            phone: input.phone ?? undefined,
+          },
+          "*",
+        );
+      }
+
       const webinar = await webinarPromise;
       const sessions = webinar.series?.sessions ?? [];
       const autoAssignedSession =
