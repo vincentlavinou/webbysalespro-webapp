@@ -122,6 +122,7 @@ export type RegistrationEmbedConfig = {
     primary_color?: string | null
     secondary_color?: string | null
     secondary_background_color?: string | null
+    button_text_color?: string | null
     header_scripts?: string | null
     success_url?: string | null
     created_at: string

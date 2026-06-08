@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useEffect, useRef, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DateTime } from "luxon";
 import { useForm, Controller, type Control, type FieldErrors } from "react-hook-form";
@@ -27,6 +27,8 @@ interface DefaultRegistrationFormProps {
   webinarId: string;
   primaryColor?: string;
   secondaryColor?: string;
+  secondaryBackgroundColor?: string;
+  buttonTextColor?: string;
   embedSource?: string;
   embedSuccessUrl?: string;
 }
@@ -75,10 +77,18 @@ const embedFieldClassName =
 const embedAutofillClassName =
   "[&:-webkit-autofill]:[box-shadow:0_0_0px_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#111827] [&:-webkit-autofill]:[caret-color:#111827] [&:-webkit-autofill:hover]:[box-shadow:0_0_0px_1000px_white_inset] [&:-webkit-autofill:focus]:[box-shadow:0_0_0px_1000px_white_inset] dark:[&:-webkit-autofill]:[box-shadow:0_0_0px_1000px_#0f172a_inset] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:#f8fafc] dark:[&:-webkit-autofill]:[caret-color:#f8fafc] dark:[&:-webkit-autofill:hover]:[box-shadow:0_0_0px_1000px_#0f172a_inset] dark:[&:-webkit-autofill:focus]:[box-shadow:0_0_0px_1000px_#0f172a_inset]";
 
-const panelTone = (accent: string) => ({
+const panelTone = (accent: string, backgroundColor?: string): CSSProperties => ({
   borderColor: `${accent}33`,
-  backgroundColor: `${accent}11`,
+  backgroundColor: backgroundColor ?? `${accent}11`,
 });
+
+const buttonTone = (backgroundColor?: string, color?: string): CSSProperties | undefined => {
+  if (!backgroundColor && !color) return undefined;
+  return {
+    ...(backgroundColor ? { backgroundColor } : {}),
+    ...(color ? { color } : {}),
+  };
+};
 
 function SessionFieldLoading() {
   return (
@@ -95,6 +105,7 @@ interface SessionFieldProps {
   errors: FieldErrors<AttendeeFormData>;
   primaryColor?: string;
   secondaryColor?: string;
+  secondaryBackgroundColor?: string;
 }
 
 function SessionField({
@@ -103,6 +114,7 @@ function SessionField({
   errors,
   primaryColor,
   secondaryColor,
+  secondaryBackgroundColor,
 }: SessionFieldProps) {
   const webinar = use(webinarPromise);
   const sessions = webinar.series?.sessions ?? [];
@@ -119,7 +131,7 @@ function SessionField({
     return autoAssignedSession ? (
       <div
         className="rounded-xl border px-4 py-3"
-        style={panelTone(secondaryColor ?? primaryColor ?? "#059669")}
+        style={panelTone(secondaryColor ?? primaryColor ?? "#059669", secondaryBackgroundColor)}
       >
         <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
           You&apos;ll be registered for the next available session.
@@ -177,12 +189,18 @@ function SessionField({
   );
 }
 
-function SubmitButtonLoading({ primaryColor }: { primaryColor?: string }) {
+function SubmitButtonLoading({
+  primaryColor,
+  buttonTextColor,
+}: {
+  primaryColor?: string
+  buttonTextColor?: string
+}) {
   return (
     <Button
       type="submit"
       className={`mt-2 w-full rounded-xl py-3 text-base font-semibold text-white ${primaryColor ? "" : "bg-emerald-600"}`}
-      style={primaryColor ? { backgroundColor: primaryColor } : undefined}
+      style={buttonTone(primaryColor, buttonTextColor)}
       disabled
     >
       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -195,6 +213,7 @@ interface SubmitButtonProps {
   webinarPromise: Promise<Webinar>;
   submitButtonRef: { current: HTMLDivElement | null };
   primaryColor?: string;
+  buttonTextColor?: string;
   isHydrated: boolean;
   isPending: boolean;
   isNavigating: boolean;
@@ -204,6 +223,7 @@ function SubmitButton({
   webinarPromise,
   submitButtonRef,
   primaryColor,
+  buttonTextColor,
   isHydrated,
   isPending,
   isNavigating,
@@ -217,7 +237,7 @@ function SubmitButton({
       <Button
         type="submit"
         className={`mt-2 w-full rounded-xl py-3 text-base font-semibold text-white transition-colors ${primaryColor ? "hover:opacity-90" : "bg-emerald-600 hover:bg-emerald-700"}`}
-        style={primaryColor ? { backgroundColor: primaryColor } : undefined}
+        style={buttonTone(primaryColor, buttonTextColor)}
         disabled={!isHydrated || isBusy || !hasSessions}
         aria-busy={!isHydrated || isBusy}
       >
@@ -239,6 +259,8 @@ export const DefaultRegistrationForm = ({
   webinarId,
   primaryColor,
   secondaryColor,
+  secondaryBackgroundColor,
+  buttonTextColor,
   embedSource,
   embedSuccessUrl,
 }: DefaultRegistrationFormProps) => {
@@ -499,7 +521,7 @@ export const DefaultRegistrationForm = ({
     return (
       <div
         className="rounded-2xl border px-5 py-6 text-center"
-        style={panelTone(secondaryColor ?? primaryColor ?? "#059669")}
+        style={panelTone(secondaryColor ?? primaryColor ?? "#059669", secondaryBackgroundColor)}
       >
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/40">
           <CheckCircle className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
@@ -532,6 +554,7 @@ export const DefaultRegistrationForm = ({
           errors={errors}
           primaryColor={primaryColor}
           secondaryColor={secondaryColor}
+          secondaryBackgroundColor={secondaryBackgroundColor}
         />
       </Suspense>
 
@@ -603,11 +626,12 @@ export const DefaultRegistrationForm = ({
       </div>
 
       {/* Submit */}
-      <Suspense fallback={<SubmitButtonLoading primaryColor={primaryColor} />}>
+      <Suspense fallback={<SubmitButtonLoading primaryColor={primaryColor} buttonTextColor={buttonTextColor} />}>
         <SubmitButton
           webinarPromise={webinarPromise}
           submitButtonRef={submitButtonRef}
           primaryColor={primaryColor}
+          buttonTextColor={buttonTextColor}
           isHydrated={isHydrated}
           isPending={isPending}
           isNavigating={isNavigating}

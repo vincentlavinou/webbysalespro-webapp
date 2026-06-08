@@ -12,26 +12,78 @@ import type { Webinar } from '@/webinar/service'
 
 interface EmbedRegistrationPageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ source?: string }>
+  searchParams: Promise<{
+    source?: string
+    background_color?: string
+    primary_color?: string
+    secondary_color?: string
+    secondary_background_color?: string
+    button_text_color?: string
+  }>
 }
 
 export default async function EmbedRegistrationPage({ params, searchParams }: EmbedRegistrationPageProps) {
   const { id } = await params
-  const { source } = await searchParams
+  const {
+    source,
+    background_color: backgroundColor,
+    primary_color: primaryColor,
+    secondary_color: secondaryColor,
+    secondary_background_color: secondaryBackgroundColor,
+    button_text_color: buttonTextColor,
+  } = await searchParams
+  const colorOverrides = {
+    backgroundColor: normalizeColorOverride(backgroundColor),
+    primaryColor: normalizeColorOverride(primaryColor),
+    secondaryColor: normalizeColorOverride(secondaryColor),
+    secondaryBackgroundColor: normalizeColorOverride(secondaryBackgroundColor),
+    buttonTextColor: normalizeColorOverride(buttonTextColor),
+  }
 
   return (
-    <Suspense fallback={<EmbedRegistrationLoading />}>
-      <EmbedRegistrationShell id={id} source={source} />
+    <Suspense
+      fallback={
+        <EmbedRegistrationLoading
+          backgroundColor={colorOverrides.backgroundColor}
+          primaryColor={colorOverrides.primaryColor}
+        />
+      }
+    >
+      <EmbedRegistrationShell id={id} source={source} colorOverrides={colorOverrides} />
     </Suspense>
   )
 }
 
-async function EmbedRegistrationShell({ id, source }: { id: string; source?: string }) {
+interface EmbedColorOverrides {
+  backgroundColor?: string
+  primaryColor?: string
+  secondaryColor?: string
+  secondaryBackgroundColor?: string
+  buttonTextColor?: string
+}
+
+function normalizeColorOverride(color?: string) {
+  const normalizedColor = color?.trim()
+  return normalizedColor || undefined
+}
+
+async function EmbedRegistrationShell({
+  id,
+  source,
+  colorOverrides,
+}: {
+  id: string
+  source?: string
+  colorOverrides: EmbedColorOverrides
+}) {
   const webinarPromise = getWebinar(id)
   const embedConfig = source ? await getRegistrationEmbedConfig(id, source) : null
-  const primaryColor = embedConfig?.primary_color ?? undefined
-  const secondaryColor = embedConfig?.secondary_color ?? undefined
-  const bgColor = embedConfig?.background_color ?? undefined
+  const primaryColor = colorOverrides.primaryColor ?? embedConfig?.primary_color ?? undefined
+  const secondaryColor = colorOverrides.secondaryColor ?? embedConfig?.secondary_color ?? undefined
+  const secondaryBackgroundColor =
+    colorOverrides.secondaryBackgroundColor ?? embedConfig?.secondary_background_color ?? undefined
+  const buttonTextColor = colorOverrides.buttonTextColor ?? embedConfig?.button_text_color ?? undefined
+  const backgroundColor = colorOverrides.backgroundColor ?? embedConfig?.background_color ?? undefined
   const embedSuccessUrl = embedConfig?.success_url ?? undefined
   const headerScripts = embedConfig?.header_scripts?.trim()
 
@@ -39,7 +91,7 @@ async function EmbedRegistrationShell({ id, source }: { id: string; source?: str
     <>
       {headerScripts ? <EmbedHeaderScripts value={headerScripts} /> : null}
 
-      <div className="p-4" style={bgColor ? { backgroundColor: bgColor } : undefined}>
+      <div className="p-4" style={backgroundColor ? { backgroundColor } : undefined}>
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <Suspense fallback={<div className="mx-auto mb-4 h-4 w-52 animate-pulse rounded bg-gray-200" />}>
             <EmbedRegistrationHeading webinarPromise={webinarPromise} />
@@ -49,6 +101,8 @@ async function EmbedRegistrationShell({ id, source }: { id: string; source?: str
             webinarId={id}
             primaryColor={primaryColor}
             secondaryColor={secondaryColor}
+            secondaryBackgroundColor={secondaryBackgroundColor}
+            buttonTextColor={buttonTextColor}
             embedSource={source}
             embedSuccessUrl={embedSuccessUrl}
           />
