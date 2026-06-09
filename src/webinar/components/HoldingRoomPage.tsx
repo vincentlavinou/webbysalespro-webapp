@@ -41,7 +41,7 @@ export function HoldingRoomPage({
 
   const { isActive, request, status } = useManualWakeLock()
   const router = useRouter()
-  const { session, webinar, broadcastServiceToken } = useWebinar()
+  const { session, webinar } = useWebinar()
   const { joinUrl } = useAttendeeSession()
   const { markRoom } = useSessionPresence()
 
@@ -94,8 +94,7 @@ export function HoldingRoomPage({
 
   useEffect(() => {
     const sessionId = session?.id
-    const canRedirectToLive =
-      session?.status === WebinarSessionStatus.IN_PROGRESS && !!broadcastServiceToken?.stream
+    const canRedirectToLive = session?.status === WebinarSessionStatus.IN_PROGRESS
 
     if (!sessionId || hasRedirectedRef.current || !canRedirectToLive || redirectTimeoutRef.current) {
       return
@@ -117,7 +116,7 @@ export function HoldingRoomPage({
         redirectTimeoutRef.current = null
       }
     }
-  }, [broadcastServiceToken?.stream, router, session?.id, session?.status])
+  }, [router, session?.id, session?.status])
 
   // Early-access room only: once the waiting-room open time
   // (scheduled_start − waiting_room_start_time) is reached, send the attendee
