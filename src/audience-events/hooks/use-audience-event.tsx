@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { ChatEvent } from "amazon-ivs-chat-messaging";
 import { z } from "zod";
 import { onPlaybackMetadata } from "@/emitter/playback/playbackEventEmitter";
@@ -46,18 +46,7 @@ function parseChatEnvelope(event: ChatEvent): unknown {
 export function useAudienceEvent<
   TType extends string,
   TPayload extends Record<string, unknown>,
->({
-  eventType,
-  schema,
-  sessionId,
-  targetAudience = "attendee",
-  onEvent,
-  getEventKey,
-  getStateScope,
-  compareEventKeys,
-  getSignature,
-  onError,
-}: {
+>(options: {
   eventType: TType;
   schema: z.ZodType<AudienceEvent<TType, TPayload>>;
   sessionId?: string;
@@ -69,13 +58,41 @@ export function useAudienceEvent<
   getSignature?: (evt: AudienceEvent<TType, TPayload>) => string;
   onError?: (error: string) => void;
 }) {
+  const optionsRef = useRef(options);
   const lastSigRef = useRef("");
   const seenEventKeysRef = useRef<Set<string>>(new Set());
   const seenEventKeyOrderRef = useRef<string[]>([]);
   const latestEventKeyByScopeRef = useRef<Map<string, string>>(new Map());
+  const eventIdentityRef = useRef(`${options.eventType}:${options.sessionId ?? ""}`);
+
+  useLayoutEffect(() => {
+    optionsRef.current = options;
+
+    const eventIdentity = `${options.eventType}:${options.sessionId ?? ""}`;
+    if (eventIdentityRef.current === eventIdentity) return;
+
+    eventIdentityRef.current = eventIdentity;
+    lastSigRef.current = "";
+    seenEventKeysRef.current.clear();
+    seenEventKeyOrderRef.current = [];
+    latestEventKeyByScopeRef.current.clear();
+  }, [options]);
 
   useEffect(() => {
     const processEnvelope = (obj: unknown, transport: "stream" | "chat") => {
+      const {
+        eventType,
+        schema,
+        sessionId,
+        targetAudience = "attendee",
+        onEvent,
+        getEventKey,
+        getStateScope,
+        compareEventKeys,
+        getSignature,
+        onError,
+      } = optionsRef.current;
+
       if (!obj || typeof obj !== "object") {
         onError?.(`[${transport}] event is not an object`);
         return;
@@ -165,16 +182,5 @@ export function useAudienceEvent<
       offPlayback();
       offChat();
     };
-  }, [
-    compareEventKeys,
-    eventType,
-    getEventKey,
-    getSignature,
-    getStateScope,
-    onError,
-    onEvent,
-    schema,
-    sessionId,
-    targetAudience,
-  ]);
+  }, []);
 }
