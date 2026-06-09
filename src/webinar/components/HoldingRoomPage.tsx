@@ -35,6 +35,7 @@ export function HoldingRoomPage({
   const [timeLeft, setTimeLeft] = useState('')
   const [isRedirecting, setIsRedirecting] = useState(false)
   const hasRedirectedRef = useRef(false)
+  const hasNavigatedToWaitingRef = useRef(false)
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const promptControls = useAnimation()
 
@@ -117,6 +118,46 @@ export function HoldingRoomPage({
       }
     }
   }, [broadcastServiceToken?.stream, router, session?.id, session?.status])
+
+  // Early-access room only: once the waiting-room open time
+  // (scheduled_start − waiting_room_start_time) is reached, send the attendee
+  // back through the join route so the server re-resolves their token and drops
+  // them in the correct room — waiting-room now, or live/completed if the
+  // session has since moved on. Mirrors the room selection in join/live/route.ts.
+  useEffect(() => {
+    if (presenceRoom !== 'early_access_room') return
+    if (!session || !webinar || !joinUrl) return
+
+    const waitingRoomMinutes = webinar.settings?.waiting_room_start_time ?? 15
+    const waitingRoomOpensAt = DateTime.fromISO(session.scheduled_start, {
+      zone: session.timezone || 'utc',
+    }).minus({ minutes: waitingRoomMinutes })
+
+    const goToWaitingRoom = () => {
+      // Fire once, and never yank a user already heading to /live.
+      if (hasNavigatedToWaitingRef.current || hasRedirectedRef.current) return
+      if (waitingRoomOpensAt.toMillis() > DateTime.now().toMillis()) return
+      hasNavigatedToWaitingRef.current = true
+      setIsRedirecting(true)
+      // Hard navigation: /join/live is a route handler, not a client route.
+      window.location.assign(joinUrl)
+    }
+
+    goToWaitingRoom()
+
+    // Poll at the countdown cadence rather than one long timer, which a
+    // backgrounded tab would throttle; re-check immediately on refocus too.
+    const interval = setInterval(goToWaitingRoom, 1000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') goToWaitingRoom()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [presenceRoom, session, webinar, joinUrl])
 
   if (!session || !webinar) {
     return <WaitingRoomShimmer title={loadingTitle} />

@@ -9,6 +9,14 @@ import { RealtimeConfig } from "../service/type"
 
 type RealtimeEventHandler = (data: unknown) => void
 
+// Dead-connection detection: pusher-js pings after this much inactivity, then
+// reconnects if no pong arrives within PUSHER_PONG_TIMEOUT_MS. Tuned tighter
+// than the default (~120s) so a silently dropped socket reconnects — and
+// re-fires onOpen → getSession — fast, instead of stranding an attendee in a
+// holding room past the live transition.
+const PUSHER_ACTIVITY_TIMEOUT_MS = 30_000
+const PUSHER_PONG_TIMEOUT_MS = 15_000
+
 export interface UseRealtimeChannelOptions {
     enabled: boolean
     sessionId: string
@@ -56,6 +64,9 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions) {
 
     const [config, setConfig] = useState<RealtimeConfig | null>(null)
     const [pusherConnected, setPusherConnected] = useState(false)
+    // Bumped after a channel-auth refresh to force the subscribe effect to
+    // tear down and re-subscribe with the new token (see handleSubscriptionError).
+    const [resubscribeNonce, setResubscribeNonce] = useState(0)
 
     const handlersRef = useRef(eventHandlers)
     useEffect(() => {
@@ -160,6 +171,8 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions) {
             const pusher = new Pusher(config.key, {
                 cluster: config.cluster,
                 forceTLS: config.force_tls,
+                activityTimeout: PUSHER_ACTIVITY_TIMEOUT_MS,
+                pongTimeout: PUSHER_PONG_TIMEOUT_MS,
                 ...(config.ws_host
                     ? {
                           wsHost: config.ws_host,
@@ -205,7 +218,19 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions) {
                         ? (err as { status?: number }).status
                         : undefined
                 if (status === 401 || status === 403) {
-                    void onTokenExpiredRef.current?.()
+                    // The channel auth endpoint rejected the token (expired/invalid).
+                    // Refresh it, then bump the nonce to tear down and re-subscribe so
+                    // the new token is actually used: pusher-js does not auto-retry a
+                    // failed subscription, and the subscribe effect reads the token via
+                    // ref (not deps), so without this the refreshed token would sit
+                    // unused until the next reconnect. Mirrors the SSE branch's
+                    // auth:expired → refresh → reconnect.
+                    const handler = onTokenExpiredRef.current
+                    if (handler) {
+                        void Promise.resolve(handler()).then(() => {
+                            setResubscribeNonce((n) => n + 1)
+                        })
+                    }
                 }
                 onErrorRef.current?.(err)
             }
@@ -262,7 +287,7 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions) {
             cancelled = true
             teardown?.()
         }
-    }, [usePusher, config, sessionId])
+    }, [usePusher, config, sessionId, resubscribeNonce])
 
     return {
         transport: usePusher ? ("pusher" as const) : useSse ? ("sse" as const) : null,
