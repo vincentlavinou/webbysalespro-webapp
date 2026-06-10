@@ -1,9 +1,9 @@
 // components/ivs/WebbySalesProPlayer.tsx
 "use client";
 
-import React, { forwardRef } from "react";
+import React, { forwardRef, useState } from "react";
 import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
-import { useDeviceType } from "./hooks/use-device-type";
+import { detectDeviceType } from "./hooks/use-device-type";
 import IOSWebbySalesProPlayer from "./IOSWebbySalesProPlayer";
 import AndroidWebbySalesProPlayer from "./AndroidWebbySalesProPlayer";
 import DesktopWebbySalesProPlayer from "./DesktopWebbySalesProPlayer";
@@ -30,7 +30,14 @@ export type WebbySalesProPlayerHandle = {
 
 const WebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
   function WebbySalesProPlayer(props, ref) {
-    const deviceType = useDeviceType();
+    // Pin the device type synchronously at mount so the player selection always
+    // agrees with PersistentChannelPlaybackProvider, which also commits the
+    // device type synchronously. The deferred useDeviceType() hook returns
+    // "desktop" on the first render, which on Android caused the Desktop player
+    // to mount and call usePersistentChannelPlayback() while only the Android
+    // context was provided — throwing "must be called within
+    // PersistentChannelPlaybackProvider".
+    const [deviceType] = useState(() => detectDeviceType());
 
     if (deviceType === "ios") {
       return <IOSWebbySalesProPlayer ref={ref} {...props} />;
