@@ -190,9 +190,14 @@ export const AndroidWebbySalesProPlayer =
 
           <FullscreenOverlayButton
             isVisible={isFullscreenControlVisible}
+            isFullscreen={isFullscreen}
             onClick={() => {
               showControls();
-              void enterFullscreen();
+              if (isFullscreen) {
+                void exitFullscreen();
+              } else {
+                void enterFullscreen();
+              }
             }}
           />
 
