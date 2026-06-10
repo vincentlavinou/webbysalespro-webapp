@@ -1,7 +1,8 @@
 import Image from "next/image"
+import { redirect } from "next/navigation"
 import { WebinarFooter } from "@/webinar/components"
 import { AttendeeSessionProvider } from "@/attendee-session/provider/AttendeeSessionProvider"
-import { getAttendeeSessionCookie } from "@/lib/attendee-cookie"
+import { getAttendeeSessionCookie, hasRecentlyReResolved, isAttendeeSessionStale } from "@/lib/attendee-cookie"
 import { JoinTokenRedirect } from "../JoinTokenRedirect"
 
 interface SessionRoomLayoutProps {
@@ -15,6 +16,17 @@ export default async function SessionRoomLayout({ children, params }: SessionRoo
   const attendeeSession = await getAttendeeSessionCookie()
   if (!attendeeSession) {
     return <JoinTokenRedirect sessionId={routeSessionId} />
+  }
+
+  // On (re)load with a stale token, bounce through /join/live so the backend
+  // re-resolves the join link and mints a fresh attendee cookie before render.
+  // Skip if we just re-resolved, so a still-stale token can't cause a loop.
+  if (
+    attendeeSession.joinUrl &&
+    isAttendeeSessionStale(attendeeSession) &&
+    !(await hasRecentlyReResolved())
+  ) {
+    redirect(attendeeSession.joinUrl)
   }
 
   return (

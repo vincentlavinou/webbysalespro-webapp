@@ -6,6 +6,7 @@ import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { getWebinar } from '@/webinar/service'
 import { isWebinarPayload } from '@/webinar/service/guards'
 import { sanitizeJoinToken, sanitizeWebinarId } from '@/webinar/service/join-params'
+import { RERESOLVE_MARKER_COOKIE, RERESOLVE_MARKER_MAX_AGE_SECONDS } from '@/lib/attendee-cookie'
 import { DateTime } from 'luxon'
 
 const webinarAppUrl = (
@@ -63,6 +64,16 @@ export async function GET(request: NextRequest) {
             sameSite: 'lax',
             path: '/',
             maxAge: COOKIE_MAX_AGE,
+        })
+
+        // One-shot marker so the room layouts don't immediately re-resolve again
+        // on the return trip — bounds the stale-redirect to a single attempt.
+        cookieStore.set(RERESOLVE_MARKER_COOKIE, '1', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: RERESOLVE_MARKER_MAX_AGE_SECONDS,
         })
 
         if (status === WebinarSessionStatus.CANCELED) {
