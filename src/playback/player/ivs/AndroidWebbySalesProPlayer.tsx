@@ -55,12 +55,16 @@ export const AndroidWebbySalesProPlayer =
       restoreToLive,
     } = usePersistentAndroidPlayback();
 
-    const { enterFullscreen, exitFullscreen } = useFullscreen({
+    const { enterFullscreen, exitFullscreen, isFullscreen } = useFullscreen({
       videoRef,
       containerRef: playerSurfaceRef,
       onResumeNeeded: () => {
         void restoreToLive({ gracePeriodMs: 150 });
       },
+      // Android Chrome supports element fullscreen + orientation lock; rotating
+      // to landscape lets the 16:9 video fill the screen instead of sitting as a
+      // small letterboxed strip in portrait.
+      lockLandscape: true,
     });
 
     usePersistentVideoAttachment({
@@ -121,11 +125,16 @@ export const AndroidWebbySalesProPlayer =
       <div className="w-full">
         <div
           ref={playerSurfaceRef}
-          className="relative overflow-hidden border bg-black shadow-sm"
+          className={`relative overflow-hidden border bg-black shadow-sm ${
+            isFullscreen ? "flex h-full w-full items-center justify-center border-0" : ""
+          }`}
           onPointerUp={toggleControls}
           style={{ touchAction: "manipulation" }}
         >
-          <div className="aspect-video">
+          {/* In fullscreen the surface fills the (landscape-locked) screen, so the
+              video wrapper drops its fixed 16:9 ratio and lets object-contain
+              center/letterbox the video to whatever the device aspect is. */}
+          <div className={isFullscreen ? "h-full w-full" : "aspect-video"}>
             {/* video is reparented here via useLayoutEffect */}
             <div
               ref={videoContainerRef}

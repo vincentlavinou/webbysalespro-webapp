@@ -26,14 +26,26 @@ type FullscreenCapableDocument = Document & {
   webkitFullscreenElement?: Element | null;
 };
 
+// Screen Orientation lock is only exposed on some platforms (Android Chrome).
+// Typed loosely so feature-detection works without lib.dom assumptions.
+type LockableScreenOrientation = ScreenOrientation & {
+  lock?: (orientation: "landscape" | "portrait" | "any" | "natural") => Promise<void>;
+  unlock?: () => void;
+};
+
 type Options = {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   /** Called when fullscreen exits and the video element is paused — caller should resume. */
   onResumeNeeded: () => void;
+  /**
+   * Lock the screen to landscape while fullscreen (Android). No-op on platforms
+   * without the Screen Orientation lock API (iOS/desktop) — fails silently.
+   */
+  lockLandscape?: boolean;
 };
 
-export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Options) {
+export function useFullscreen({ videoRef, containerRef, onResumeNeeded, lockLandscape = false }: Options) {
   const [fullscreenMode, setFullscreenModeState] = useState<FullscreenMode>("none");
 
   // Ref mirror kept in sync for use inside stable callbacks and shouldIgnoreVisibilityChange.
@@ -44,6 +56,28 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
   // Keep onResumeNeeded stable without adding it to every effect dep array.
   const onResumeNeededRef = useRef(onResumeNeeded);
   useEffect(() => { onResumeNeededRef.current = onResumeNeeded; }, [onResumeNeeded]);
+
+  const lockLandscapeRef = useRef(lockLandscape);
+  useEffect(() => { lockLandscapeRef.current = lockLandscape; }, [lockLandscape]);
+
+  // ─── Orientation lock (Android) ──────────────────────────────────────────
+  // Must be called while the document is fullscreen; throws/rejects on
+  // unsupported platforms, so everything is wrapped defensively.
+  const lockOrientationLandscape = useCallback(() => {
+    if (!lockLandscapeRef.current || typeof window === "undefined") return;
+    const orientation = window.screen?.orientation as LockableScreenOrientation | undefined;
+    try {
+      void orientation?.lock?.("landscape")?.catch(() => {});
+    } catch {}
+  }, []);
+
+  const unlockOrientation = useCallback(() => {
+    if (!lockLandscapeRef.current || typeof window === "undefined") return;
+    const orientation = window.screen?.orientation as LockableScreenOrientation | undefined;
+    try {
+      orientation?.unlock?.();
+    } catch {}
+  }, []);
 
   const setFullscreenMode = useCallback((m: FullscreenMode) => {
     fullscreenModeRef.current = m;
@@ -132,18 +166,21 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
     const finalizeFullscreenExit = () => {
       autoFullscreenRef.current = false;
       clearPostExitTimer();
+      unlockOrientation();
       setFullscreenMode("none");
     };
 
     const onFullscreenChange = () => {
       if (isInFullscreen()) {
         clearPostExitTimer();
+        lockOrientationLandscape();
         setFullscreenMode("active");
         return;
       }
 
       // Exited fullscreen.
       autoFullscreenRef.current = false;
+      unlockOrientation();
       setFullscreenMode("exiting"); // suppress visibilitychange while animating out
 
       // Fullscreen transitions can leave IVS in IDLE with a black frame even
@@ -201,6 +238,7 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
 
     return () => {
       clearPostExitTimer();
+      unlockOrientation();
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
       document.removeEventListener("visibilitychange", reconcileFullscreenState);
@@ -213,6 +251,8 @@ export function useFullscreen({ videoRef, containerRef, onResumeNeeded }: Option
     isInFullscreen,
     videoRef,
     setFullscreenMode,
+    lockOrientationLandscape,
+    unlockOrientation,
   ]);
 
   return {

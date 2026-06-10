@@ -27,15 +27,22 @@ function IvsPersistentCore({ src, title, artwork, children }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hiddenHostRef = useRef<HTMLDivElement>(null);
 
-  // Determine autoPlay once at mount using the synchronous device check so it
-  // never changes and never triggers a player re-init.
-  const [autoPlay] = useState(() => detectDeviceType() !== "ios");
+  // Determine autoPlay/startMuted once at mount using the synchronous device
+  // check so it never changes and never triggers a player re-init.
+  // iOS blocks autoplay with sound but allows muted inline autoplay — so iOS
+  // starts muted and surfaces the existing "tap to unmute" nudge, matching the
+  // desktop/Android experience instead of a separate tap-to-start gate.
+  const [{ autoPlay, startMuted }] = useState(() => {
+    const isIos = detectDeviceType() === "ios";
+    return { autoPlay: true, startMuted: isIos };
+  });
 
   const shouldPreventPause = useCallback(() => true, []);
 
   const ivs = useIvsPlayerCore({
     src,
     autoPlay,
+    startMuted,
     videoRef,
     onTextMetadata: emitPlaybackMetadata,
     onEnded: emitPlaybackEnded,

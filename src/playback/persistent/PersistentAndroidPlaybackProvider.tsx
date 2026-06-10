@@ -68,7 +68,13 @@ export function PersistentAndroidPlaybackProvider({
   });
 
   useMediaSession({
-    active: android.mode === "playing" || android.mode === "playing-muted",
+    // Include "buffering" so a background stall (which flips Android's mode to
+    // "buffering") doesn't tear down the MediaSession — losing it is what makes
+    // Chrome stop background audio and never recover when the tab is hidden.
+    active:
+      android.mode === "playing" ||
+      android.mode === "playing-muted" ||
+      android.mode === "buffering",
     title,
     ariaLabel: "Live Webinar",
     artwork,

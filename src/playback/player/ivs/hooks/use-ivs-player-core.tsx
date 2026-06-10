@@ -38,6 +38,8 @@ function getErrorMessage(error: unknown, fallback: string): string {
 type Options = {
   src: string;
   autoPlay: boolean;
+  /** Start playback muted (e.g. iOS, which only allows muted inline autoplay). */
+  startMuted?: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onTextMetadata?: (text: string) => void;
   onEnded?: () => void;
@@ -59,6 +61,7 @@ type StatsState = {
 export function useIvsPlayerCore({
   src,
   autoPlay,
+  startMuted = false,
   videoRef,
   onTextMetadata,
   onEnded,
@@ -401,6 +404,14 @@ export function useIvsPlayerCore({
       p.attachHTMLVideoElement(v);
       setPlayerVersion(n => n + 1);
 
+      // Mute before autoplay so browsers that only permit muted inline autoplay
+      // (iOS) can start without a user gesture; the "tap to unmute" nudge then
+      // lets the user enable sound.
+      if (startMuted) {
+        v.muted = true;
+        setIsMuted(true);
+      }
+
       p.setAutoplay(autoPlay);
       p.setAutoQualityMode(true);
       p.setLiveLowLatencyEnabled(true);
@@ -461,7 +472,8 @@ export function useIvsPlayerCore({
 
       if (autoPlay) {
         // Desktop: try autoplay with sound. Browser blocks it → show click-to-play.
-        // Never fall back to muted autoplay.
+        // iOS (startMuted): muted inline autoplay is permitted → starts in
+        // "playing-muted" and the "tap to unmute" nudge handles sound.
         try {
           await v.play();
           setLastErrorMessage(null);
@@ -496,7 +508,7 @@ export function useIvsPlayerCore({
       playerRef.current = null;
       cleanup?.();
     };
-  }, [src, autoPlay, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
+  }, [src, autoPlay, startMuted, videoRef, onEnded, onPlaying, onError, onTextMetadata, updateStats, scheduleRetry, clearRetry]);
 
   return {
     playerRef,
