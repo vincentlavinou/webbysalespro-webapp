@@ -34,3 +34,7 @@ export function extractJoinUrl(response: JoinResponseLike | null | undefined) {
 
   return null;
 }
+
+export function didShortLinkResolutionFail(response: JoinResponseLike | null | undefined) {
+  return response?.grants.some((grant) => grant.short_link_resolution_failed === true) ?? false;
+}

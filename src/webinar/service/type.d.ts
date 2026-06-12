@@ -175,6 +175,7 @@ export type RegisterAttendeeResponse = {
 
 export type RegisterV2Grant = {
     join_url?: string
+    short_link_resolution_failed?: boolean
     join_token?: {
         token: string
     }

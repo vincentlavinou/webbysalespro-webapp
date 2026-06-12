@@ -216,7 +216,16 @@ async function resolveRegistrationShortLinks(
                 return grant;
             }
 
-            const resolution = await resolveShortLink(shortCode);
+            let resolution;
+            try {
+                resolution = await resolveShortLink(shortCode);
+            } catch (error) {
+                Sentry.captureException(error, {
+                    tags: { action: "registration", step: "resolve-short-link" },
+                });
+                return { ...grant, short_link_resolution_failed: true };
+            }
+
             if (resolution.status === "expired") {
                 return { ...grant, join_url: undefined };
             }

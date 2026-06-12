@@ -1,6 +1,9 @@
 import 'server-only'
 
 import { ApiError, safeDecodeErrorPayload } from '@/lib/error'
+import { retryTransientRequest } from '@/lib/retry'
+
+const SHORT_LINK_RESOLVE_TIMEOUT_MS = 5_000
 
 const webinarApiUrl =
   process.env.WEBINAR_BASE_API_URL ??
@@ -19,9 +22,16 @@ export type ShortLinkResolution =
   | { status: 'expired' }
 
 export async function resolveShortLink(shortCode: string): Promise<ShortLinkResolution> {
-  const response = await fetch(
-    `${webinarApiUrl}/v2/short-links/${encodeURIComponent(shortCode)}/resolve/`,
-    { cache: 'no-store' },
+  const response = await retryTransientRequest(
+    () =>
+      fetch(
+        `${webinarApiUrl}/v2/short-links/${encodeURIComponent(shortCode)}/resolve/`,
+        {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(SHORT_LINK_RESOLVE_TIMEOUT_MS),
+        },
+      ),
+    { method: 'GET' },
   )
 
   if (response.ok) {

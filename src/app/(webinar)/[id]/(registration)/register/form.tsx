@@ -19,7 +19,11 @@ import { webinarAppUrl, type Webinar } from "@/webinar/service";
 import { registerForWebinarAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { allowsManualSessionSelection } from "@/webinar/service/guards";
-import { extractJoinToken, extractJoinUrl } from "@/webinar/service/join";
+import {
+  didShortLinkResolutionFail,
+  extractJoinToken,
+  extractJoinUrl,
+} from "@/webinar/service/join";
 import { NoAvailableSessionsMessage } from "@/webinar/components/NoAvailableSessionsMessage";
 
 interface DefaultRegistrationFormProps {
@@ -350,6 +354,7 @@ export const DefaultRegistrationForm = ({
         : webinar.registration_settings?.registration_success_url;
 
       const joinUrl = extractJoinUrl(data)
+      const shortLinkResolutionFailed = didShortLinkResolutionFail(data);
       if (!joinUrl) {
         if (successUrl && registeredSession) {
           const params = new URLSearchParams();
@@ -382,7 +387,7 @@ export const DefaultRegistrationForm = ({
         return;
       }
 
-      if (shouldJoinLive) {
+      if (shouldJoinLive && !(shortLinkResolutionFailed && successUrl)) {
         navigateToUrl(joinUrl);
         return;
       }

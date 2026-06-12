@@ -1,9 +1,8 @@
-import Link from 'next/link'
 import { Link2Off } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
-import { Button } from '@/components/ui/button'
 import { resolveShortLink } from '@/webinar/service/short-link'
+import { RetryShortLinkButton } from './RetryShortLinkButton'
 
 type ShortLinkPageProps = {
   params: Promise<{
@@ -31,12 +30,10 @@ export default async function ShortLinkPage({ params }: ShortLinkPageProps) {
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
           The link may have expired or is invalid. Check the original message for
-          a newer link, or contact the webinar organizer.
+          a newer link, or try this link again.
         </p>
 
-        <Button asChild variant="outline" className="mt-6">
-          <Link href="/">Return home</Link>
-        </Button>
+        <RetryShortLinkButton />
       </div>
     </div>
   )
