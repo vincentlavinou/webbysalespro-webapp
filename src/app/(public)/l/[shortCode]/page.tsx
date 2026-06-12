@@ -3,54 +3,12 @@ import { Link2Off } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
-import { safeDecodeErrorPayload } from '@/lib/error'
-
-const webinarApiUrl =
-  process.env.WEBINAR_BASE_API_URL ??
-  process.env.NEXT_PUBLIC_WEBINAR_BASE_API_URL ??
-  'https://api.webisalespro.com/api'
+import { resolveShortLink } from '@/webinar/service/short-link'
 
 type ShortLinkPageProps = {
   params: Promise<{
     shortCode: string
   }>
-}
-
-type ShortLinkResolution =
-  | { status: 'resolved'; url: string }
-  | { status: 'expired' }
-
-async function resolveShortLink(shortCode: string): Promise<ShortLinkResolution> {
-  const response = await fetch(
-    `${webinarApiUrl}/v2/short-links/${encodeURIComponent(shortCode)}/resolve/`,
-    { cache: 'no-store' },
-  )
-
-  if (response.ok) {
-    const payload: unknown = await response.json()
-    const url =
-      payload &&
-      typeof payload === 'object' &&
-      'url' in payload &&
-      typeof payload.url === 'string'
-        ? payload.url
-        : null
-
-    if (!url) {
-      throw new Error('Short-link resolve response did not include a URL.')
-    }
-
-    return { status: 'resolved', url }
-  }
-
-  const { decoded, payload } = await safeDecodeErrorPayload(response)
-  if (response.status === 404 && decoded && payload?.code === 'SL-001') {
-    return { status: 'expired' }
-  }
-
-  throw new Error(
-    payload?.detail ?? `Short-link resolution failed with status ${response.status}.`,
-  )
 }
 
 export default async function ShortLinkPage({ params }: ShortLinkPageProps) {

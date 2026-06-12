@@ -12,6 +12,7 @@ import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import { anonymousRegisterForWebinarInput, registerForWebinarInput } from "./schema";
 import { cache } from "react";
+import { extractShortCode, resolveShortLink } from "./short-link";
 
 export async function getWebinars(query?: QueryWebinar) {
     // Fetch all webinars without search query
@@ -201,6 +202,32 @@ type AttendeeRequestBody = {
     ref_source?: string;
 }
 
+async function resolveRegistrationShortLinks(
+    result: RegisterV2Response
+): Promise<RegisterV2Response> {
+    const grants = await Promise.all(
+        result.grants.map(async (grant) => {
+            if (!grant.join_url) {
+                return grant;
+            }
+
+            const shortCode = extractShortCode(grant.join_url);
+            if (!shortCode) {
+                return grant;
+            }
+
+            const resolution = await resolveShortLink(shortCode);
+            if (resolution.status === "expired") {
+                return { ...grant, join_url: undefined };
+            }
+
+            return { ...grant, join_url: resolution.url };
+        })
+    );
+
+    return { ...result, grants };
+}
+
 function shouldRetryWithoutLocation(error: unknown): boolean {
     if (!(error instanceof ApiError)) {
         return false;
@@ -292,7 +319,7 @@ export const registerForWebinarAction = actionClient
 
             const result = await response.json() as RegisterV2Response
 
-            return result
+            return resolveRegistrationShortLinks(result)
         }
     );
 
@@ -319,5 +346,6 @@ export const anonymousRegisterForWebinarAction = actionClient
         );
 
         const checkedResponse = await handleStatus(response);
-        return await checkedResponse.json() as RegisterV2Response;
+        const result = await checkedResponse.json() as RegisterV2Response;
+        return resolveRegistrationShortLinks(result);
     });
