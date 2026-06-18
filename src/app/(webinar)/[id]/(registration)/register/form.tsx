@@ -94,6 +94,36 @@ const buttonTone = (backgroundColor?: string, color?: string): CSSProperties | u
   };
 };
 
+// Locale- and timezone-dependent date strings (Luxon tokens like `t`, `ZZZZ`)
+// resolve differently across runtimes — Node's ICU vs. a client browser, and
+// especially in-app webviews (e.g. `ref=s8_pro_app`) that ship trimmed Intl
+// data. Rendering them during SSR therefore triggers React #418 hydration text
+// mismatches. Render a stable placeholder on the server / first paint, then
+// reveal the formatted time only after mount so the markup always matches.
+function SessionTime({
+  iso,
+  zone,
+  format,
+}: {
+  iso: string;
+  zone: string;
+  format: string;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return (
+      <span
+        aria-hidden
+        className="inline-block h-4 w-48 max-w-full animate-pulse rounded bg-gray-200/70 align-middle dark:bg-slate-700/70"
+      />
+    );
+  }
+
+  return <>{DateTime.fromISO(iso, { zone: zone || "utc" }).toFormat(format)}</>;
+}
+
 function SessionFieldLoading() {
   return (
     <div className="animate-pulse rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
@@ -141,9 +171,11 @@ function SessionField({
           You&apos;ll be registered for the next available session.
         </p>
         <p className="mt-1 text-sm text-gray-700 dark:text-slate-300">
-          {DateTime.fromISO(autoAssignedSession.scheduled_start, {
-            zone: autoAssignedSession.timezone || "utc",
-          }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
+          <SessionTime
+            iso={autoAssignedSession.scheduled_start}
+            zone={autoAssignedSession.timezone || "utc"}
+            format="cccc, LLLL d 'at' t ZZZZ"
+          />
         </p>
       </div>
     ) : null;
@@ -166,9 +198,11 @@ function SessionField({
                 return (
                   <SelectItem key={session.id} value={session.id}>
                     <span className="flex items-center gap-2">
-                      {DateTime.fromISO(session.scheduled_start, {
-                        zone: session.timezone || "utc",
-                      }).toFormat("cccc, LLLL d 'at' t ZZZZ")}
+                      <SessionTime
+                        iso={session.scheduled_start}
+                        zone={session.timezone || "utc"}
+                        format="cccc, LLLL d 'at' t ZZZZ"
+                      />
                       {isLive && (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
                           <span className="relative flex h-2 w-2">
