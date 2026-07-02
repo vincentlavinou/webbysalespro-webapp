@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
-import { getWebinar, getRegistrationEmbedConfig } from '@/webinar/service/action'
-import { isWebinarPayload, allowsManualSessionSelection } from '@/webinar/service/guards'
+import { getPublicWebinarState, getRegistrationEmbedConfig } from '@/webinar/service/action'
+import { allowsManualSessionSelection } from '@/webinar/service/guards'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { DefaultRegistrationForm } from '../../../(registration)/register/form'
 import { EmbedHeaderScripts } from '@/webinar/lib/embed-header-scripts'
@@ -9,6 +9,7 @@ import {
   EmbedRegistrationLoading,
 } from './EmbedRegistrationLoading'
 import type { Webinar } from '@/webinar/service'
+import { PausedWebinarNotice } from '@/webinar/components'
 
 interface EmbedRegistrationPageProps {
   params: Promise<{ id: string }>
@@ -76,7 +77,7 @@ async function EmbedRegistrationShell({
   source?: string
   colorOverrides: EmbedColorOverrides
 }) {
-  const webinarPromise = getWebinar(id)
+  const webinarState = await getPublicWebinarState(id, { fresh: true })
   const embedConfig = source ? await getRegistrationEmbedConfig(id, source) : null
   const primaryColor = colorOverrides.primaryColor ?? embedConfig?.primary_color ?? undefined
   const secondaryColor = colorOverrides.secondaryColor ?? embedConfig?.secondary_color ?? undefined
@@ -86,6 +87,26 @@ async function EmbedRegistrationShell({
   const backgroundColor = colorOverrides.backgroundColor ?? embedConfig?.background_color ?? undefined
   const embedSuccessUrl = embedConfig?.success_url ?? undefined
   const headerScripts = embedConfig?.header_scripts?.trim()
+
+  if (webinarState.kind === "not_found") {
+    notFound()
+  }
+
+  if (webinarState.kind === "paused") {
+    return (
+      <>
+        {headerScripts ? <EmbedHeaderScripts value={headerScripts} /> : null}
+
+        <div className="p-4" style={backgroundColor ? { backgroundColor } : undefined}>
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <PausedWebinarNotice pauseInfo={webinarState.pauseInfo} title="Registration paused for this webinar" />
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  const webinarPromise = Promise.resolve(webinarState.webinar)
 
   return (
     <>
@@ -118,8 +139,6 @@ interface EmbedRegistrationHeadingProps {
 
 async function EmbedRegistrationHeading({ webinarPromise }: EmbedRegistrationHeadingProps) {
   const webinar = await webinarPromise
-
-  if (!isWebinarPayload(webinar)) notFound()
 
   const sessions = webinar.series?.sessions ?? []
   const allowsSessionSelection = allowsManualSessionSelection(webinar)

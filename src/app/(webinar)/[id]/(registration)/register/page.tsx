@@ -1,9 +1,10 @@
-import { getWebinar } from '@/webinar/service'
-import { allowsManualSessionSelection, isWebinarPayload } from '@/webinar/service/guards'
+import { getPublicWebinarState } from '@/webinar/service'
+import { allowsManualSessionSelection } from '@/webinar/service/guards'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { DefaultRegistrationForm } from './form'
 import { NoAvailableSessionsMessage } from '@/webinar/components/NoAvailableSessionsMessage'
 import { WebinarDetailCard } from '@/webinar/components/WebinarDetailCard'
+import { PausedWebinarNotice } from '@/webinar/components/PausedWebinarNotice'
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
@@ -18,13 +19,22 @@ interface DefaultRegistrationPageProps {
 
 export async function generateMetadata({ params }: DefaultRegistrationPageProps): Promise<Metadata> {
     const webinarId = (await params).id
-    const webinar = await getWebinar(webinarId)
-    if (!isWebinarPayload(webinar)) {
+    const webinarState = await getPublicWebinarState(webinarId, { fresh: true })
+    if (webinarState.kind === 'not_found') {
       return {
         title: 'Webinar Registration',
         description: 'Register now to attend this exciting webinar session.',
       }
     }
+
+    if (webinarState.kind === 'paused') {
+      return {
+        title: 'Webinar Registration Paused',
+        description: webinarState.pauseInfo.message || 'Registration is temporarily paused for this webinar.',
+      }
+    }
+
+    const webinar = webinarState.webinar
 
   return {
     title: webinar.title ?? 'Webinar Registration',
@@ -47,10 +57,22 @@ export async function generateMetadata({ params }: DefaultRegistrationPageProps)
 export default async function DefaultRegistrationPage(props: DefaultRegistrationPageProps) {
     
     const webinarId = (await props.params).id
-    const webinar = await getWebinar(webinarId)
-    if (!isWebinarPayload(webinar)) {
+    const webinarState = await getPublicWebinarState(webinarId, { fresh: true })
+    if (webinarState.kind === 'not_found') {
       notFound()
     }
+
+    if (webinarState.kind === 'paused') {
+      return (
+        <div className="px-4 pb-8">
+          <div className="mx-auto max-w-3xl pt-20">
+            <PausedWebinarNotice pauseInfo={webinarState.pauseInfo} />
+          </div>
+        </div>
+      )
+    }
+
+    const webinar = webinarState.webinar
     const sessions = webinar.series?.sessions || []
     const allowsSessionSelection = allowsManualSessionSelection(webinar)
     const hasLiveSession = !allowsSessionSelection && sessions.some(

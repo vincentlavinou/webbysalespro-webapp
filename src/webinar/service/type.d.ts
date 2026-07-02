@@ -129,6 +129,18 @@ export type RegistrationEmbedConfig = {
     updated_at: string
 }
 
+export type WebinarPauseInfo = {
+    message: string
+    link_url?: string | null
+    link_label?: string | null
+    support_email: string
+}
+
+export type WebinarPublicState =
+    | { kind: "webinar"; webinar: Webinar }
+    | { kind: "paused"; pauseInfo: WebinarPauseInfo }
+    | { kind: "not_found" }
+
 export type Webinar = {
     id: string
     owner: number

@@ -20,6 +20,15 @@ export async function handleStatus(response: Response): Promise<Response> {
   }
 
   if (response.status === 404) {
+    if (decoded && payload?.code === "WEB-PAUSED") {
+      throw new ApiError({
+        message: payload.detail,
+        status: response.status,
+        code: payload.code,
+        payload,
+        url: response.url,
+      });
+    }
     if (decoded && payload) throw new NotFoundError(payload.detail);
     throw new NotFoundError();
   }

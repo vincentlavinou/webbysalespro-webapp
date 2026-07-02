@@ -7,7 +7,9 @@ import { useAction } from "next-safe-action/hooks";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PausedWebinarNotice } from "@/webinar/components";
 import { anonymousRegisterForWebinarAction } from "@/webinar/service/action";
+import type { WebinarPauseInfo } from "@/webinar/service";
 import { extractJoinUrl } from "@/webinar/service/join";
 
 interface AnonymousJoinClientProps {
@@ -23,6 +25,7 @@ function getAnonymousRegistrantStorageKey(webinarId: string) {
 export function AnonymousJoinClient({ webinarId }: AnonymousJoinClientProps) {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pauseInfo, setPauseInfo] = useState<WebinarPauseInfo | null>(null);
   const hasStartedRef = useRef(false);
   const hasRetriedWithoutStoredIdRef = useRef(false);
 
@@ -60,6 +63,11 @@ export function AnonymousJoinClient({ webinarId }: AnonymousJoinClientProps) {
         return;
       }
 
+      if (error.serverError?.code === "WEB-PAUSED" && error.serverError.pauseInfo && typeof error.serverError.pauseInfo === "object") {
+        setPauseInfo(error.serverError.pauseInfo as WebinarPauseInfo);
+        return;
+      }
+
       setErrorMessage(error.serverError?.detail ?? "We could not start the webinar right now.");
     },
   });
@@ -90,6 +98,10 @@ export function AnonymousJoinClient({ webinarId }: AnonymousJoinClientProps) {
       ...(anonymousRegistrantId ? { anonymous_registrant_id: anonymousRegistrantId } : {}),
     });
   }, [execute, webinarId]);
+
+  if (pauseInfo) {
+    return <PausedWebinarNotice pauseInfo={pauseInfo} />;
+  }
 
   if (errorMessage) {
     return (

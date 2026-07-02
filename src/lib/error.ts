@@ -2,6 +2,7 @@
 export interface ApiErrorPayload {
   detail: string;
   code?: string;
+  [key: string]: unknown;
 }
 
 export class ApiError extends Error {
@@ -101,6 +102,7 @@ export async function safeDecodeErrorPayload(
     // Standard shape
     if (json && typeof json.detail === "string") {
       const payload: ApiErrorPayload = {
+        ...json,
         detail: json.detail,
         code: typeof json.code === "string" ? json.code : undefined,
       };

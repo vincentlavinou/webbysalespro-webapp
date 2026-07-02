@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { webinarAppUrl, type Webinar } from "@/webinar/service";
+import { PausedWebinarNotice } from "@/webinar/components";
+import { webinarAppUrl, type Webinar, type WebinarPauseInfo } from "@/webinar/service";
 import { registerForWebinarAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { allowsManualSessionSelection } from "@/webinar/service/guards";
@@ -93,6 +94,14 @@ const buttonTone = (backgroundColor?: string, color?: string): CSSProperties | u
     ...(color ? { color } : {}),
   };
 };
+
+function isWebinarPauseInfo(value: unknown): value is WebinarPauseInfo {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    typeof (value as Partial<WebinarPauseInfo>).support_email === "string",
+  );
+}
 
 // Locale- and timezone-dependent date strings (Luxon tokens like `t`, `ZZZZ`)
 // resolve differently across runtimes — Node's ICU vs. a client browser, and
@@ -309,6 +318,7 @@ export const DefaultRegistrationForm = ({
   const [isHydrated, setIsHydrated] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [successState, setSuccessState] = useState<RegistrationSuccessState | null>(null);
+  const [pauseInfo, setPauseInfo] = useState<WebinarPauseInfo | null>(null);
 
   const shouldShowInlineEmbedSuccess = Boolean(
     embedSource && !embedSuccessUrl
@@ -481,6 +491,11 @@ export const DefaultRegistrationForm = ({
         return;
       }
 
+      if (error.serverError?.code === "WEB-PAUSED" && isWebinarPauseInfo(error.serverError.pauseInfo)) {
+        setPauseInfo(error.serverError.pauseInfo);
+        return;
+      }
+
       toast.custom(
           (t) => (
             <div
@@ -573,6 +588,10 @@ export const DefaultRegistrationForm = ({
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
+
+  if (pauseInfo) {
+    return <PausedWebinarNotice pauseInfo={pauseInfo} />;
+  }
 
   if (successState) {
     const sessionDt = DateTime.fromISO(successState.scheduledStart, { zone: successState.timezone || "utc" });

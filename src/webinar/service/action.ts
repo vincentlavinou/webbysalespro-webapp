@@ -1,11 +1,11 @@
 'use server'
 import { actionClient } from "@/lib/safe-action";
-import { QueryWebinar, RegistrationEmbedConfig, RegisterV2Response, SeriesSession, Webinar } from "./type";
+import { QueryWebinar, RegistrationEmbedConfig, RegisterV2Response, SeriesSession, Webinar, WebinarPauseInfo, WebinarPublicState } from "./type";
 import { emptyPage, PaginationPage } from "@/components/pagination";
 import { webinarApiUrl } from ".";
 import { AlreadyRegisteredError } from "./error";
 import { handleStatus } from "@/lib/http";
-import { ApiError } from "@/lib/error";
+import { ApiError, safeDecodeErrorPayload } from "@/lib/error";
 import { resolveAttendeeLocation } from "@/lib/geo";
 import { retryTransientRequest } from "@/lib/retry";
 import * as Sentry from "@sentry/nextjs";
@@ -51,6 +51,14 @@ type GetWebinarOptions = {
     fresh?: boolean
 }
 
+function isWebinarPauseInfo(value: unknown): value is WebinarPauseInfo {
+    return Boolean(
+        value &&
+        typeof value === "object" &&
+        typeof (value as Partial<WebinarPauseInfo>).support_email === "string"
+    );
+}
+
 const getWebinarCached = cache(async (id: string, fresh: boolean): Promise<Webinar> => {
     const fetchOptions: RequestInit = fresh
         ? { cache: "no-store" }
@@ -69,6 +77,36 @@ const getWebinarCached = cache(async (id: string, fresh: boolean): Promise<Webin
 
 export async function getWebinar(id: string, options?: GetWebinarOptions): Promise<Webinar> {
     return getWebinarCached(id, Boolean(options?.fresh))
+}
+
+export async function getPublicWebinarState(id: string, options?: GetWebinarOptions): Promise<WebinarPublicState> {
+    const fetchOptions: RequestInit = options?.fresh
+        ? { cache: "no-store" }
+        : { next: { revalidate: 60, tags: [`webinar-${id}`] } }
+
+    const response = await retryTransientRequest(
+        () => fetch(`${webinarApiUrl}/v1/webinars/${id}/public/`, fetchOptions),
+        { method: "GET" },
+    )
+
+    if (response.ok) {
+        return {
+            kind: "webinar",
+            webinar: await response.json(),
+        }
+    }
+
+    if (response.status === 404) {
+        const { decoded, payload } = await safeDecodeErrorPayload(response)
+        if (decoded && payload?.code === "WEB-PAUSED" && isWebinarPauseInfo(payload.pause_info)) {
+            return {
+                kind: "paused",
+                pauseInfo: payload.pause_info,
+            }
+        }
+    }
+
+    return { kind: "not_found" }
 }
 
 export async function getRegistrationEmbedConfig(webinarId: string, source: string): Promise<RegistrationEmbedConfig | null> {

@@ -25,3 +25,7 @@ export {
 export {
     WebinarFooter
 } from './WebinarFooter'
+
+export {
+    PausedWebinarNotice
+} from './PausedWebinarNotice'

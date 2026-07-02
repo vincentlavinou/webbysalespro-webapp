@@ -4,6 +4,7 @@ import { ApiError } from "./error";
 export type ServerError = {
   detail: string;
   code: string;
+  pauseInfo?: unknown;
 };
 
 export const actionClient = createSafeActionClient({
@@ -12,6 +13,7 @@ export const actionClient = createSafeActionClient({
       return {
         detail: e.message,
         code: e.code ?? "unknown",
+        pauseInfo: e.payload?.pause_info,
       };
     }
     return {
