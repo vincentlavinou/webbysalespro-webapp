@@ -2,8 +2,11 @@
 
 import { actionClient } from '@/lib/safe-action'
 import { clearAttendeeSessionCookie, getAttendeeSessionCookie, setAttendeeSessionCookie } from '@/lib/attendee-cookie'
+import { attendeeFetch } from '@/lib/attendee-fetch'
+import { handleStatus } from '@/lib/http'
 import { retryTransientRequest } from '@/lib/retry'
-import { JoinResolveResponse, JoinSessionRefreshResponse } from './type'
+import { ClaimRegistrantResponse, JoinResolveResponse, JoinSessionRefreshResponse } from './type'
+import { claimRegistrantSchema } from './schema'
 import { resolveJoin } from './resolve-join'
 import { z } from 'zod'
 
@@ -24,6 +27,31 @@ export const resolveJoinAction = actionClient
             throw new Error('Join token could not be resolved.')
         }
         return data as JoinResolveResponse
+    })
+
+/**
+ * Upgrade an anonymous guest join session to a real registrant while they
+ * watch. The backend dedups against existing contacts/registrants and keeps
+ * the join session valid either way; it also busts the join-session cache so
+ * the next chat token comes back send-capable under the real identity.
+ * consent_sms stays false because the form collects no explicit SMS opt-in.
+ */
+export const claimJoinRegistrantAction = actionClient
+    .inputSchema(claimRegistrantSchema)
+    .action(async ({ parsedInput }) => {
+        const response = await attendeeFetch(`${webinarApiUrl}/v2/join/claim/`, {
+            method: 'POST',
+            body: JSON.stringify({
+                first_name: parsedInput.first_name,
+                last_name: parsedInput.last_name,
+                email: parsedInput.email,
+                phone: parsedInput.phone,
+                consent_email: true,
+                consent_sms: false,
+            }),
+        })
+        const checkedResponse = await handleStatus(response)
+        return await checkedResponse.json() as ClaimRegistrantResponse
     })
 
 export const refreshJoinSessionAction = actionClient

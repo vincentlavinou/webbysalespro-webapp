@@ -12,6 +12,9 @@ export type ChatService = {
     chat: Chat
     user_id: string
     chat_config: ChatConfigUpdate
+    // True when the join session belongs to an anonymous guest — the token is
+    // view-only and the attendee must claim a real identity before sending.
+    requires_registration?: boolean
 }
 
 export type ChatRecipient = {

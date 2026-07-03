@@ -22,6 +22,15 @@ export type JoinSessionRefreshResponse = {
     capabilities: string[]
 }
 
+export type ClaimRegistrantResponse = {
+    claimed: boolean
+    id?: string
+    first_name?: string
+    last_name?: string
+    email?: string
+    phone?: string | null
+}
+
 export type AttendeeSessionCookie = {
     joinSessionToken: string
     expiresAt: string

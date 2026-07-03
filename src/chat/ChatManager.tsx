@@ -31,6 +31,15 @@ export function ChatManager({
 }: ChatManagerProps) {
   const [initialChatConfig, setInitialChatConfig] = useState<ChatConfigUpdate | null>(null);
   const [isRuntimeEnabled, setIsRuntimeEnabled] = useState(false);
+  // Guest join sessions get a view-only token until the attendee claims a real
+  // identity. Both values come back with every token fetch, so a reconnect
+  // after a claim naturally re-syncs them.
+  const [requiresRegistration, setRequiresRegistration] = useState(false);
+  // The chat identity minted into the IVS token. Usually equals the
+  // registrantId prop, but a mid-stream claim can merge the guest into an
+  // existing registrant — the token's user_id is the authoritative id for
+  // "is this message mine" checks after that.
+  const [tokenUserId, setTokenUserId] = useState<string | null>(null);
   const hasChatContext = sessionId.trim().length > 0 && registrantId.trim().length > 0;
   const resolvedRegion = region.trim().length > 0 ? region : "us-east-1";
   const sessionIdRef = useRef(sessionId);
@@ -54,6 +63,9 @@ export function ChatManager({
         console.error(`[chat] token fetch failed (${code}): ${reason}`);
         throw new Error(reason);
       }
+
+      setRequiresRegistration(Boolean(result.data.requires_registration));
+      setTokenUserId(result.data.user_id || null);
 
       return {
         token: result.data.chat.token,
@@ -121,9 +133,11 @@ export function ChatManager({
     <ChatConfigurationProvider region={resolvedRegion} tokenProvider={stableTokenProvider.current}>
       <ChatRuntimeProvider
         sessionId={sessionId}
-        registrantId={registrantId}
+        registrantId={tokenUserId ?? registrantId}
         currentUserRole={currentUserRole}
         enabled={isRuntimeEnabled && hasChatContext}
+        requiresRegistration={requiresRegistration}
+        onRegistered={() => setRequiresRegistration(false)}
       >
         <ChatControlProvider
           options={[

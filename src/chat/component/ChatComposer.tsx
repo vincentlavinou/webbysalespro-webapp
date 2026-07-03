@@ -3,16 +3,22 @@
 import { useEffect } from 'react';
 import { ChatControl } from './ChatControl';
 import { ChatInput } from './ChatInput';
+import { ChatRegistrationGate } from './ChatRegistrationGate';
 import { useChat } from '../hooks';
 import { useChatControl } from '../hooks/use-chat-control';
+import { useChatRuntime } from '../hooks/use-chat-runtime';
 import { defaultRecipient } from '../service/utils';
 import { DefaultChatRecipient } from '../service/enum';
 
 export function ChatComposer() {
   const { chatConfig } = useChat();
   const { setChatRecipient } = useChatControl();
+  const { requiresRegistration } = useChatRuntime();
   const isLocked = chatConfig?.mode === 'locked';
   const isDisabled = chatConfig?.is_enabled === false;
+  // Guests can read the room but must claim a real identity to send. Disabled
+  // and locked states still win — registering wouldn't unlock anything there.
+  const showRegistrationGate = requiresRegistration && !isDisabled && !isLocked;
 
   // Keep the active recipient in sync with the chat mode so sendMessage always
   // uses the right value regardless of which layout renders this composer.
@@ -38,8 +44,14 @@ export function ChatComposer() {
         dark:before:via-[#25D366]/35
       "
     >
-      <ChatControl />
-      <ChatInput isLocked={isLocked} isDisabled={isDisabled} />
+      {showRegistrationGate ? (
+        <ChatRegistrationGate />
+      ) : (
+        <>
+          <ChatControl />
+          <ChatInput isLocked={isLocked} isDisabled={isDisabled} />
+        </>
+      )}
     </div>
   );
 }
