@@ -31,7 +31,7 @@ export default async function SessionRoomLayout({ children, params }: SessionRoo
 
   return (
     <AttendeeSessionProvider initial={attendeeSession}>
-      <div className="relative min-h-screen flex flex-col">
+      <div className="relative flex min-h-screen flex-col bg-background text-foreground">
         {/* Background */}
         <div className="fixed inset-0 -z-10">
           <Image
@@ -41,7 +41,8 @@ export default async function SessionRoomLayout({ children, params }: SessionRoo
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-transparent dark:bg-slate-900/70" />
+          <div className="absolute inset-0 bg-background/75 backdrop-blur-[1px] dark:bg-background/80" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/70 dark:from-background/40 dark:via-background/20 dark:to-background/90" />
         </div>
 
         {/* Page content */}

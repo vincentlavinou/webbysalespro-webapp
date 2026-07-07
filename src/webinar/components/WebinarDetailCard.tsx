@@ -16,7 +16,7 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
   const sanitizedDescription = webinar?.description ? sanitizeRichText(webinar.description) : ""
 
   return (
-    <div className="order-last md:order-first rounded-2xl overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xl border border-white/60 dark:border-slate-700">
+    <div className="order-last overflow-hidden rounded-2xl border border-border bg-card/90 shadow-xl backdrop-blur-md md:order-first">
       {thumbnail?.file_url && (
         <div className="relative w-full">
           <Image
@@ -32,25 +32,25 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
       )}
       <div className="p-6">
         {badge}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-1">
+        <h1 className="mb-1 text-2xl font-bold leading-tight text-foreground md:text-3xl">
           {webinar?.title ?? fallbackTitle}
         </h1>
         {webinar?.sub_title && (
-          <p className="text-center text-base font-medium text-emerald-600 dark:text-emerald-400 mb-3">
+          <p className="mb-3 text-center text-base font-medium text-primary">
             {webinar.sub_title}
           </p>
         )}
         {webinar?.description && (
           <div
-            className="prose prose-sm dark:prose-invert max-w-none text-gray-500 dark:text-slate-400 leading-relaxed"
+            className="prose prose-sm max-w-none leading-relaxed text-muted-foreground dark:prose-invert"
             dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
           />
         )}
 
         {webinar?.presenters?.length && webinar.presenters.length > 0 && (
           <>
-            <hr className="border-gray-100 dark:border-slate-700 my-5" />
-            <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-3">
+            <hr className="my-5 border-border" />
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Your {webinar.presenters.length === 1 ? "Presenter" : "Presenters"}
             </p>
             <div className="flex flex-col gap-3">
@@ -64,7 +64,7 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
                 )
                 return (
                   <div key={presenter.id} className="flex items-center gap-3">
-                    <div className="relative h-11 w-11 rounded-full overflow-hidden bg-emerald-100 dark:bg-emerald-900/40 flex-shrink-0 ring-2 ring-white dark:ring-slate-600 shadow">
+                    <div className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-full bg-primary/10 shadow ring-2 ring-background">
                       {avatar?.file_url ? (
                         <Image
                           src={avatar.file_url}
@@ -73,12 +73,12 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
                           className="object-cover"
                         />
                       ) : (
-                        <span className="flex h-full w-full items-center justify-center text-emerald-700 font-bold text-sm">
+                        <span className="flex h-full w-full items-center justify-center text-sm font-bold text-primary">
                           {presenter.name.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    <p className="text-sm font-semibold text-foreground">
                       {presenter.name}
                     </p>
                   </div>

@@ -28,16 +28,16 @@ export default function BookmarkButton({ livePath }: BookmarkButtonProps) {
   return (
     <button
       onClick={handleBookmark}
-      className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors w-full justify-center"
+      className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
     >
       {saved ? (
         <>
-          <BookmarkCheck className="h-4 w-4 text-emerald-600" />
+          <BookmarkCheck className="h-4 w-4 text-primary" />
           <span>Copied — save it as a bookmark!</span>
         </>
       ) : (
         <>
-          <Bookmark className="h-4 w-4 text-emerald-600" />
+          <Bookmark className="h-4 w-4 text-primary" />
           Bookmark Your Spot
         </>
       )}

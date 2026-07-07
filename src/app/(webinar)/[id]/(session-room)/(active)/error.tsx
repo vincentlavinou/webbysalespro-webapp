@@ -42,15 +42,15 @@ export default function ActiveSessionError({
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-10">
-      <div className="w-full max-w-xl rounded-3xl border border-white/60 bg-white/85 p-8 text-center shadow-xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/85">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+      <div className="w-full max-w-xl rounded-3xl border border-border bg-card/90 p-8 text-center shadow-xl backdrop-blur-md">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-primary/10 text-primary">
           <AlertTriangle className="h-7 w-7" />
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-foreground">
           We hit a problem opening this room.
         </h1>
-        <p className="mt-3 text-sm text-gray-600 dark:text-slate-300">
+        <p className="mt-3 text-sm text-muted-foreground">
           {liveRecoveryPath
             ? "We're sending you back into the webinar flow now so you still have a way in."
             : 'Re-click the webinar link from your email or text message, or check your email for the registration link.'}

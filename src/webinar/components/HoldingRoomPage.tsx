@@ -172,10 +172,10 @@ export function HoldingRoomPage({
   return (
     <div>
       {isRedirecting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 backdrop-blur-sm">
-          <div className="flex items-center gap-3 rounded-2xl border border-white/60 bg-white/90 px-8 py-6 shadow-xl dark:border-slate-700 dark:bg-slate-800/90">
-            <Loader2 className="h-5 w-5 animate-spin text-emerald-600 dark:text-emerald-400" />
-            <span className="text-base font-medium text-gray-800 dark:text-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card/95 px-8 py-6 text-card-foreground shadow-xl">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-base font-medium text-foreground">
               Connecting to session...
             </span>
           </div>
@@ -187,10 +187,10 @@ export function HoldingRoomPage({
           <WebinarDetailCard
             webinar={webinar}
             badge={
-              <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+              <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                 </span>
                 {roomLabel}
               </span>
@@ -199,7 +199,7 @@ export function HoldingRoomPage({
         </div>
 
         <div className="order-1 space-y-6 md:order-2">
-          <section className="overflow-hidden rounded-3xl border border-white/60 bg-slate-950 shadow-xl dark:border-slate-700">
+          <section className="overflow-hidden rounded-3xl border border-border bg-card shadow-xl">
             <div className="relative aspect-video">
               {thumbnail?.file_url ? (
                 <>
@@ -210,19 +210,19 @@ export function HoldingRoomPage({
                     priority
                     className="scale-105 object-cover blur-md"
                   />
-                  <div className="absolute inset-0 bg-slate-950/45" />
+                  <div className="absolute inset-0 bg-background/55" />
                 </>
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary via-chart-2 to-chart-3" />
               )}
 
               <div className="absolute inset-0 flex flex-col justify-between p-5 sm:p-6">
                 <div className="flex items-start justify-between gap-3">
                   {isActive ? (
-                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-background/20 bg-background/20 px-3 py-1 text-xs font-semibold text-primary-foreground backdrop-blur-sm">
                       <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-foreground opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-foreground" />
                       </span>
                       {roomLabel}
                     </span>
@@ -233,14 +233,14 @@ export function HoldingRoomPage({
 
                 <div className="flex flex-1 items-center justify-center">
                   {isActive ? (
-                    <p className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
+                    <p className="text-3xl font-bold tracking-tight text-primary-foreground sm:text-5xl">
                       {timeLeft}
                     </p>
                   ) : (
                     <Button
                       type="button"
                       size="icon"
-                      className="size-18 rounded-full bg-white text-slate-950 shadow-lg hover:bg-emerald-50 sm:size-20"
+                      className="size-18 rounded-full bg-background text-foreground shadow-lg hover:bg-accent hover:text-accent-foreground sm:size-20"
                       onClick={() => void request()}
                       aria-label="Tap to reveal the countdown"
                     >
@@ -251,17 +251,17 @@ export function HoldingRoomPage({
 
                 <div className="space-y-1 text-center">
                   {!isActive ? (
-                    <motion.p animate={promptControls} className="text-sm font-semibold text-white/90">
+                    <motion.p animate={promptControls} className="text-sm font-semibold text-primary-foreground/90">
                       Tap to see...
                     </motion.p>
                   ) : null}
                   {status === 'unsupported' ? (
-                    <p className="text-xs text-amber-200/90">
+                    <p className="text-xs text-primary-foreground/80">
                       Keep-awake could not be enabled on this browser.
                     </p>
                   ) : null}
                   {status === 'error' ? (
-                    <p className="text-xs text-amber-200/90">
+                    <p className="text-xs text-primary-foreground/80">
                       Keep-awake was blocked. Keep this tab in the foreground for best results.
                     </p>
                   ) : null}
@@ -270,24 +270,24 @@ export function HoldingRoomPage({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-800/80">
+          <section className="rounded-2xl border border-border bg-card/90 p-6 shadow-xl backdrop-blur-md">
             <div className="space-y-5">
               <SessionDetailCard
                 formattedDate={formattedDate}
                 timezone={timezone}
                 clockContent={
                   <>
-                    <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                    <p className="text-sm font-medium text-foreground">
                       You&apos;ll be automatically redirected
                     </p>
-                    <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       When the session starts, you&apos;ll be taken to the live room. Please don&apos;t close this window.
                     </p>
                   </>
                 }
               />
 
-              <hr className="border-gray-100 dark:border-slate-700" />
+              <hr className="border-border" />
 
               <CalendarButton
                 title={webinar.title}
