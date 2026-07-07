@@ -40,7 +40,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           disableTransitionOnChange
         >
           {/* Main Content */}
-          <main className="flex-1 bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+          <main className="flex-1 bg-gradient-to-b from-background via-card to-muted dark:from-background dark:via-card dark:to-muted">
             {children}
             <Toaster position="bottom-right" />
           </main>

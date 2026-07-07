@@ -26,7 +26,7 @@ export function PinnedAnnouncements({ announcements }: PinnedAnnouncementsProps)
                                 href={item.cta_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="mt-1 inline-block rounded-md bg-[#25D366] px-3 py-1 text-xs font-medium text-white hover:bg-[#1fa653] transition-colors"
+                                className="mt-1 inline-block rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                             >
                                 {item.cta_label}
                             </Link>

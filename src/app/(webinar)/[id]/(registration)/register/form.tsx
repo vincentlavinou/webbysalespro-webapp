@@ -174,7 +174,7 @@ function SessionField({
     return autoAssignedSession ? (
       <div
         className="rounded-xl border px-4 py-3"
-        style={panelTone(secondaryColor ?? primaryColor ?? "#059669", secondaryBackgroundColor)}
+        style={panelTone(secondaryColor ?? primaryColor ?? "#140bec", secondaryBackgroundColor)}
       >
         <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
           You&apos;ll be registered for the next available session.
@@ -599,7 +599,7 @@ export const DefaultRegistrationForm = ({
     return (
       <div
         className="rounded-2xl border px-5 py-6 text-center"
-        style={panelTone(secondaryColor ?? primaryColor ?? "#059669", secondaryBackgroundColor)}
+        style={panelTone(secondaryColor ?? primaryColor ?? "#140bec", secondaryBackgroundColor)}
       >
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/40">
           <CheckCircle className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />

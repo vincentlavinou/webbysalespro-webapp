@@ -18,7 +18,7 @@ import { useChat } from '../hooks';
 import { useChatRuntime } from '../hooks/use-chat-runtime';
 
 const fieldClassName =
-  'h-10 rounded-lg border-neutral-300 bg-white text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:border-[#25D366] focus-visible:ring-[#25D366]/30 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50 dark:placeholder:text-neutral-500 dark:focus-visible:border-[#25D366]';
+  'h-10 rounded-lg border-neutral-300 bg-white text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:border-primary focus-visible:ring-primary/30 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50 dark:placeholder:text-neutral-500 dark:focus-visible:border-primary';
 
 /**
  * Shown in place of the composer for anonymous guests. Chat stays readable;
@@ -64,7 +64,7 @@ export function ChatRegistrationGate() {
         <Button
           type="button"
           onClick={() => setIsFormOpen(true)}
-          className="h-9 rounded-lg bg-[#25D366] px-3 text-sm font-medium text-white shadow-sm hover:bg-[#1fa653]"
+          className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
         >
           <MessageCircle className="mr-1.5 size-4" />
           Register to chat
@@ -167,7 +167,7 @@ export function ChatRegistrationGate() {
         <Button
           type="submit"
           disabled={isPending}
-          className="h-10 flex-[2] rounded-lg bg-[#25D366] text-sm font-medium text-white shadow-sm hover:bg-[#1fa653] disabled:hover:bg-[#25D366]"
+          className="h-10 flex-[2] rounded-lg bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:hover:bg-primary"
         >
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isPending ? 'Registering…' : 'Register & Chat'}

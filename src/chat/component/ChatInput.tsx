@@ -69,7 +69,7 @@ export function ChatInput({ isLocked = false, isDisabled = false }: ChatInputPro
         autoComplete="off"
         autoCorrect="on"
         aria-label="Chat message"
-        className="h-12 rounded-lg border-neutral-300 bg-white px-3 py-3 text-base text-neutral-900 placeholder:text-neutral-400 focus-visible:border-[#25D366] focus-visible:ring-[#25D366]/30 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50 dark:placeholder:text-neutral-500 dark:focus-visible:border-[#25D366] md:text-base"
+        className="h-12 rounded-lg border-neutral-300 bg-white px-3 py-3 text-base text-neutral-900 placeholder:text-neutral-400 focus-visible:border-primary focus-visible:ring-primary/30 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50 dark:placeholder:text-neutral-500 dark:focus-visible:border-primary md:text-base"
       />
 
       <Button
@@ -78,7 +78,7 @@ export function ChatInput({ isLocked = false, isDisabled = false }: ChatInputPro
         disabled={disabled}
         aria-label="Send message"
         title="Send"
-        className="h-12 rounded-lg bg-[#25D366] px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-[#1fa653] disabled:hover:bg-[#25D366]"
+        className="h-12 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:hover:bg-primary"
       >
         <Send className="size-4" />
       </Button>

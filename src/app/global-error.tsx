@@ -20,10 +20,10 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_40%),linear-gradient(180deg,_#f8fafc_0%,_#eef2f7_100%)] text-slate-950 antialiased dark:bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_35%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] dark:text-slate-50">
+      <body className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(31,29,255,0.16),_transparent_40%),linear-gradient(180deg,_oklch(0.99_0.003_277)_0%,_oklch(0.962_0.008_277)_100%)] text-slate-950 antialiased dark:bg-[radial-gradient(circle_at_top,_rgba(31,29,255,0.18),_transparent_35%),linear-gradient(180deg,_oklch(0.16_0.018_277)_0%,_oklch(0.205_0.022_277)_100%)] dark:text-slate-50">
         <main className="flex min-h-screen items-center justify-center px-6 py-10">
           <div className="w-full max-w-xl rounded-3xl border border-white/70 bg-white/90 p-8 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/85">
-            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary">
               <AlertTriangle className="h-7 w-7" />
             </div>
 
@@ -37,7 +37,7 @@ export default function GlobalError({
             </p>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Button onClick={reset} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button onClick={reset} className="bg-primary hover:bg-primary/90">
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Try Again
               </Button>

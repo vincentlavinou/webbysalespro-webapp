@@ -35,7 +35,7 @@ export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) =
   if(!session) return null
 
   return (
-    <div className="fixed top-0 inset-x-0 bg-gradient-to-r from-[#25D366] to-emerald-600 text-white text-sm md:text-base z-40 shadow-lg px-4 py-3">
+    <div className="fixed top-0 inset-x-0 bg-gradient-to-r from-primary to-chart-2 text-white text-sm md:text-base z-40 shadow-lg px-4 py-3">
       <div className="flex justify-between items-center max-w-5xl mx-auto">
         <div>
           <p className="font-semibold px-1">
@@ -45,7 +45,7 @@ export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) =
             {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).offsetNameLong ?? session.timezone}
           </p>
         </div>
-        <div className="font-mono  text-xs md:text-sm text-white bg-emerald-700  px-3 py-1 rounded-md">
+        <div className="font-mono  text-xs md:text-sm text-white bg-primary/20  px-3 py-1 rounded-md">
           Starts in: {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {Math.floor(timeLeft.seconds)}s
         </div>
       </div>

@@ -40,8 +40,8 @@ export function ChatComposer() {
         shadow-[0_-8px_24px_rgba(0,0,0,0.06)]
         dark:shadow-[0_-10px_30px_rgba(0,0,0,0.45)]
         before:absolute before:inset-x-0 before:top-0 before:h-px
-        before:bg-gradient-to-r before:from-transparent before:via-[#25D366]/25 before:to-transparent
-        dark:before:via-[#25D366]/35
+        before:bg-gradient-to-r before:from-transparent before:via-primary/25 before:to-transparent
+        dark:before:via-primary/35
       "
     >
       {showRegistrationGate ? (
