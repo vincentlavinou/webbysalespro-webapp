@@ -208,33 +208,19 @@ export const AttendeeStageViewer = forwardRef<
       {/* video is reparented here via useLayoutEffect */}
       <div ref={videoContainerRef} className="absolute inset-0" />
 
-      {surfaceMode === "blocked" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-sm">
-          <button
-            type="button"
-            onClick={() => void handleStartPlayback()}
-            className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-300">
-              <svg
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                className="h-4 w-4 translate-x-[1px]"
-              >
-                <polygon points="6,4 20,12 6,20" fill="currentColor" />
-              </svg>
-            </span>
-            <span>Tap to start the live webinar</span>
-          </button>
-        </div>
-      )}
-
-      {surfaceMode === "playing-muted" && (
+      {/* No tap-to-start gate: when even muted autoplay is blocked
+          ("blocked"), the unmute nudge doubles as the start gesture —
+          handleStartPlayback tries sound first and falls back to muted. */}
+      {(surfaceMode === "blocked" || surfaceMode === "playing-muted") && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
           <button
             type="button"
             onClick={() => {
-              void handleUnmute();
+              if (surfaceMode === "blocked") {
+                void handleStartPlayback();
+              } else {
+                void handleUnmute();
+              }
               showControls();
             }}
             className="flex flex-col items-center gap-3 rounded-2xl bg-black/80 px-8 py-6 text-white shadow-xl backdrop-blur-sm hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white/50"

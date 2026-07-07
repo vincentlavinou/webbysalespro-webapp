@@ -16,7 +16,6 @@ export type AndroidPlaybackMode =
   | "buffering"
   | "playing"
   | "playing-muted"
-  | "blocked"
   | "ended"
   | "unsupported"
   | "error";
@@ -180,11 +179,7 @@ export function useAndroidIvsPlayerCore({
           setIsMuted(muted);
 
           setMode((current) => {
-            if (
-              current === "ended" ||
-              current === "error" ||
-              current === "blocked"
-            ) {
+            if (current === "ended" || current === "error") {
               return current;
             }
 
@@ -208,11 +203,7 @@ export function useAndroidIvsPlayerCore({
 
         const onBuffering = () => {
           setMode((current) => {
-            if (
-              current === "blocked" ||
-              current === "ended" ||
-              current === "error"
-            ) {
+            if (current === "ended" || current === "error") {
               return current;
             }
 
@@ -228,16 +219,23 @@ export function useAndroidIvsPlayerCore({
         };
 
         const onPlaybackBlocked = () => {
-          setMode("blocked");
-          setErrorMessage("Autoplay was blocked on this device/browser.");
           console.warn("[IVS] PLAYBACK_BLOCKED");
+          // Never show a tap-to-start gate — retry muted (browsers allow muted
+          // inline autoplay). If even that is blocked, stand on the unmute
+          // nudge: its tap doubles as the play gesture (see handleUnmute).
+          video.muted = true;
+          player.setMuted(true);
+          setIsMuted(true);
+          video.play().catch(() => {
+            setMode("playing-muted");
+          });
         };
 
         const onAudioBlocked = () => {
-          setMode("blocked");
-          setIsMuted(true);
-          setErrorMessage("Playback with sound was blocked until user interaction.");
           console.warn("[IVS] AUDIO_BLOCKED");
+          // Muted playback continues — just surface the unmute nudge.
+          setIsMuted(true);
+          setMode("playing-muted");
         };
 
         const onMutedChanged = () => {
@@ -382,7 +380,7 @@ export function useAndroidIvsPlayerCore({
         await reloadPlayer();
       } catch (error) {
         setErrorMessage(getErrorMessage(error, "Playback could not reload."));
-        setMode("blocked");
+        setMode("error");
       }
       return;
     }
@@ -413,52 +411,22 @@ export function useAndroidIvsPlayerCore({
       await reloadPlayer();
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Playback could not resume."));
-      setMode("blocked");
+      setMode("error");
     }
   }, [reloadPlayer, seekHtmlVideoToLive, seekPlayerToLive, videoRef]);
 
-  const handleStartMuted = () => {
-    const player = playerRef.current;
-    if (!player) return;
-
-    try {
-      player.setMuted(true);
-      setIsMuted(true);
-      setErrorMessage(null);
-      player.play();
-      setMode("buffering");
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Playback could not start."));
-      setMode("blocked");
-    }
-  };
-
-  const handleStartWithSound = () => {
-    const player = playerRef.current;
-    if (!player) return;
-
-    try {
-      player.setMuted(false);
-      setIsMuted(false);
-      setErrorMessage(null);
-      player.play();
-      setMode("buffering");
-    } catch (error) {
-      setErrorMessage(
-        getErrorMessage(error, "Playback could not start with sound.")
-      );
-      setMode("blocked");
-    }
-  };
-
   const handleUnmute = () => {
     const player = playerRef.current;
+    const video = videoRef.current;
     if (!player) return;
 
     try {
       player.setMuted(false);
+      if (video) video.muted = false;
       setIsMuted(false);
       setErrorMessage(null);
+      // Doubles as the start gesture when even muted autoplay was blocked —
+      // the tap context lets play() proceed with sound.
       player.play();
     } catch (error) {
       setErrorMessage(
@@ -472,7 +440,7 @@ export function useAndroidIvsPlayerCore({
     if (!video) return;
 
     const onPause = () => {
-      if (mode === "ended" || mode === "error" || mode === "blocked") return;
+      if (mode === "ended" || mode === "error") return;
       if (video.ended) return;
       void restoreToLive({ gracePeriodMs: 150 }).catch(() => {});
     };
@@ -490,8 +458,6 @@ export function useAndroidIvsPlayerCore({
     qualityName,
     syncTimeMs,
     isMuted,
-    handleStartMuted,
-    handleStartWithSound,
     handleUnmute,
     restoreToLive,
   };

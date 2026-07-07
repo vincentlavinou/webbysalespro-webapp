@@ -66,12 +66,17 @@ export function useSyncPlaybackStatus(options: UseSyncPlaybackStatusOptions) {
       return;
     }
 
+    if (mode === "error") {
+      onPlaybackStatusChange("error");
+      return;
+    }
+
     if (mode === "playing" || mode === "playing-muted") {
       onPlaybackStatusChange(isBuffering ? "buffering" : "playing");
       return;
     }
 
-    if (playerState === PlayerState.READY || mode === "gate") {
+    if (playerState === PlayerState.READY) {
       onPlaybackStatusChange("ready");
       return;
     }

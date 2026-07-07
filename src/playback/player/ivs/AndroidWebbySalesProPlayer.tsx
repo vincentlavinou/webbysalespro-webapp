@@ -11,6 +11,7 @@ import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import { usePersistentVideoAttachment } from "@/playback/hooks/use-persistent-video-attachment";
 import { usePersistentAndroidPlayback } from "@/playback/persistent/use-persistent-android-playback";
 import { FullscreenOverlayButton } from "./FullscreenOverlayButton";
+import { PlaybackInterruptedNotice } from "./PlaybackInterruptedNotice";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
 import { useTransientFullscreenControl } from "./hooks/use-transient-fullscreen-control";
@@ -45,12 +46,9 @@ export const AndroidWebbySalesProPlayer =
       videoRef,
       hiddenHostRef,
       mode,
-      errorMessage,
       qualityName,
       syncTimeMs,
       isMuted,
-      handleStartMuted,
-      handleStartWithSound,
       handleUnmute,
       restoreToLive,
     } = usePersistentAndroidPlayback();
@@ -104,7 +102,6 @@ export const AndroidWebbySalesProPlayer =
       onPlaybackStatusChange,
     });
 
-    const showBlockedStart = mode === "blocked";
     const showUnmuteButton = mode === "playing-muted" && isMuted;
     const showLoading =
       mode === "idle" ||
@@ -153,26 +150,6 @@ export const AndroidWebbySalesProPlayer =
             </div>
           )}
 
-          {showBlockedStart && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/45 backdrop-blur-sm">
-              <button
-                type="button"
-                onClick={handleStartMuted}
-                className="rounded-full bg-white/95 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                Tap to start
-              </button>
-
-              <button
-                type="button"
-                onClick={handleStartWithSound}
-                className="rounded-full bg-black/80 px-5 py-3 text-sm font-semibold text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60"
-              >
-                Tap to start with sound
-              </button>
-            </div>
-          )}
-
           {showUnmuteButton && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
               <button
@@ -201,18 +178,11 @@ export const AndroidWebbySalesProPlayer =
             }}
           />
 
-          {mode === "ended" && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-              <div className="rounded-md bg-black/70 px-3 py-2 text-sm font-medium text-white">
-                This live webinar has ended.
-              </div>
-            </div>
-          )}
-
-          {errorMessage && mode === "error" && (
-            <div className="absolute inset-x-4 bottom-4 rounded-md bg-red-950/85 px-3 py-2 text-xs text-red-50 backdrop-blur-sm">
-              Playback error: {errorMessage}
-            </div>
+          {(mode === "ended" || mode === "error") && (
+            <PlaybackInterruptedNotice
+              reason={mode}
+              restoreToLive={restoreToLive}
+            />
           )}
 
           {showStats && (

@@ -11,8 +11,6 @@ export type PersistentAndroidPlaybackState = {
   qualityName: string | null;
   syncTimeMs: number | null;
   isMuted: boolean;
-  handleStartMuted: () => void;
-  handleStartWithSound: () => void;
   handleUnmute: () => void;
   restoreToLive: (opts?: { forceReload?: boolean; gracePeriodMs?: number }) => Promise<void>;
 };

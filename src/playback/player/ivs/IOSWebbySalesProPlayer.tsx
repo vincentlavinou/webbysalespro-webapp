@@ -11,6 +11,7 @@ import type { PlaybackStatus } from "@/playback/context/PlaybackRuntimeContext";
 import { usePersistentVideoAttachment } from "@/playback/hooks/use-persistent-video-attachment";
 import { usePersistentChannelPlayback } from "@/playback/persistent/use-persistent-channel-playback";
 import { FullscreenOverlayButton } from "./FullscreenOverlayButton";
+import { PlaybackInterruptedNotice } from "./PlaybackInterruptedNotice";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useSyncPlaybackStatus } from "./hooks/use-sync-playback-status";
 import { useTransientFullscreenControl } from "./hooks/use-transient-fullscreen-control";
@@ -48,7 +49,6 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
       playerState,
       isMuted,
       restoreToLive,
-      handleManualPlay,
       tapToUnmute,
     } = usePersistentChannelPlayback();
 
@@ -109,14 +109,7 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
         <div
           ref={playerSurfaceRef}
           className="relative w-full overflow-hidden border bg-black shadow-sm"
-          onPointerUp={() => {
-            if (mode === "gate") {
-              void handleManualPlay();
-              return;
-            }
-
-            toggleControls();
-          }}
+          onPointerUp={toggleControls}
           style={{ touchAction: "manipulation" }}
         >
           <div className="aspect-video">
@@ -138,33 +131,11 @@ const IOSWebbySalesProPlayer = forwardRef<WebbySalesProPlayerHandle, Props>(
             </div>
           )}
 
-          {mode === "ended" && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-              <div className="rounded-md bg-black/70 px-3 py-2 text-sm font-medium text-white">
-                This live webinar has ended.
-              </div>
-            </div>
-          )}
-
-          {mode === "gate" && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-              <button
-                type="button"
-                onClick={() => void handleManualPlay()}
-                className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-gray-900 shadow-lg hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-300">
-                  <svg
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                    className="h-4 w-4 translate-x-[1px]"
-                  >
-                    <polygon points="6,4 20,12 6,20" fill="currentColor" />
-                  </svg>
-                </span>
-                <span>Tap to start the live webinar</span>
-              </button>
-            </div>
+          {(mode === "ended" || mode === "error") && (
+            <PlaybackInterruptedNotice
+              reason={mode}
+              restoreToLive={restoreToLive}
+            />
           )}
 
           {showUnmuteNudge && (

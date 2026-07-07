@@ -24,7 +24,6 @@ export type PersistentPlaybackState = {
   playerRef: React.RefObject<import("amazon-ivs-player").Player | null>;
   updateStats: () => void;
   restoreToLive: (opts?: { forceReload?: boolean; gracePeriodMs?: number }) => Promise<void>;
-  handleManualPlay: () => Promise<void>;
   tapToUnmute: () => void;
   scheduleRetry: () => void;
 };

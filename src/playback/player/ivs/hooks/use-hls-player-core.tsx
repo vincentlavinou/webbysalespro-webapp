@@ -170,7 +170,6 @@ export function useHlsPlayerCore({
   const backoffRef = useRef<number>(START_BACKOFF);
   const lastRestoreRef = useRef<number>(0);
   const lastForcedReloadRef = useRef<number>(0);
-  const manualPlayInFlightRef = useRef(false);
   const hasPlayedRef = useRef(false);
 
   const [mode, setMode] = useState<PlayerMode>("idle");
@@ -211,6 +210,35 @@ export function useHlsPlayerCore({
     });
   }, [videoRef]);
 
+  const attemptPlayback = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video || disposedRef.current) return;
+
+    try {
+      await video.play();
+      setLastErrorMessage(null);
+      return;
+    } catch (error) {
+      console.warn(
+        "HLS playback blocked, falling back to muted:",
+        getErrorMessage(error, "Browser blocked playback."),
+      );
+    }
+
+    video.muted = true;
+    setIsMuted(true);
+    try {
+      await video.play();
+      setLastErrorMessage(null);
+      // mode → "playing-muted" via onPlayingInternal
+    } catch (error) {
+      const message = getErrorMessage(error, "Browser blocked muted playback.");
+      console.warn("HLS muted playback blocked:", message, error);
+      setLastErrorMessage(message);
+      setMode("playing-muted");
+    }
+  }, [videoRef]);
+
   const attachSource = useCallback(() => {
     const hls = hlsRef.current;
     if (!hls || disposedRef.current) return;
@@ -225,7 +253,7 @@ export function useHlsPlayerCore({
     const delay = jitter(backoffRef.current);
     backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF);
 
-    retryTimerRef.current = setTimeout(() => {
+    retryTimerRef.current = setTimeout(async () => {
       retryTimerRef.current = null;
       const hls = hlsRef.current;
       const video = videoRef.current;
@@ -235,11 +263,7 @@ export function useHlsPlayerCore({
         attachSource();
         setLastErrorMessage(null);
         if (autoPlay) {
-          void video.play().catch((error) => {
-            const message = getErrorMessage(error, "Browser blocked playback.");
-            setLastErrorMessage(message);
-            setMode("gate");
-          });
+          await attemptPlayback();
         }
         backoffRef.current = START_BACKOFF;
       } catch (error) {
@@ -248,7 +272,7 @@ export function useHlsPlayerCore({
         scheduleRetry();
       }
     }, delay);
-  }, [attachSource, autoPlay, videoRef]);
+  }, [attachSource, attemptPlayback, autoPlay, videoRef]);
 
   const restoreToLive = useCallback(async (options?: { forceReload?: boolean; gracePeriodMs?: number }) => {
     const hls = hlsRef.current;
@@ -272,7 +296,7 @@ export function useHlsPlayerCore({
         const message = getErrorMessage(error, "Failed to reload the playback URL.");
         setLastErrorMessage(message);
         scheduleRetry();
-        setMode("gate");
+        setMode("error");
         return;
       }
 
@@ -280,11 +304,11 @@ export function useHlsPlayerCore({
         if (typeof hls.liveSyncPosition === "number") {
           video.currentTime = hls.liveSyncPosition;
         }
-        await video.play();
+        await attemptPlayback();
       } catch (error) {
         const message = getErrorMessage(error, "Browser blocked playback.");
         setLastErrorMessage(message);
-        setMode("gate");
+        setMode("error");
       }
       return;
     }
@@ -303,39 +327,13 @@ export function useHlsPlayerCore({
       if (typeof hls.liveSyncPosition === "number") {
         video.currentTime = hls.liveSyncPosition;
       }
-      await video.play();
-      setLastErrorMessage(null);
+      await attemptPlayback();
     } catch (error) {
       const message = getErrorMessage(error, "Browser blocked playback.");
       setLastErrorMessage(message);
-      setMode("gate");
+      setMode("error");
     }
-  }, [attachSource, clearRetry, scheduleRetry, videoRef]);
-
-  const handleManualPlay = useCallback(async () => {
-    const video = videoRef.current;
-    if (!video || manualPlayInFlightRef.current) return;
-    manualPlayInFlightRef.current = true;
-    setMode("idle");
-
-    clearRetry();
-    backoffRef.current = START_BACKOFF;
-
-    try {
-      if (!hlsRef.current) {
-        throw new Error("HLS player is not ready.");
-      }
-      attachSource();
-      setLastErrorMessage(null);
-      await video.play();
-    } catch (error) {
-      const message = getErrorMessage(error, "Browser blocked playback.");
-      setLastErrorMessage(message);
-      setMode("gate");
-    } finally {
-      manualPlayInFlightRef.current = false;
-    }
-  }, [attachSource, clearRetry, videoRef]);
+  }, [attachSource, attemptPlayback, clearRetry, scheduleRetry, videoRef]);
 
   const tapToUnmute = useCallback(() => {
     const video = videoRef.current;
@@ -344,6 +342,13 @@ export function useHlsPlayerCore({
       video.muted = false;
     } catch {}
     setIsMuted(video.muted);
+    if (video.paused) {
+      video.play().catch(() => {
+        video.muted = true;
+        setIsMuted(true);
+        video.play().catch(() => {});
+      });
+    }
   }, [videoRef]);
 
   useEffect(() => {
@@ -383,7 +388,6 @@ export function useHlsPlayerCore({
   useEffect(() => {
     disposedRef.current = false;
     hasPlayedRef.current = false;
-    manualPlayInFlightRef.current = false;
     setMode("idle");
     setIsMuted(false);
     setPlayerState("INIT");
@@ -420,13 +424,11 @@ export function useHlsPlayerCore({
       }
 
       if (autoPlay) {
-        void video.play().catch((error) => {
-          const message = getErrorMessage(error, "Browser blocked playback.");
-          setLastErrorMessage(message);
-          setMode("gate");
-        });
+        void attemptPlayback();
       } else {
-        setMode("gate");
+        video.muted = true;
+        setIsMuted(true);
+        setMode("playing-muted");
       }
     };
 
@@ -486,7 +488,6 @@ export function useHlsPlayerCore({
       setPlayerState("PLAYING");
       updateStats();
       hasPlayedRef.current = true;
-      manualPlayInFlightRef.current = false;
       setLastErrorMessage(null);
       onPlaying?.();
       setSharedAudioContext(video);
@@ -518,7 +519,7 @@ export function useHlsPlayerCore({
           scheduleRetry();
           break;
         default:
-          setMode("gate");
+          setMode("error");
       }
     };
 
@@ -550,7 +551,7 @@ export function useHlsPlayerCore({
       hls.destroy();
       hlsRef.current = null;
     };
-  }, [attachSource, autoPlay, clearRetry, onEnded, onPlaying, onTextMetadata, scheduleRetry, updateStats, videoRef]);
+  }, [attachSource, attemptPlayback, autoPlay, clearRetry, onEnded, onPlaying, onTextMetadata, scheduleRetry, updateStats, videoRef]);
 
   return {
     playerRef: hlsRef,
@@ -564,7 +565,6 @@ export function useHlsPlayerCore({
     updateStats,
     scheduleRetry,
     restoreToLive,
-    handleManualPlay,
     tapToUnmute,
   };
 }
