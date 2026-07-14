@@ -10,8 +10,12 @@ export type StripeCheckout = {
 export type FanbasisCheckoutDto = {
   url?: string;                        // financing / external checkout link
   fanbasis_product_id?: string;        // maps to productId in SDK
-  fanbasis_creator_id?: string;        // backend to add — maps to creatorId in SDK
-  checkout_session_secret?: string;    // backend to add — maps to checkoutSessionSecret in SDK
+  fanbasis_creator_id?: string;        // maps to creatorId in SDK
+  checkout_session_secret?: string;    // maps to checkoutSessionSecret in SDK
+}
+
+export type WhopCheckoutDto = {
+  whop_plan_id?: string;               // maps to planId in @whop/checkout/react
 }
 
 export type OfferMediaDto = {
