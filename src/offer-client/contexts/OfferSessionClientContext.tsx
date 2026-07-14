@@ -14,7 +14,7 @@ interface OfferSessionClientContextType {
     setSelectedOffer: (offer: OfferSessionDto | undefined) => void
     setPurchasedOffer: (input: { offer: OfferSessionDto, ref: string } | undefined) => void
     recordEvent: (name: string, payload?: Record<string, unknown>) => Promise<void>
-    handleCheckoutSuccess: (ref: string, sendEvent?: boolean) => void
+    handleCheckoutSuccess: (ref: string) => void
     setIsCheckingOut: (value: boolean) => void
     cancelCheckout: () => Promise<void>
     closeSheetAfterPurchase: () => void

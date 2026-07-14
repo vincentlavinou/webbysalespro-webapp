@@ -17,7 +17,7 @@ import { PaymentProviderType } from '../service';
 
 export const paymentProviderSchema = z
   .object({
-    provider: z.enum(['stripe', 'paypal', 'fan_basis', 'network_merchant_inc']),
+    provider: z.enum(['stripe', 'paypal', 'fan_basis', 'whop', 'calendly']),
     public_key: z.string().optional(),
     secret_key: z.string().optional(),
     webhook_secret: z.string().optional(),
@@ -61,7 +61,8 @@ const PROVIDER_OPTIONS = [
   { label: 'Stripe', value: 'stripe' },
   { label: 'PayPal', value: 'paypal' },
   { label: 'FanBasis', value: 'fan_basis' },
-  { label: 'NetworkMerchant', value: 'network_merchant_inc' },
+  { label: 'Whop', value: 'whop' },
+  { label: 'Calendly', value: 'calendly' },
 ];
 
 export function PaymentProviderCard({ defaultValues, onSubmit }: Props) {

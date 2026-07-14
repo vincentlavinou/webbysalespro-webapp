@@ -182,19 +182,12 @@ export function OfferSessionClientProvider({
         setIsCheckingOut(false);
     }, [recordEvent]);
 
-    const handleCheckoutSuccess = useCallback(async (ref: string, sendEvent: boolean = true) => {
+    const handleCheckoutSuccess = useCallback((ref: string) => {
         if (selectedOffer && selectedOffer.offer.price) {
             setPurchasedOffer({ offer: selectedOffer, ref: ref });
-            if (sendEvent) {
-                await recordEvent("purchase_succeeded", {
-                    "offer_id": selectedOffer.offer.id,
-                    "amount_cents": selectedOffer.offer.price.value * 100,
-                    "payment_id": ref
-                })
-            }
             setView("offer-purchased")
         }
-    }, [selectedOffer, recordEvent]);
+    }, [selectedOffer]);
 
 
     return (

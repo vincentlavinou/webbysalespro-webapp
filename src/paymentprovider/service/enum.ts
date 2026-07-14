@@ -3,7 +3,8 @@ export enum PaymentProviderType {
     STRIPE = 'stripe',
     PAYPAL = 'paypal',
     FAN_BASIS = 'fan_basis',
-    NETWORK_MERCHANT_INC = 'network_merchant_inc'
+    WHOP = 'whop',
+    CALENDLY = 'calendly'
 }
 
 export function getPaymentProviderLabel(provider: PaymentProviderType): string {
@@ -14,8 +15,10 @@ export function getPaymentProviderLabel(provider: PaymentProviderType): string {
       return 'PayPal'
     case PaymentProviderType.FAN_BASIS:
       return 'FanBasis'
-    case PaymentProviderType.NETWORK_MERCHANT_INC:
-      return 'Network Merchant'
+    case PaymentProviderType.WHOP:
+      return 'Whop'
+    case PaymentProviderType.CALENDLY:
+      return 'Calendly'
     default:
       return provider
   }
