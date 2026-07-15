@@ -51,15 +51,13 @@ export function WhopCheckout() {
     handleCheckoutSuccess(receiptId ?? planIdArg);
   }, [handleCheckoutSuccess]);
 
-  const handlePaymentError = useCallback(async (error: WhopCheckoutPaymentError) => {
+  const handlePaymentError = useCallback((error: WhopCheckoutPaymentError) => {
+    // Whop's backend webhooks are the source of truth for failed payments,
+    // so we only surface the error in the UI here and skip recordEvent to
+    // avoid double-processing/racing the webhook-driven failure handling.
     console.error('Whop checkout error:', error);
     setCheckoutError(error.message || 'Payment failed. Please try again.');
-    try {
-      await recordEvent(error.code || 'generic_decline');
-    } catch (e) {
-      console.error('Failed to record Whop checkout error event:', e);
-    }
-  }, [recordEvent]);
+  }, []);
 
   return (
     <div
