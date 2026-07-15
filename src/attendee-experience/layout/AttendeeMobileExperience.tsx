@@ -12,6 +12,7 @@ import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import WebbySalesProPlayer from "@/playback/player/ivs/WebbySalesProPlayer";
 import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
+import { useHavingTroubleIndicator } from "@/playback/hooks/use-having-trouble-indicator";
 import {
   type AttendeeStreamRecoveryHandle,
   useAttendeeStreamRefresh,
@@ -88,7 +89,8 @@ export function AttendeeMobileExperience({
   const [viewportSize, setViewportSize] = useState<ViewportSize>(readLayoutViewport);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [isTextEntryFocused, setIsTextEntryFocused] = useState(false);
-  const { setStatus } = usePlaybackRuntime();
+  const { status, setStatus } = usePlaybackRuntime();
+  const showTroubleIndicator = useHavingTroubleIndicator(status);
   const channelStream =
     playbackToken.stream?.kind === "channel" ? playbackToken.stream : undefined;
   const realtimeStream =
@@ -287,7 +289,7 @@ export function AttendeeMobileExperience({
             {playerContent}
           </div>
 
-          {playbackToken.stream ? (
+          {playbackToken.stream && showTroubleIndicator ? (
             <StreamRefreshControl
               className="pointer-events-auto absolute left-1/2 top-3 z-30 -translate-x-1/2"
               onRefresh={handleRefreshStream}

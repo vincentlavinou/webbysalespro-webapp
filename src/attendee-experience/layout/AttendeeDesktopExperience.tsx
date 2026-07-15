@@ -7,6 +7,7 @@ import WebbySalesProPlayer from "@/playback/player/ivs/WebbySalesProPlayer";
 import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
 import { ChatPanel } from "@/chat/component/ChatPanel";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
+import { useHavingTroubleIndicator } from "@/playback/hooks/use-having-trouble-indicator";
 import {
   type AttendeeStreamRecoveryHandle,
   useAttendeeStreamRefresh,
@@ -27,7 +28,8 @@ export function AttendeeDesktopExperience({
 }: AttendeeDesktopExperienceProps) {
   const desktopPlayerWidth = "min(100%, calc((100dvh - 7rem) * 1.7777778))";
   const playerRef = useRef<AttendeeStreamRecoveryHandle | null>(null);
-  const { setStatus } = usePlaybackRuntime();
+  const { status, setStatus } = usePlaybackRuntime();
+  const showTroubleIndicator = useHavingTroubleIndicator(status);
   const channelStream =
     playbackToken.stream?.kind === "channel" ? playbackToken.stream : undefined;
   const realtimeStream =
@@ -69,7 +71,7 @@ export function AttendeeDesktopExperience({
                 />
               ) : null}
               <AttendeeCountBadge />
-              {playbackToken.stream ? (
+              {playbackToken.stream && showTroubleIndicator ? (
                 <StreamRefreshControl
                   className="absolute left-1/2 top-3 z-30 -translate-x-1/2"
                   onRefresh={handleRefreshStream}
