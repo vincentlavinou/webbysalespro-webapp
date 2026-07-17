@@ -18,6 +18,10 @@ export type WhopCheckoutDto = {
   whop_plan_id?: string;               // maps to planId in @whop/checkout/react
 }
 
+export type CalendlyCheckoutDto = {
+  url: string;                         // scheduling url, tracked with ?utm_content=<attendance_id> server-side
+}
+
 export type OfferMediaDto = {
     id: string;
     name: string | undefined;

@@ -147,7 +147,7 @@ export function OfferSessionClientProvider({
     const handleOfferClick = useCallback(async (offer: OfferSessionDto) => {
         const offerType = offer.offer.offer_type;
 
-        if (offerType === "purchase") {
+        if (offerType === "purchase" || offerType === "schedule_call") {
             setSelectedOffer(offer);
             setIsCheckingOut(true);
             await recordEvent("offer_shown", { offer_id: offer.offer.id });

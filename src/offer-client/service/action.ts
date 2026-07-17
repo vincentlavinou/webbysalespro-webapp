@@ -1,6 +1,6 @@
 'use server'
 import { actionClient } from "@/lib/safe-action";
-import { FanbasisCheckoutDto, OfferSessionDto, StripeCheckout } from "./type";
+import { CalendlyCheckoutDto, FanbasisCheckoutDto, OfferSessionDto, StripeCheckout } from "./type";
 import { paymentProviderApiUrl } from "@/paymentprovider/service";
 import { offersForSessionSchema, startCheckoutSchema } from "./schema";
 import { handleStatus } from "@/lib/http";
@@ -27,6 +27,18 @@ export const startFanbasisCheckout = actionClient
         )
         const checkedResponse = await handleStatus(response)
         const data = await checkedResponse.json() as FanbasisCheckoutDto
+        return data
+    })
+
+export const startCalendlyCheckout = actionClient
+    .inputSchema(startCheckoutSchema)
+    .action(async ({ parsedInput: { offerId, sessionId } }) => {
+        const response = await attendeeFetch(
+            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
+            { method: 'POST', body: JSON.stringify({}) }
+        )
+        const checkedResponse = await handleStatus(response)
+        const data = await checkedResponse.json() as CalendlyCheckoutDto
         return data
     })
 

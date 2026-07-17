@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { StripeCheckout } from "../checkout/stripe";
 import { FanBasisCheckout } from "../checkout/fanbasis";
 import { WhopCheckout } from "../checkout/whop";
+import { CalendlyCheckout } from "../checkout/calendly";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
 import { getPaymentProviderLabel, PaymentProviderType } from "@/paymentprovider/service/enum";
 import OfferPurchaseSuccess from "./OfferPurchaseSuccess";
@@ -52,8 +53,9 @@ function renderCheckout(provider: PaymentProviderType | null) {
             return <FanBasisCheckout />;
         case PaymentProviderType.WHOP:
             return <WhopCheckout />;
-        case PaymentProviderType.PAYPAL:
         case PaymentProviderType.CALENDLY:
+            return <CalendlyCheckout />;
+        case PaymentProviderType.PAYPAL:
         case null:
             return <UnsupportedProviderCheckout provider={provider} />;
         default:
