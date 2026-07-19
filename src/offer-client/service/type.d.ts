@@ -16,6 +16,7 @@ export type FanbasisCheckoutDto = {
 
 export type WhopCheckoutDto = {
   whop_plan_id?: string;               // maps to planId in @whop/checkout/react
+  session_id?: string;                 // maps to sessionId in @whop/checkout/react; carries attendance_id metadata, fetched via startWhopCheckout
 }
 
 export type CalendlyCheckoutDto = {

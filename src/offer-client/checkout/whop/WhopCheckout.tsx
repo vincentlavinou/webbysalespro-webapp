@@ -1,10 +1,13 @@
 'use client';
 
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
+import { startWhopCheckout } from '@/offer-client/service/action';
 import type { WhopCheckoutDto } from '@/offer-client/service/type';
+import { notifyErrorUiMessage } from '@/lib/notify';
 import { WhopCheckoutEmbed } from '@whop/checkout/react';
 import type { WhopCheckoutPaymentError, WhopCheckoutState } from '@whop/checkout/util';
 import { X } from 'lucide-react';
+import { useAction } from 'next-safe-action/hooks';
 import { useTheme } from 'next-themes';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -24,12 +27,13 @@ function LoadingPaymentCard() {
 }
 
 export function WhopCheckout() {
-  const { user, selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
+  const { user, sessionId, selectedOffer, recordEvent, handleCheckoutSuccess, cancelCheckout } =
     useOfferSessionClient();
 
   const { resolvedTheme } = useTheme();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutState, setCheckoutState] = useState<WhopCheckoutState>('loading');
+  const [whopSessionId, setWhopSessionId] = useState<string | null>(null);
 
   const payload = (selectedOffer?.offer.action_payload ?? {}) as WhopCheckoutDto;
   const isProduction = selectedOffer?.offer.is_production ?? false;
@@ -41,14 +45,29 @@ export function WhopCheckout() {
     return selectedOffer?.offer.post_purchase_config?.redirect_url ?? window.location.href;
   }, [selectedOffer]);
 
+  const { execute: fetchCheckoutSession } = useAction(startWhopCheckout, {
+    onSuccess: async ({ data }) => {
+      if (!data?.session_id) return;
+      setWhopSessionId(data.session_id);
+    },
+    onError: async ({ error: { serverError } }) => {
+      notifyErrorUiMessage(serverError);
+      setCheckoutError('Could not start checkout. Please try again.');
+    },
+  });
+
   useEffect(() => {
-    if (!canUseCheckout) return;
+    if (!canUseCheckout || !selectedOffer) return;
     void recordEvent('checkout_started');
+    setWhopSessionId(null);
+    // The checkout session carries attendance_id metadata (needed for Whop
+    // webhook attribution) — a bare planId checkout has no metadata attached.
+    fetchCheckoutSession({ sessionId, offerId: selectedOffer.offer.id });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canUseCheckout, selectedOffer?.id]);
 
-  const handleComplete = useCallback((planIdArg: string, receiptId?: string) => {
-    handleCheckoutSuccess(receiptId ?? planIdArg);
+  const handleComplete = useCallback((idArg: string, receiptOrSetupIntentId?: string) => {
+    handleCheckoutSuccess(receiptOrSetupIntentId ?? idArg);
   }, [handleCheckoutSuccess]);
 
   const handlePaymentError = useCallback((error: WhopCheckoutPaymentError) => {
@@ -106,27 +125,29 @@ export function WhopCheckout() {
             {checkoutError && (
               <p className="mb-2 text-xs text-destructive">{checkoutError}</p>
             )}
-            {checkoutState === 'loading' && <LoadingPaymentCard />}
-            <div className={checkoutState === 'loading' ? 'hidden' : undefined}>
-              <WhopCheckoutEmbed
-                planId={planId!}
-                environment={isProduction ? 'production' : 'sandbox'}
-                theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
-                skipRedirect
-                returnUrl={returnUrl}
-                fallback={<LoadingPaymentCard />}
-                collectPhoneNumbers
-                prefill={{
-                  email: user.email,
-                  ...(user.first_name || user.last_name
-                    ? { address: { name: [user.first_name, user.last_name].filter(Boolean).join(' ') } }
-                    : {}),
-                }}
-                onStateChange={setCheckoutState}
-                onComplete={handleComplete}
-                onPaymentError={handlePaymentError}
-              />
-            </div>
+            {!whopSessionId || checkoutState === 'loading' ? <LoadingPaymentCard /> : null}
+            {whopSessionId && (
+              <div className={checkoutState === 'loading' ? 'hidden' : undefined}>
+                <WhopCheckoutEmbed
+                  sessionId={whopSessionId}
+                  environment={isProduction ? 'production' : 'sandbox'}
+                  theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+                  skipRedirect
+                  returnUrl={returnUrl}
+                  fallback={<LoadingPaymentCard />}
+                  collectPhoneNumbers
+                  prefill={{
+                    email: user.email,
+                    ...(user.first_name || user.last_name
+                      ? { address: { name: [user.first_name, user.last_name].filter(Boolean).join(' ') } }
+                      : {}),
+                  }}
+                  onStateChange={setCheckoutState}
+                  onComplete={handleComplete}
+                  onPaymentError={handlePaymentError}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
