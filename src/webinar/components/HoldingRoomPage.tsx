@@ -7,6 +7,8 @@ import { DateTime } from 'luxon'
 import { Hand, Loader2 } from 'lucide-react'
 import { motion, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { LiveIndicator } from '@/components/ui/live-indicator'
 import { useManualWakeLock } from '@/hooks/use-manual-wake-lock'
 import { useAttendeeSession } from '@/attendee-session/hooks/use-attendee-session'
 import { useSessionPresence } from '@/broadcast/hooks'
@@ -173,12 +175,12 @@ export function HoldingRoomPage({
     <div>
       {isRedirecting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card/95 px-8 py-6 text-card-foreground shadow-xl">
+          <Card className="flex-row items-center gap-3 bg-card/95 px-8 py-6 shadow-xl">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span className="text-base font-medium text-foreground">
               Connecting to session...
             </span>
-          </div>
+          </Card>
         </div>
       )}
 
@@ -188,10 +190,7 @@ export function HoldingRoomPage({
             webinar={webinar}
             badge={
               <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                </span>
+                <LiveIndicator ringClassName="bg-primary/70" />
                 {roomLabel}
               </span>
             }
@@ -220,10 +219,7 @@ export function HoldingRoomPage({
                 <div className="flex items-start justify-between gap-3">
                   {isActive ? (
                     <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-background/20 bg-background/20 px-3 py-1 text-xs font-semibold text-primary-foreground backdrop-blur-sm">
-                      <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-foreground opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-foreground" />
-                      </span>
+                      <LiveIndicator ringClassName="bg-primary-foreground" dotClassName="bg-primary-foreground" />
                       {roomLabel}
                     </span>
                   ) : (
@@ -270,8 +266,8 @@ export function HoldingRoomPage({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border bg-card/90 p-6 shadow-xl backdrop-blur-md">
-            <div className="space-y-5">
+          <Card className="bg-card/90 p-6 shadow-xl backdrop-blur-md">
+            <CardContent className="space-y-5 p-0">
               <SessionDetailCard
                 formattedDate={formattedDate}
                 timezone={timezone}
@@ -298,8 +294,8 @@ export function HoldingRoomPage({
                 url={joinUrl}
               />
               <BookmarkButton livePath={joinUrl} />
-            </div>
-          </section>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

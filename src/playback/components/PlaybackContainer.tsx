@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
-import WaitingRoomShimmer from "@/webinar/components/WaitingRoomShimmer";
+import { WaitingRoomShimmer } from "@/webinar/components";
 import { useWebinar } from "@/webinar/hooks";
 import { useSessionPresence } from "@/broadcast/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";

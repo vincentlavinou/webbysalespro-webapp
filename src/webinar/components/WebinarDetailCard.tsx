@@ -2,6 +2,7 @@ import Image from "next/image"
 import { ReactNode } from "react"
 import { Webinar } from "@/webinar/service/type"
 import { sanitizeRichText } from "@/lib/sanitize-rich-text"
+import { Card, CardContent } from "@/components/ui/card"
 
 interface WebinarDetailCardProps {
   webinar: Webinar | null
@@ -16,7 +17,7 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
   const sanitizedDescription = webinar?.description ? sanitizeRichText(webinar.description) : ""
 
   return (
-    <div className="order-last overflow-hidden rounded-2xl border border-border bg-card/90 shadow-xl backdrop-blur-md md:order-first">
+    <Card className="order-last overflow-hidden bg-card/90 py-0 shadow-xl backdrop-blur-md md:order-first">
       {thumbnail?.file_url && (
         <div className="relative w-full">
           <Image
@@ -30,7 +31,7 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         </div>
       )}
-      <div className="p-6">
+      <CardContent className="p-6">
         {badge}
         <h1 className="mb-1 text-2xl font-bold leading-tight text-foreground md:text-3xl">
           {webinar?.title ?? fallbackTitle}
@@ -87,7 +88,7 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
             </div>
           </>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

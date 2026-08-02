@@ -6,7 +6,7 @@ import { useChat } from '@chat/hooks';
 import { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
-import { OfferCarouselPanel } from '@/offer-client/components/OfferCarouselPanel';
+import { OfferCarouselPanel, OfferChatBubble } from '@/offer-client/components';
 import { useCtaAnnouncements, type CtaAnnouncement } from '@chat/hooks/use-cta-announcements';
 import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
 
@@ -14,7 +14,6 @@ import clsx from 'clsx';
 import { ChatComposer } from './ChatComposer';
 import { Button } from '@/components/ui/button';
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';
-import { OfferChatBubble } from '@/offer-client/components/OfferChatBubble';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useChatRuntime } from '../hooks/use-chat-runtime';
 

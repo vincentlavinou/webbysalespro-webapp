@@ -1,27 +1,29 @@
 'use client'
 
 import { CalendarX, Clock } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function NoAvailableSessionsMessage() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gray-50 p-4 dark:bg-slate-950/40">
       <div className="w-full max-w-xl">
         <Card className="border-gray-200 bg-white/90 shadow-md dark:border-slate-700 dark:bg-slate-900/80">
-          <CardHeader className="text-center pb-2">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <CalendarX className="h-5 w-5 text-red-500" />
-              <Badge variant="destructive" className="text-sm">
-                No Upcoming Sessions
-              </Badge>
-            </div>
-            <CardTitle className="text-2xl font-bold text-gray-800 dark:text-slate-100">
-              No sessions available to register
-            </CardTitle>
-            <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">
-              Please check back later or contact the organizer if you were expecting a session.
-            </p>
+          <CardHeader className="pb-2">
+            <EmptyState
+              icon={
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <CalendarX className="h-5 w-5 text-red-500" />
+                  <Badge variant="destructive" className="text-sm">
+                    No Upcoming Sessions
+                  </Badge>
+                </div>
+              }
+              title="No sessions available to register"
+              titleClassName="text-2xl font-bold text-gray-800 dark:text-slate-100"
+              description="Please check back later or contact the organizer if you were expecting a session."
+            />
           </CardHeader>
 
           <CardContent className="space-y-4">

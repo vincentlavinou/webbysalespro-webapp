@@ -3,7 +3,7 @@
 import { Suspense, use, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DateTime } from "luxon";
-import { useForm, Controller, type Control, type FieldErrors } from "react-hook-form";
+import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAction } from "next-safe-action/hooks";
@@ -12,8 +12,10 @@ import { CheckCircle, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { LiveIndicator } from "@/components/ui/live-indicator";
+import { notifyErrorUiMessage } from "@/lib/notify";
 
 import { PausedWebinarNotice } from "@/webinar/components";
 import { webinarAppUrl, type Webinar, type WebinarPauseInfo } from "@/webinar/service";
@@ -145,7 +147,6 @@ function SessionFieldLoading() {
 interface SessionFieldProps {
   webinarPromise: Promise<Webinar>;
   control: Control<AttendeeFormData>;
-  errors: FieldErrors<AttendeeFormData>;
   primaryColor?: string;
   secondaryColor?: string;
   secondaryBackgroundColor?: string;
@@ -154,7 +155,6 @@ interface SessionFieldProps {
 function SessionField({
   webinarPromise,
   control,
-  errors,
   primaryColor,
   secondaryColor,
   secondaryBackgroundColor,
@@ -191,48 +191,45 @@ function SessionField({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label className="text-gray-700 dark:text-slate-300">Select a Session</Label>
-      <Controller
-        name="session_id"
-        control={control}
-        render={({ field }) => (
-          <Select value={field.value} onValueChange={field.onChange}>
-            <SelectTrigger className={`w-full ${embedFieldClassName}`}>
-              <SelectValue placeholder="Select a session" />
-            </SelectTrigger>
-            <SelectContent>
-              {sessions.map((session) => {
-                const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
-                return (
-                  <SelectItem key={session.id} value={session.id}>
-                    <span className="flex items-center gap-2">
-                      <SessionTime
-                        iso={session.scheduled_start}
-                        zone={session.timezone || "utc"}
-                        format="cccc, LLLL d 'at' t ZZZZ"
-                      />
-                      {isLive && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-                          <span className="relative flex h-2 w-2">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+    <FormField
+      name="session_id"
+      control={control}
+      render={({ field }) => (
+        <FormItem className="gap-2">
+          <FormLabel className="text-gray-700 dark:text-slate-300">Select a Session</FormLabel>
+          <FormControl>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger className={`w-full ${embedFieldClassName}`}>
+                <SelectValue placeholder="Select a session" />
+              </SelectTrigger>
+              <SelectContent>
+                {sessions.map((session) => {
+                  const isLive = session.status === WebinarSessionStatus.IN_PROGRESS;
+                  return (
+                    <SelectItem key={session.id} value={session.id}>
+                      <span className="flex items-center gap-2">
+                        <SessionTime
+                          iso={session.scheduled_start}
+                          zone={session.timezone || "utc"}
+                          format="cccc, LLLL d 'at' t ZZZZ"
+                        />
+                        {isLive && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                            <LiveIndicator ringClassName="bg-red-500" dotClassName="bg-red-600" />
+                            LIVE
                           </span>
-                          LIVE
-                        </span>
-                      )}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        )}
-      />
-      {errors.session_id && (
-        <p className="text-sm text-red-500">{errors.session_id.message}</p>
+                        )}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </FormControl>
+          <FormMessage />
+        </FormItem>
       )}
-    </div>
+    />
   );
 }
 
@@ -324,15 +321,10 @@ export const DefaultRegistrationForm = ({
     embedSource && !embedSuccessUrl
   );
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    setError,
-    formState: { errors },
-  } = useForm<AttendeeFormData>({
+  const form = useForm<AttendeeFormData>({
     resolver: zodResolver(attendeeSchema),
   });
+  const { control, setError, handleSubmit } = form;
 
   const navigateToUrl = (url: string) => {
     if (!embedSource) {
@@ -349,7 +341,7 @@ export const DefaultRegistrationForm = ({
         openedWindow.opener = null;
         return true;
       }
-      toast.error("Please allow pop-ups to continue.");
+      notifyErrorUiMessage("Please allow pop-ups to continue.");
       submitLockRef.current = false;
       setIsNavigating(false);
       return false;
@@ -426,7 +418,7 @@ export const DefaultRegistrationForm = ({
           return;
         }
 
-        toast.error("Registration succeeded but no join link was returned. Please check your email.");
+        notifyErrorUiMessage("Registration succeeded but no join link was returned. Please check your email.");
         setIsNavigating(false);
         return;
       }
@@ -467,7 +459,7 @@ export const DefaultRegistrationForm = ({
       const rawJoinToken = extractJoinToken(data);
 
       if (!rawJoinToken) {
-        toast.error("Registration succeeded but the join link was invalid. Please check your email.");
+        notifyErrorUiMessage("Registration succeeded but the join link was invalid. Please check your email.");
         setIsNavigating(false);
         return;
       }
@@ -487,7 +479,7 @@ export const DefaultRegistrationForm = ({
       setIsNavigating(false);
       // `error` here is whatever your action throws / returns as serverError
       if (!error) {
-        toast.error("Something went wrong. Please try again.");
+        notifyErrorUiMessage("Something went wrong. Please try again.");
         return;
       }
 
@@ -619,103 +611,124 @@ export const DefaultRegistrationForm = ({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      onFocus={() => { isFieldFocusedRef.current = true }}
-      onBlur={() => { isFieldFocusedRef.current = false }}
-      className="space-y-4"
-    >
-      <Suspense fallback={<SessionFieldLoading />}>
-        <SessionField
-          webinarPromise={webinarPromise}
+    <Form {...form}>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        onFocus={() => { isFieldFocusedRef.current = true }}
+        onBlur={() => { isFieldFocusedRef.current = false }}
+        className="space-y-4"
+      >
+        <Suspense fallback={<SessionFieldLoading />}>
+          <SessionField
+            webinarPromise={webinarPromise}
+            control={control}
+            primaryColor={primaryColor}
+            secondaryColor={secondaryColor}
+            secondaryBackgroundColor={secondaryBackgroundColor}
+          />
+        </Suspense>
+
+        {/* First & Last name side-by-side */}
+        <div className="grid grid-cols-2 gap-3">
+          <FormField
+            name="first_name"
+            control={control}
+            render={({ field }) => (
+              <FormItem className="gap-1">
+                <FormLabel className="text-gray-700 dark:text-slate-300">First Name</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Jane"
+                    disabled={isBusy}
+                    autoComplete="given-name"
+                    className={`${embedFieldClassName} ${embedAutofillClassName}`}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+          <FormField
+            name="last_name"
+            control={control}
+            render={({ field }) => (
+              <FormItem className="gap-1">
+                <FormLabel className="text-gray-700 dark:text-slate-300">Last Name</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Doe"
+                    disabled={isBusy}
+                    autoComplete="family-name"
+                    className={`${embedFieldClassName} ${embedAutofillClassName}`}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Email */}
+        <FormField
+          name="email"
           control={control}
-          errors={errors}
-          primaryColor={primaryColor}
-          secondaryColor={secondaryColor}
-          secondaryBackgroundColor={secondaryBackgroundColor}
-        />
-      </Suspense>
-
-      {/* First & Last name side-by-side */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="first_name" className="text-gray-700 dark:text-slate-300">First Name</Label>
-          <Input
-            id="first_name"
-            placeholder="Jane"
-            {...register("first_name")}
-            disabled={isBusy}
-            autoComplete="given-name"
-            className={`${embedFieldClassName} ${embedAutofillClassName}`}
-          />
-          {errors.first_name && (
-            <p className="text-red-500 text-xs">{errors.first_name.message}</p>
+          render={({ field }) => (
+            <FormItem className="gap-1">
+              <FormLabel className="text-gray-700 dark:text-slate-300">Email Address</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder="jane@example.com"
+                  disabled={isBusy}
+                  autoComplete="email"
+                  className={`${embedFieldClassName} ${embedAutofillClassName}`}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage className="text-xs" />
+            </FormItem>
           )}
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="last_name" className="text-gray-700 dark:text-slate-300">Last Name</Label>
-          <Input
-            id="last_name"
-            placeholder="Doe"
-            {...register("last_name")}
-            disabled={isBusy}
-            autoComplete="family-name"
-            className={`${embedFieldClassName} ${embedAutofillClassName}`}
-          />
-          {errors.last_name && (
-            <p className="text-red-500 text-xs">{errors.last_name.message}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Email */}
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="email" className="text-gray-700 dark:text-slate-300">Email Address</Label>
-        <Input
-          id="email"
-            type="email"
-            placeholder="jane@example.com"
-            {...register("email")}
-            disabled={isBusy}
-            autoComplete="email"
-            className={`${embedFieldClassName} ${embedAutofillClassName}`}
-          />
-        {errors.email && (
-          <p className="text-red-500 text-xs">{errors.email.message}</p>
-        )}
-      </div>
-
-      {/* Phone */}
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="phone" className="text-gray-700 dark:text-slate-300">Phone</Label>
-        <Input
-          id="phone"
-            type="tel"
-            inputMode="tel"
-            placeholder="+1 (555) 000-0000"
-            {...register("phone")}
-            disabled={isBusy}
-            autoComplete="tel"
-            className={`${embedFieldClassName} ${embedAutofillClassName}`}
-          />
-        {errors.phone && (
-          <p className="text-red-500 text-xs">{errors.phone.message}</p>
-        )}
-      </div>
-
-      {/* Submit */}
-      <Suspense fallback={<SubmitButtonLoading primaryColor={primaryColor} buttonTextColor={buttonTextColor} />}>
-        <SubmitButton
-          webinarPromise={webinarPromise}
-          submitButtonRef={submitButtonRef}
-          primaryColor={primaryColor}
-          buttonTextColor={buttonTextColor}
-          isHydrated={isHydrated}
-          isPending={isPending}
-          isNavigating={isNavigating}
         />
-      </Suspense>
 
-    </form>
+        {/* Phone */}
+        <FormField
+          name="phone"
+          control={control}
+          render={({ field }) => (
+            <FormItem className="gap-1">
+              <FormLabel className="text-gray-700 dark:text-slate-300">Phone</FormLabel>
+              <FormControl>
+                <Input
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="+1 (555) 000-0000"
+                  disabled={isBusy}
+                  autoComplete="tel"
+                  className={`${embedFieldClassName} ${embedAutofillClassName}`}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage className="text-xs" />
+            </FormItem>
+          )}
+        />
+
+        {/* Submit */}
+        <Suspense fallback={<SubmitButtonLoading primaryColor={primaryColor} buttonTextColor={buttonTextColor} />}>
+          <SubmitButton
+            webinarPromise={webinarPromise}
+            submitButtonRef={submitButtonRef}
+            primaryColor={primaryColor}
+            buttonTextColor={buttonTextColor}
+            isHydrated={isHydrated}
+            isPending={isPending}
+            isNavigating={isNavigating}
+          />
+        </Suspense>
+
+      </form>
+    </Form>
   );
 };

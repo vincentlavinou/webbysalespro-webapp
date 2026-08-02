@@ -4,8 +4,8 @@ import { useRef } from "react";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import { AttendeeCountBadge } from "@/broadcast/attendee-count/components/AttendeeCountBadge";
 import WebbySalesProPlayer from "@/playback/player/ivs/WebbySalesProPlayer";
-import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
-import { ChatPanel } from "@/chat/component/ChatPanel";
+import { StreamRefreshControl } from "@/broadcast/components";
+import { ChatPanel } from "@/chat/components";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
 import { useHavingTroubleIndicator } from "@/playback/hooks/use-having-trouble-indicator";
 import {

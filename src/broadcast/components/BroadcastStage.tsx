@@ -7,7 +7,7 @@ import { HostNotStarted } from "./HostNotStarted";
 import { LocalMediaControl } from "./LocalMediaControl";
 import { BroadcastServiceToken } from "../service/type";
 import MainPresenterView from "@/broadcast/components/views/MainPresenterView";
-import { WebinarChat } from "@/chat/component";
+import { WebinarChat } from "@/chat/components";
 import { useStageContext } from "../hooks/use-stage";
 import { usePresentation } from "../hooks/use-presentation";
 import { PresentationView } from "./views/PresentationView";

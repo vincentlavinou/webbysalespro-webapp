@@ -1,5 +1,0 @@
-
-
-export {
-    PaymentProviderManager
-} from './PaymentProviderManager'

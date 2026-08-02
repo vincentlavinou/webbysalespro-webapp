@@ -2,10 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChatComposer } from "@/chat/component/ChatComposer";
-import { WebinarChat } from "@/chat/component";
-import { ChatMessages } from "@/chat/component/ChatMessages";
-import { OfferChatBubble } from "@/offer-client/components/OfferChatBubble";
+import { ChatComposer, WebinarChat, ChatMessages } from "@/chat/components";
+import { OfferChatBubble } from "@/offer-client/components";
 import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";

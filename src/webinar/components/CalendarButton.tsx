@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { CalendarPlus, ChevronDown } from 'lucide-react'
 import { DateTime } from 'luxon'
+import { Button } from '@/components/ui/button'
+import { LiveIndicator } from '@/components/ui/live-indicator'
 
 interface CalendarButtonProps {
   title: string
@@ -143,19 +145,17 @@ export default function CalendarButton({
 
   return (
     <div className="relative" ref={ref}>
-      <button
+      <Button
+        variant="outline"
         onClick={() => setOpen(!open)}
-        className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        className="h-auto w-full justify-center overflow-hidden rounded-xl bg-card px-4 py-2.5 text-sm font-medium shadow-sm"
       >
         {/* Pulse ring */}
-        <span className="relative flex h-2 w-2 flex-shrink-0">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-        </span>
+        <LiveIndicator />
         <CalendarPlus className="h-4 w-4 text-primary" />
         Add to Calendar
         <ChevronDown className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       {open && (
         <div className="absolute left-0 right-0 z-10 mt-1 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg">

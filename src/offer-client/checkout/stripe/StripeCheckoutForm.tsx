@@ -5,7 +5,7 @@ import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-cl
 import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { X } from 'lucide-react';
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { notifyErrorUiMessage } from '@/lib/notify';
 
 interface StripeCheckoutFormProps {
   email?: string;
@@ -40,14 +40,14 @@ export function StripeCheckoutForm({ email, onSuccess }: StripeCheckoutFormProps
     });
 
     if (error) {
-      toast.error(`${error.message ?? 'Payment failed.'}`);
+      notifyErrorUiMessage(error.message ?? 'Payment failed.');
       if (error.code === 'card_declined') {
         await recordEvent(error.decline_code || 'generic_decline');
       }
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
       onSuccess(paymentIntent.id);
     } else {
-      toast.error('Payment processing or requires action.');
+      notifyErrorUiMessage('Payment processing or requires action.');
     }
 
     setLoading(false);

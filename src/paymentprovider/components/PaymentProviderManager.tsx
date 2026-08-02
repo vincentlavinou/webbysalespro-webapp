@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { notifyErrorUiMessage } from '@/lib/notify';
+import { notifyErrorUiMessage, notifySuccessUiMessage } from '@/lib/notify';
 import { PaymentProviderCard } from './PaymentProviderCard';
 import {
   createPaymentProviderAction,
@@ -10,7 +10,6 @@ import {
   getAllPaymentProvidersAction,
 } from '../service';
 import { CreatePaymentProviderPayload, PaymentProvider } from '../service/type';
-import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { RequestHeaders } from 'next/dist/client/components/router-reducer/fetch-server-response';
 import { useAction } from 'next-safe-action/hooks';
@@ -72,7 +71,7 @@ export function PaymentProviderManager({
         setProviders(result.data);
       }
     } catch {
-      toast.error('Failed to load payment providers');
+      notifyErrorUiMessage(undefined, 'Failed to load payment providers');
     }
   }, [listPaymentProviders, resolveHeaders]);
 
@@ -87,11 +86,11 @@ export function PaymentProviderManager({
       if (!newProvider) {
         return undefined;
       }
-      toast.success('Payment provider created');
+      notifySuccessUiMessage('Payment provider created');
       setProviders((prev) => [...prev, newProvider]);
       return newProvider
     } catch {
-      toast.error('Failed to create payment provider');
+      notifyErrorUiMessage(undefined, 'Failed to create payment provider');
     }
     return undefined
   };
@@ -103,12 +102,12 @@ export function PaymentProviderManager({
       if (!updated) {
         return undefined;
       }
-      toast.success('Payment provider updated');
+      notifySuccessUiMessage('Payment provider updated');
       setProviders((prev) => prev.map((p) => (p.id === id ? updated : p)));
       setEditingProviderId(null);
       return updated
     } catch {
-      toast.error('Failed to update payment provider');
+      notifyErrorUiMessage(undefined, 'Failed to update payment provider');
     }
 
     return undefined
@@ -120,10 +119,10 @@ export function PaymentProviderManager({
       if (!result?.data?.success) {
         return;
       }
-      toast.success('Payment provider deleted');
+      notifySuccessUiMessage('Payment provider deleted');
       setProviders((prev) => prev.filter((p) => p.id !== id));
     } catch {
-      toast.error('Failed to delete payment provider');
+      notifyErrorUiMessage(undefined, 'Failed to delete payment provider');
     }
   };
 

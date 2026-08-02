@@ -3,6 +3,7 @@ import { getPublicWebinarIdFromSessionAction } from "@/webinar/service/action";
 import { getWebinar } from "@/webinar/service/action";
 import { isWebinarPayload } from "@/webinar/service/guards";
 import { WebinarDetailCard } from "@/webinar/components/WebinarDetailCard";
+import { Card } from "@/components/ui/card";
 
 interface CompletedPageProps {
   params: Promise<{ id: string }>;
@@ -36,7 +37,7 @@ export default async function CompletedPage(props: CompletedPageProps) {
           />
 
           {/* Right — Completion message */}
-          <div className="order-first rounded-2xl border border-border bg-card/90 p-6 shadow-xl backdrop-blur-md md:order-last">
+          <Card className="order-first bg-card/90 p-6 shadow-xl backdrop-blur-md md:order-last">
             <div className="flex flex-col items-center text-center mb-6">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-border bg-primary/10">
                 <CheckCircle2 className="h-8 w-8 text-primary" />
@@ -54,7 +55,7 @@ export default async function CompletedPage(props: CompletedPageProps) {
                 We hope you found this session valuable. Keep an eye on your inbox for a recording or follow-up from the presenter.
               </p>
             </div>
-          </div>
+          </Card>
 
         </div>
     </div>

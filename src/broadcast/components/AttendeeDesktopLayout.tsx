@@ -1,7 +1,7 @@
 "use client";
 import { useRef } from "react";
 import { AttendeeBroadcastServiceToken } from "../service/type";
-import { WebinarChat } from "@/chat/component";
+import { WebinarChat } from "@/chat/components";
 import { WebinarMediaFieldType } from "@/media";
 import type { WebinarMedia } from "@/media";
 import WebbySalesProPlayer, { type WebbySalesProPlayerHandle } from "./ivs/WebbySalesProPlayer";

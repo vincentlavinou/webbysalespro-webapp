@@ -29,3 +29,23 @@ export {
 export {
     PausedWebinarNotice
 } from './PausedWebinarNotice'
+
+export {
+    HoldingRoomPage
+} from './HoldingRoomPage'
+
+export {
+    default as BookmarkButton
+} from './BookmarkButton'
+
+export {
+    default as ShareButton
+} from './ShareButton'
+
+export {
+    default as CalendarButton
+} from './CalendarButton'
+
+export {
+    default as WaitingRoomShimmer
+} from './WaitingRoomShimmer'

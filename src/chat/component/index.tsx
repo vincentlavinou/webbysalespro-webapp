@@ -1,3 +1,0 @@
-export {
-    WebinarChat
-} from './WebinarChat'

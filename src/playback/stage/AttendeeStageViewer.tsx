@@ -7,7 +7,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { WebinarMainLayoutLoading } from "@/broadcast/components/views/WebinarMainLayoutLoading";
+import { WebinarMainLayoutLoading } from "@/broadcast/components";
 import { getSessionAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { usePersistentStagePlayback } from "@/playback/persistent/use-persistent-stage-playback";

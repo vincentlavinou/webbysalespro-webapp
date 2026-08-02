@@ -4,6 +4,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Wifi, Users, MessageSquareMore, BarChart3, TimerReset } from "lucide-react";
 import { cn } from "@/lib/utils"; // optional: replace with a local helper or remove if you don't use cn()
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * WebinarViewLoading
@@ -60,13 +61,13 @@ export function WebinarLoadingView({ compact, hint, className }: WebinarViewLoad
 function HeaderSkeleton({ hint }: { hint?: string }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="h-12 w-12 rounded-2xl bg-muted animate-pulse" />
+      <Skeleton className="h-12 w-12 rounded-2xl" />
       <div className="flex-1 min-w-0">
-        <div className="h-5 w-56 rounded bg-muted animate-pulse" />
+        <Skeleton className="h-5 w-56" />
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-          <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+          <Skeleton className="h-3 w-24" />
           <LivePillSkeleton />
-          <div className="h-3 w-16 rounded bg-muted animate-pulse" />
+          <Skeleton className="h-3 w-16" />
         </div>
         {hint ? (
           <div className="mt-1 text-xs text-muted-foreground line-clamp-1">{hint}</div>
@@ -79,7 +80,7 @@ function HeaderSkeleton({ hint }: { hint?: string }) {
 function LivePillSkeleton() {
   return (
     <div className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 bg-muted/70">
-      <div className="size-1.5 rounded-full bg-destructive animate-pulse" />
+      <Skeleton className="size-1.5 rounded-full bg-destructive" />
       <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Live</span>
     </div>
   );
@@ -87,9 +88,7 @@ function LivePillSkeleton() {
 
 function PlayerSkeleton() {
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl bg-muted aspect-video">
-      {/* Animated shimmer */}
-      <div className="absolute inset-0 animate-pulse" />
+    <Skeleton className="relative w-full overflow-hidden rounded-2xl aspect-video">
       <motion.div
         aria-label="Connecting to stream"
         className="absolute inset-0 grid place-items-center"
@@ -115,7 +114,7 @@ function PlayerSkeleton() {
           </AnimatePresence>
         </div>
       </motion.div>
-    </div>
+    </Skeleton>
   );
 }
 
@@ -145,13 +144,13 @@ function TabsSkeleton() {
   return (
     <div className="flex items-center gap-2 border-b">
       {["Chat", "Q&A", "People", "Resources"].map((t, i) => (
-        <div key={t} className={cn("px-3 py-2 text-sm rounded-md", i === 0 ? "bg-muted" : "bg-transparent")}> 
-          <div className="h-4 w-10 rounded bg-muted animate-pulse" />
+        <div key={t} className={cn("px-3 py-2 text-sm rounded-md", i === 0 ? "bg-muted" : "bg-transparent")}>
+          <Skeleton className="h-4 w-10" />
         </div>
       ))}
       <div className="ml-auto flex items-center gap-2 pr-1 text-muted-foreground">
         <Users className="size-4" />
-        <div className="h-3 w-8 rounded bg-muted animate-pulse" />
+        <Skeleton className="h-3 w-8" />
       </div>
     </div>
   );
@@ -162,11 +161,11 @@ function PanelSkeleton() {
     <div className="grid gap-3 md:grid-cols-3">
       {[0, 1, 2].map((i) => (
         <div key={i} className="rounded-xl border p-4">
-          <div className="h-4 w-28 rounded bg-muted animate-pulse" />
+          <Skeleton className="h-4 w-28" />
           <div className="mt-3 space-y-2">
-            <div className="h-3 w-full rounded bg-muted animate-pulse" />
-            <div className="h-3 w-3/4 rounded bg-muted animate-pulse" />
-            <div className="h-3 w-2/5 rounded bg-muted animate-pulse" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-3/4" />
+            <Skeleton className="h-3 w-2/5" />
           </div>
         </div>
       ))}
@@ -179,26 +178,26 @@ function ChatSkeleton() {
     <div className="rounded-2xl border overflow-hidden flex flex-col min-h-[420px]">
       <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50">
         <MessageSquareMore className="size-4" />
-        <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+        <Skeleton className="h-3 w-24" />
         <div className="ml-auto flex items-center gap-2 text-muted-foreground">
           <TimerReset className="size-4" />
-          <div className="h-3 w-10 rounded bg-muted animate-pulse" />
+          <Skeleton className="h-3 w-10" />
         </div>
       </div>
       <div className="flex-1 space-y-3 p-3 overflow-hidden">
         {Array.from({ length: 7 }).map((_, i) => (
           <div key={i} className="flex gap-2">
-            <div className="size-7 shrink-0 rounded-full bg-muted animate-pulse" />
+            <Skeleton className="size-7 shrink-0 rounded-full" />
             <div className="flex-1 min-w-0">
-              <div className="h-3 w-24 rounded bg-muted animate-pulse" />
-              <div className="mt-2 h-3 w-full rounded bg-muted animate-pulse" />
-              <div className="mt-1 h-3 w-3/5 rounded bg-muted animate-pulse" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-2 h-3 w-full" />
+              <Skeleton className="mt-1 h-3 w-3/5" />
             </div>
           </div>
         ))}
       </div>
       <div className="p-3 border-t">
-        <div className="h-9 w-full rounded-xl bg-muted animate-pulse" />
+        <Skeleton className="h-9 w-full rounded-xl" />
       </div>
     </div>
   );
@@ -209,15 +208,15 @@ function AnalyticsSkeleton() {
     <div className="rounded-2xl border overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50">
         <BarChart3 className="size-4" />
-        <div className="h-3 w-28 rounded bg-muted animate-pulse" />
+        <Skeleton className="h-3 w-28" />
       </div>
       <div className="p-4 space-y-4">
-        <div className="h-36 w-full rounded-xl bg-muted animate-pulse" />
+        <Skeleton className="h-36 w-full rounded-xl" />
         <div className="grid grid-cols-3 gap-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="rounded-xl border p-3">
-              <div className="h-3 w-20 rounded bg-muted animate-pulse" />
-              <div className="mt-2 h-6 w-12 rounded bg-muted animate-pulse" />
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-2 h-6 w-12" />
             </div>
           ))}
         </div>

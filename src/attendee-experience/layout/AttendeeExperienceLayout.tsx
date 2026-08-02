@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
-import { WebinarLoadingView } from "@/broadcast/components/views/WebinarLoadingView";
+import { WebinarLoadingView } from "@/broadcast/components";
 import { AttendeeCountProvider } from "@/broadcast/attendee-count/provider/AttendeeCountProvider";
 import { useAttendeeLayoutMode } from "@/broadcast/hooks/use-attendee-layout-mode";
 import { AttendeeDesktopExperience } from "./AttendeeDesktopExperience";

@@ -7,7 +7,7 @@ import { useChat } from '@chat/hooks';
 import type { ChatMessage } from 'amazon-ivs-chat-messaging';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { PinnedAnnouncements } from './PinnedAnnouncements';
-import { OfferCarouselPanel } from '@/offer-client/components/OfferCarouselPanel';
+import { OfferCarouselPanel } from '@/offer-client/components';
 import { CtaAnnouncementBubble } from './CtaAnnouncementBubble';
 import { useCtaAnnouncements, type CtaAnnouncement } from '@chat/hooks/use-cta-announcements';
 import { useOfferSessionClient } from '@/offer-client/hooks/use-offer-session-client';

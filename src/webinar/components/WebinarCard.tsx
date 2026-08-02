@@ -7,6 +7,7 @@ import { Webinar } from '@webinar/service'
 import { WebinarSessionStatus } from '@/webinar/service/enum'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Separator } from '@/components/ui/separator'
+import { LiveIndicator } from '@/components/ui/live-indicator'
 import { DateTime } from 'luxon'
 
 
@@ -54,10 +55,7 @@ export function WebinarCard({ webinar, type = 'upcoming' }: WebinarCardProps) {
                   <p key={`${session.id}-${index}`} className="text-xs hover:shadow-2xs pb-1">
                     {isLive ? (
                       <Badge className="bg-red-100 text-red-700 border-red-300 hover:bg-red-100">
-                        <span className="relative flex h-2 w-2 mr-1">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
-                        </span>
+                        <LiveIndicator className="mr-1" ringClassName="bg-red-500" dotClassName="bg-red-600" />
                         LIVE
                       </Badge>
                     ) : (

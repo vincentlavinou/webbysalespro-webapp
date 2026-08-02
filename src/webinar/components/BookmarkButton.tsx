@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Bookmark, BookmarkCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface BookmarkButtonProps {
   /** Path like /{sessionId}/live — origin is prepended client-side */
@@ -26,9 +27,10 @@ export default function BookmarkButton({ livePath }: BookmarkButtonProps) {
   }
 
   return (
-    <button
+    <Button
+      variant="outline"
       onClick={handleBookmark}
-      className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="h-auto w-full justify-center rounded-xl bg-card px-4 py-2.5 text-sm font-medium shadow-sm"
     >
       {saved ? (
         <>
@@ -41,6 +43,6 @@ export default function BookmarkButton({ livePath }: BookmarkButtonProps) {
           Bookmark Your Spot
         </>
       )}
-    </button>
+    </Button>
   )
 }

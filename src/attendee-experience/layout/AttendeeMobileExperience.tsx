@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useOfferSessionClient } from "@/offer-client/hooks/use-offer-session-client";
-import { OfferChatBubble } from "@/offer-client/components/OfferChatBubble";
-import { ChatComposer } from "@/chat/component/ChatComposer";
-import { ChatMessages } from "@/chat/component/ChatMessages";
+import { OfferChatBubble } from "@/offer-client/components";
+import { ChatComposer, ChatMessages } from "@/chat/components";
 import { AttendeeCountBadge } from "@/broadcast/attendee-count/components/AttendeeCountBadge";
 import { useImmersiveLayout } from "@/broadcast/hooks/use-immersive-layout";
 import { AttendeeBroadcastServiceToken } from "@/broadcast/service/type";
 import WebbySalesProPlayer from "@/playback/player/ivs/WebbySalesProPlayer";
-import { StreamRefreshControl } from "@/broadcast/components/StreamRefreshControl";
+import { StreamRefreshControl } from "@/broadcast/components";
 import { usePlaybackRuntime } from "@/playback/hooks/use-playback-runtime";
 import { useHavingTroubleIndicator } from "@/playback/hooks/use-having-trouble-indicator";
 import {
