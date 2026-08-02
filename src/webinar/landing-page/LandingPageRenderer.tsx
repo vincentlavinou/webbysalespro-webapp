@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DefaultRegistrationForm } from "@/app/(webinar)/[id]/(registration)/register/form";
 import type { Webinar } from "@/webinar/service";
+import { buildContrastTokens } from "@/webinar/theme/contrast";
 import type { LandingPageAction, LandingPageBlock, LandingPageRender, LandingPageRow, LandingPageTheme, RichText } from "./types";
 
 const fonts: Record<LandingPageTheme["font_family"], string> = {
@@ -16,52 +17,18 @@ const fonts: Record<LandingPageTheme["font_family"], string> = {
   poppins: "'Poppins', ui-sans-serif, system-ui, sans-serif",
 };
 
-function hexToRgb(hex: string): [number, number, number] | null {
-  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
-  if (!match) return null;
-  return [parseInt(match[1], 16), parseInt(match[2], 16), parseInt(match[3], 16)];
-}
-
-function relativeLuminance([r, g, b]: [number, number, number]): number {
-  const [rs, gs, bs] = [r, g, b].map((channel) => {
-    const s = channel / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
-}
-
-/**
- * The page's background is host-chosen and independent of the visitor's own
- * light/dark preference, so foreground/border tokens must be derived from
- * the page's own background lightness rather than inherited from the app's
- * `--foreground`/`--border` — otherwise a dark page background (or a visitor
- * in dark mode viewing a default-light page) renders unreadable text.
- */
-function buildContrastTokens(backgroundHex: string) {
-  const rgb = hexToRgb(backgroundHex);
-  const isDark = rgb ? relativeLuminance(rgb) < 0.5 : false;
-  return isDark
-    ? {
-        foreground: "oklch(0.97 0.005 277)",
-        mutedForeground: "oklch(0.72 0.02 277)",
-        border: "oklch(1 0 0 / 14%)",
-      }
-    : {
-        foreground: "oklch(0.18 0.02 277)",
-        mutedForeground: "oklch(0.48 0.025 277)",
-        border: "oklch(0 0 0 / 10%)",
-      };
-}
-
 const themeStyle = (theme: LandingPageTheme): CSSProperties => {
   const background = theme.background_color || "#fff";
   const secondaryBackground = theme.secondary_background_color || "#eef2ff";
   const contrast = buildContrastTokens(background);
+  const secondaryContrast = buildContrastTokens(secondaryBackground);
   return {
     "--lp-primary": theme.primary_color || "#4f46e5",
     "--lp-secondary": theme.secondary_color || "#818cf8",
     "--lp-background": background,
     "--lp-secondary-background": secondaryBackground,
+    "--lp-secondary-foreground": secondaryContrast.foreground,
+    "--lp-secondary-border": secondaryContrast.border,
     "--lp-button-text": theme.button_text_color || "#fff",
     "--background": background,
     "--foreground": contrast.foreground,
@@ -111,11 +78,11 @@ function Countdown({ target, nextSessionStart }: { target: LandingPageBlock["con
 function Block({ block, webinar, page, nextSessionStart, webinarPromise }: { block: LandingPageBlock; webinar: Webinar; page: LandingPageRender; nextSessionStart?: string; webinarPromise: Promise<Webinar> }) {
   const c = block.config;
   switch (block.type) {
-    case "hero": return <div className="relative flex min-h-[280px] flex-col items-center justify-center gap-4 overflow-hidden rounded-xl border px-6 py-16 text-center" style={{ backgroundColor: "var(--lp-secondary-background)" }}>{c.background_image_url && <img src={c.background_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />}<div className="relative z-10 flex flex-col items-center gap-4"><RichTextView value={c.headline} className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl" /><RichTextView value={c.subheadline} className="max-w-xl text-base opacity-70" /><div className="flex flex-wrap justify-center gap-3">{[c.cta_primary, c.cta_secondary].map((cta, i) => cta && <a key={i} href={hrefFor(cta.action)} target={isExternalAction(cta.action) ? "_blank" : undefined} rel={isExternalAction(cta.action) ? "noopener noreferrer" : undefined} className="inline-flex h-10 items-center justify-center rounded-lg px-5 text-sm font-semibold" style={i === 0 ? { backgroundColor: "var(--lp-primary)", color: "var(--lp-button-text)" } : { border: "1px solid var(--lp-primary)", color: "var(--lp-primary)" }}>{cta.label}</a>)}</div></div></div>;
+    case "hero": return <div className="relative flex min-h-[280px] flex-col items-center justify-center gap-4 overflow-hidden rounded-xl border px-6 py-16 text-center" style={{ backgroundColor: "var(--lp-secondary-background)", borderColor: "var(--lp-secondary-border)", color: "var(--lp-secondary-foreground)" }}>{c.background_image_url && <img src={c.background_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />}<div className="relative z-10 flex flex-col items-center gap-4"><RichTextView value={c.headline} className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl" /><RichTextView value={c.subheadline} className="max-w-xl text-base opacity-70" /><div className="flex flex-wrap justify-center gap-3">{[c.cta_primary, c.cta_secondary].map((cta, i) => cta && <a key={i} href={hrefFor(cta.action)} target={isExternalAction(cta.action) ? "_blank" : undefined} rel={isExternalAction(cta.action) ? "noopener noreferrer" : undefined} className="inline-flex h-10 items-center justify-center rounded-lg px-5 text-sm font-semibold" style={i === 0 ? { backgroundColor: "var(--lp-primary)", color: "var(--lp-button-text)" } : { border: "1px solid var(--lp-primary)", color: "var(--lp-primary)" }}>{cta.label}</a>)}</div></div></div>;
     case "text": return <div className="space-y-3 rounded-xl border p-6">{(c.lines || []).map((line: RichText, i: number) => <RichTextView key={i} value={line} className="text-base leading-relaxed" />)}</div>;
     case "image": return <div className="overflow-hidden rounded-xl border"><img src={c.image_url} alt={c.alt_text || ""} className="h-full w-full object-cover" /></div>;
     case "video": { if (!c.url) return null; let src = c.url; try { const url = new URL(c.url); if (c.provider === "youtube") src = `https://www.youtube.com/embed/${url.hostname.includes("youtu.be") ? url.pathname.slice(1) : url.searchParams.get("v")}`; if (c.provider === "vimeo") src = `https://player.vimeo.com/video/${url.pathname.split("/").filter(Boolean).pop()}`; if (c.provider === "wistia") src = `https://fast.wistia.net/embed/iframe/${url.pathname.split("/").filter(Boolean).pop()}`; } catch {} return <div className="overflow-hidden rounded-xl border bg-black"><div className="aspect-video">{c.provider === "url" ? <video src={c.url} controls className="h-full w-full" /> : <iframe src={src} className="h-full w-full" allowFullScreen title="Video" />}</div></div>; }
-    case "testimonial": return <div className="flex flex-col items-center gap-4 rounded-xl border p-6 text-center" style={{ backgroundColor: "var(--lp-secondary-background)" }}>{c.photo_url ? <img src={c.photo_url} alt={c.name} className="h-16 w-16 rounded-full object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-full text-lg font-semibold" style={{ backgroundColor: "var(--lp-primary)", color: "var(--lp-button-text)" }}>{c.name?.slice(0, 1)}</div>}<RichTextView value={c.quote} className="max-w-lg text-base italic leading-relaxed" /><div><div className="text-sm font-semibold">{c.name}</div><div className="text-xs opacity-70">{c.title}</div></div></div>;
+    case "testimonial": return <div className="flex flex-col items-center gap-4 rounded-xl border p-6 text-center" style={{ backgroundColor: "var(--lp-secondary-background)", borderColor: "var(--lp-secondary-border)", color: "var(--lp-secondary-foreground)" }}>{c.photo_url ? <img src={c.photo_url} alt={c.name} className="h-16 w-16 rounded-full object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-full text-lg font-semibold" style={{ backgroundColor: "var(--lp-primary)", color: "var(--lp-button-text)" }}>{c.name?.slice(0, 1)}</div>}<RichTextView value={c.quote} className="max-w-lg text-base italic leading-relaxed" /><div><div className="text-sm font-semibold">{c.name}</div><div className="text-xs opacity-70">{c.title}</div></div></div>;
     case "countdown": return <Countdown target={c} nextSessionStart={nextSessionStart} />;
     case "bullets": return <div className="rounded-xl border p-6"><ul className="space-y-3">{(c.items || []).map((item, i) => <li key={i} className="flex items-start gap-2.5 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--lp-primary)" }} />{item.text}</li>)}</ul></div>;
     case "faq": return <div className="rounded-xl border p-6"><Accordion type="single" collapsible>{(c.items || []).map((item, i) => <AccordionItem key={i} value={`faq-${i}`}><AccordionTrigger>{item.question}</AccordionTrigger><AccordionContent>{item.answer}</AccordionContent></AccordionItem>)}</Accordion></div>;

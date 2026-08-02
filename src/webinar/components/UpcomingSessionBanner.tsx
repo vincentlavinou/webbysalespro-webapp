@@ -1,14 +1,17 @@
 'use client'
 
 import { DateTime, Duration } from 'luxon'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { SeriesSession } from '@webinar/service' // Adjust as needed
 
 interface UpcomingSessionBannerProps {
   session?: SeriesSession
+  primaryColor?: string
+  secondaryColor?: string
+  buttonTextColor?: string
 }
 
-export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) => {
+export const UpcomingSessionBanner = ({ session, primaryColor, secondaryColor, buttonTextColor }: UpcomingSessionBannerProps) => {
   const [timeLeft, setTimeLeft] = useState<Duration | null>(null)
 
   useEffect(() => {
@@ -34,8 +37,19 @@ export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) =
 
   if(!session) return null
 
+  const textColor = buttonTextColor ?? '#fff'
+  const bannerStyle: CSSProperties | undefined = primaryColor
+    ? { backgroundImage: `linear-gradient(to right, ${primaryColor}, ${secondaryColor ?? primaryColor})`, color: textColor }
+    : undefined
+  const pillStyle: CSSProperties | undefined = primaryColor
+    ? { color: textColor, backgroundColor: `${textColor}26` }
+    : undefined
+
   return (
-    <div className="fixed top-0 inset-x-0 bg-gradient-to-r from-primary to-chart-2 text-white text-sm md:text-base z-40 shadow-lg px-4 py-3">
+    <div
+      className={`fixed top-0 inset-x-0 text-sm md:text-base z-40 shadow-lg px-4 py-3 ${primaryColor ? '' : 'bg-gradient-to-r from-primary to-chart-2 text-white'}`}
+      style={bannerStyle}
+    >
       <div className="flex justify-between items-center max-w-5xl mx-auto">
         <div>
           <p className="font-semibold px-1">
@@ -45,7 +59,10 @@ export const UpcomingSessionBanner = ({ session }: UpcomingSessionBannerProps) =
             {DateTime.fromISO(session.scheduled_start, { zone: session.timezone || 'utc' }).offsetNameLong ?? session.timezone}
           </p>
         </div>
-        <div className="font-mono  text-xs md:text-sm text-white bg-primary/20  px-3 py-1 rounded-md">
+        <div
+          className={`font-mono text-xs md:text-sm px-3 py-1 rounded-md ${primaryColor ? '' : 'text-white bg-primary/20'}`}
+          style={pillStyle}
+        >
           Starts in: {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {Math.floor(timeLeft.seconds)}s
         </div>
       </div>

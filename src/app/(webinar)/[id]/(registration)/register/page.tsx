@@ -92,6 +92,9 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
         {/* Left — Webinar details */}
         <WebinarDetailCard
           webinar={webinar}
+          primaryColor={primaryColor}
+          backgroundColor={backgroundColor}
+          secondaryBackgroundColor={secondaryBackgroundColor}
           badge={
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-full px-3 py-1 mb-4">
               <span className="relative flex h-2 w-2">

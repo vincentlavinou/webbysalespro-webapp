@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getPublicWebinarState } from "@/webinar/service";
 import { getPublicLandingPage } from "@/webinar/landing-page/service";
 import { LandingPageRenderer } from "@/webinar/landing-page/LandingPageRenderer";
@@ -10,7 +10,8 @@ type Props = { params: Promise<{ id: string; slug: string }> };
 async function loadState(params: Props["params"]) {
   const { id, slug } = await params;
   const [state, page] = await Promise.all([getPublicWebinarState(id, { fresh: true }), getPublicLandingPage(id, slug)]);
-  if (state.kind === "not_found" || !page) notFound();
+  if (state.kind === "not_found") notFound();
+  if (!page) redirect(`/${id}/register`);
   return { state, page };
 }
 

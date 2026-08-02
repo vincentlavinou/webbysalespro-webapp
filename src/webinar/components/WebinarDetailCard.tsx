@@ -1,23 +1,39 @@
 import Image from "next/image"
-import { ReactNode } from "react"
+import { ReactNode, type CSSProperties } from "react"
 import { Webinar } from "@/webinar/service/type"
 import { sanitizeRichText } from "@/lib/sanitize-rich-text"
 import { Card, CardContent } from "@/components/ui/card"
+import { buildContrastTokens } from "@/webinar/theme/contrast"
 
 interface WebinarDetailCardProps {
   webinar: Webinar | null
   badge: ReactNode
   fallbackTitle?: string
+  primaryColor?: string
+  backgroundColor?: string
+  secondaryBackgroundColor?: string
 }
 
-export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Session" }: WebinarDetailCardProps) {
+export function WebinarDetailCard({
+  webinar,
+  badge,
+  fallbackTitle = "Webinar Session",
+  primaryColor,
+  backgroundColor,
+  secondaryBackgroundColor,
+}: WebinarDetailCardProps) {
   const thumbnail = webinar?.media?.find(
     (m) => m.file_type === "image" && m.field_type === "thumbnail"
   )
   const sanitizedDescription = webinar?.description ? sanitizeRichText(webinar.description) : ""
+  const cardBackground = secondaryBackgroundColor ?? backgroundColor
+  const contrast = cardBackground ? buildContrastTokens(cardBackground) : null
 
   return (
-    <Card className="order-last overflow-hidden bg-card/90 py-0 shadow-xl backdrop-blur-md md:order-first">
+    <Card
+      className={`order-last overflow-hidden py-0 shadow-xl backdrop-blur-md md:order-first ${cardBackground ? "" : "bg-card/90"}`}
+      style={cardBackground ? { backgroundColor: cardBackground } : undefined}
+    >
       {thumbnail?.file_url && (
         <div className="relative w-full">
           <Image
@@ -33,17 +49,33 @@ export function WebinarDetailCard({ webinar, badge, fallbackTitle = "Webinar Ses
       )}
       <CardContent className="p-6">
         {badge}
-        <h1 className="mb-1 text-2xl font-bold leading-tight text-foreground md:text-3xl">
+        <h1
+          className="mb-1 text-2xl font-bold leading-tight text-foreground md:text-3xl"
+          style={contrast ? { color: contrast.foreground } : undefined}
+        >
           {webinar?.title ?? fallbackTitle}
         </h1>
         {webinar?.sub_title && (
-          <p className="mb-3 text-center text-base font-medium text-primary">
+          <p
+            className="mb-3 text-center text-base font-medium text-primary"
+            style={primaryColor ? { color: primaryColor } : undefined}
+          >
             {webinar.sub_title}
           </p>
         )}
         {webinar?.description && (
           <div
             className="prose prose-sm max-w-none leading-relaxed text-muted-foreground dark:prose-invert"
+            style={
+              contrast
+                ? ({
+                    "--tw-prose-body": contrast.mutedForeground,
+                    "--tw-prose-headings": contrast.foreground,
+                    "--tw-prose-bold": contrast.foreground,
+                    "--tw-prose-bullets": contrast.mutedForeground,
+                  } as CSSProperties)
+                : undefined
+            }
             dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
           />
         )}

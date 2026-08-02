@@ -17,10 +17,18 @@ export default async function RegistrationLayout(props: RegistrationLayoutProps)
         notFound()
     }
     const sessions = webinar.series?.sessions || []
+    const theme = webinar.registration_settings?.theme
 
     return (
         <>
-            {sessions?.at(0) && <UpcomingSessionBanner session={sessions.at(0)} />}
+            {sessions?.at(0) && (
+                <UpcomingSessionBanner
+                    session={sessions.at(0)}
+                    primaryColor={theme?.primary_color ?? undefined}
+                    secondaryColor={theme?.secondary_color ?? undefined}
+                    buttonTextColor={theme?.button_text_color ?? undefined}
+                />
+            )}
             <div className="max-w-5xl mx-auto w-full pt-20 pb-4">
                 {props.children}
             </div>
