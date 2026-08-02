@@ -237,6 +237,7 @@ type AttendeeRequestBody = {
     country?: string;
     registration_source: string;
     embed_source?: string;
+    landing_page_source?: string;
     ref_source?: string;
 }
 
@@ -292,16 +293,17 @@ export const registerForWebinarAction = actionClient
     .inputSchema(registerForWebinarInput)
     .action(
         async (input) => {
-            const { webinar_id, session_id, first_name, last_name, email, phone, embed_source, ref_source } = input.parsedInput;
+            const { webinar_id, session_id, first_name, last_name, email, phone, embed_source, landing_page_source, ref_source } = input.parsedInput;
 
             const baseRequestBody: AttendeeRequestBody = {
                 first_name,
                 last_name,
                 email,
                 phone: phone ?? null,
-                registration_source: embed_source ? 'embed' : 'public_registration_page',
+                registration_source: embed_source ? 'embed' : landing_page_source ? 'landing_page' : 'public_registration_page',
                 ...(session_id ? { session_id } : {}),
                 ...(embed_source ? { embed_source } : {}),
+                ...(landing_page_source ? { landing_page_source } : {}),
                 ...(ref_source ? { ref_source } : {}),
             };
 

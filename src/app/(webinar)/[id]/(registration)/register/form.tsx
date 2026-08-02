@@ -38,6 +38,8 @@ interface DefaultRegistrationFormProps {
   buttonTextColor?: string;
   embedSource?: string;
   embedSuccessUrl?: string;
+  landingPageSource?: string;
+  landingSuccessUrl?: string | null;
 }
 
 const PHONE_ALLOWED_CHARACTERS = /^[+\d\s().-]+$/;
@@ -307,6 +309,8 @@ export const DefaultRegistrationForm = ({
   buttonTextColor,
   embedSource,
   embedSuccessUrl,
+  landingPageSource,
+  landingSuccessUrl,
 }: DefaultRegistrationFormProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -387,6 +391,8 @@ export const DefaultRegistrationForm = ({
         : hasLiveSession;
       const successUrl = embedSource
         ? embedSuccessUrl
+        : landingPageSource
+        ? landingSuccessUrl
         : webinar.registration_settings?.registration_success_url;
 
       const joinUrl = extractJoinUrl(data)
@@ -545,6 +551,7 @@ export const DefaultRegistrationForm = ({
       email: data.email,
       phone: data.phone,
       ...(embedSource ? { embed_source: embedSource } : {}),
+      ...(landingPageSource ? { landing_page_source: landingPageSource } : {}),
       ...(refSource ? { ref_source: refSource } : {}),
     });
   };

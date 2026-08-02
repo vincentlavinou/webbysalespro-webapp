@@ -110,8 +110,17 @@ export type ConvertWebinarSeriesRequest = {
     type: Webinar
 }
 
+export type WebinarRegistrationTheme = {
+    background_color?: string | null
+    primary_color?: string | null
+    secondary_color?: string | null
+    secondary_background_color?: string | null
+    button_text_color?: string | null
+}
+
 export type WebinarRegistrationSettings = {
     registration_success_url?: string | null
+    theme?: WebinarRegistrationTheme | null
 }
 
 export type RegistrationEmbedConfig = {

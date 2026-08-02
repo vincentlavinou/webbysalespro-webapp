@@ -78,9 +78,15 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
     const hasLiveSession = !allowsSessionSelection && sessions.some(
       (session) => session.status === WebinarSessionStatus.IN_PROGRESS
     )
+    const theme = webinar.registration_settings?.theme
+    const backgroundColor = theme?.background_color ?? undefined
+    const primaryColor = theme?.primary_color ?? undefined
+    const secondaryColor = theme?.secondary_color ?? undefined
+    const secondaryBackgroundColor = theme?.secondary_background_color ?? undefined
+    const buttonTextColor = theme?.button_text_color ?? undefined
 
   return (
-    <div className="px-4 pb-8">
+    <div className="px-4 pb-8" style={backgroundColor ? { backgroundColor } : undefined}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
         {/* Left — Webinar details */}
@@ -116,6 +122,10 @@ export default async function DefaultRegistrationPage(props: DefaultRegistration
             <DefaultRegistrationForm
               webinarPromise={Promise.resolve(webinar)}
               webinarId={webinar.id}
+              primaryColor={primaryColor}
+              secondaryColor={secondaryColor}
+              secondaryBackgroundColor={secondaryBackgroundColor}
+              buttonTextColor={buttonTextColor}
             />
           ) : (
             <NoAvailableSessionsMessage />
