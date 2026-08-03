@@ -19,6 +19,7 @@ export type { RegistrationFormProps } from "./registration-form/types";
 export const DefaultRegistrationForm = (props: RegistrationFormProps) => {
   const { webinarPromise, webinarId, primaryColor, secondaryColor, secondaryBackgroundColor, buttonTextColor, ctaLabel, embedSource, embedSuccessUrl, landingPageSource, landingSuccessUrl } = props;
   const searchParams = useSearchParams();
+  const [refSource, setRefSource] = useState(() => searchParams.get("ref") ?? "");
   const [isHydrated, setIsHydrated] = useState(false);
   const [successState, setSuccessState] = useState<RegistrationSuccessState | null>(null);
   const submitButtonRef = useRef<HTMLDivElement>(null);
@@ -29,6 +30,18 @@ export const DefaultRegistrationForm = (props: RegistrationFormProps) => {
   const busy = isPending || isNavigating;
 
   useEffect(() => setIsHydrated(true), []);
+  useEffect(() => {
+    const handleRefMessage = (event: MessageEvent) => {
+      const message = event.data;
+      if (!message || typeof message !== "object" || message.type !== "wsp-webinar-embed" || typeof message.ref !== "string") return;
+
+      const nextRef = message.ref.trim();
+      if (nextRef) setRefSource(nextRef);
+    };
+
+    window.addEventListener("message", handleRefMessage);
+    return () => window.removeEventListener("message", handleRefMessage);
+  }, []);
   useEffect(() => {
     const pulse = () => {
       if (isFieldFocusedRef.current) return;
@@ -41,7 +54,7 @@ export const DefaultRegistrationForm = (props: RegistrationFormProps) => {
   if (pauseInfo) return <PausedWebinarNotice pauseInfo={pauseInfo} />;
   if (successState) return <SuccessState state={successState} primaryColor={primaryColor} secondaryColor={secondaryColor} secondaryBackgroundColor={secondaryBackgroundColor} />;
 
-  return <Form {...form}><form onSubmit={handleSubmit((data) => submit(data, searchParams.get("ref") ?? "", setError))} onFocus={() => { isFieldFocusedRef.current = true; }} onBlur={() => { isFieldFocusedRef.current = false; }} className="space-y-4">
+  return <Form {...form}><form onSubmit={handleSubmit((data) => submit(data, refSource, setError))} onFocus={() => { isFieldFocusedRef.current = true; }} onBlur={() => { isFieldFocusedRef.current = false; }} className="space-y-4">
     <Suspense fallback={<SessionFieldLoading />}><SessionField webinarPromise={webinarPromise} control={control} primaryColor={primaryColor} secondaryColor={secondaryColor} secondaryBackgroundColor={secondaryBackgroundColor} /></Suspense>
     <AttendeeFields control={control} disabled={busy} />
     <Suspense fallback={<SubmitButtonLoading primaryColor={primaryColor} buttonTextColor={buttonTextColor} />}><SubmitButton webinarPromise={webinarPromise} submitButtonRef={submitButtonRef} primaryColor={primaryColor} buttonTextColor={buttonTextColor} ctaLabel={ctaLabel} isHydrated={isHydrated} isPending={isPending} isNavigating={isNavigating} /></Suspense>
