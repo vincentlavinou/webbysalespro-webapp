@@ -27,6 +27,12 @@ export type RichText = {
   spans: { text: string; style?: "bold" | "bold_primary" | "link"; action?: LandingPageAction }[];
 };
 
+export type LandingPageBlockStyle = {
+  background_color?: string;
+  text_color?: string;
+  font_family?: LandingPageFontFamily;
+};
+
 export type LandingPageBlock = {
   id: string;
   type: "hero" | "text" | "image" | "video" | "testimonial" | "countdown" | "bullets" | "faq" | "logos" | "registration_form" | "footer";
@@ -51,6 +57,7 @@ export type LandingPageBlock = {
     cta_label?: string;
     links?: { label: string; action: LandingPageAction }[];
   };
+  style?: LandingPageBlockStyle;
 };
 
 export type LandingPageRow = { id: string; blocks: LandingPageBlock[] };

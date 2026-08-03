@@ -19,6 +19,10 @@ export {
 } from './WebinarDetailCard'
 
 export {
+    WebinarRegistrationSuccessView
+} from './WebinarRegistrationSuccessView'
+
+export {
     SessionDetailCard
 } from './SessionDetailCard'
 
