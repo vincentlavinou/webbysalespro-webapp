@@ -14,6 +14,19 @@ import { anonymousRegisterForWebinarInput, registerForWebinarInput } from "./sch
 import { cache } from "react";
 import { extractShortCode, resolveShortLink } from "./short-link";
 
+export type PublicQueryParams = Record<string, string | string[] | undefined>;
+
+function createPublicQueryParams(query?: PublicQueryParams, visitorId?: string) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query ?? {})) {
+        for (const item of Array.isArray(value) ? value : [value]) {
+            if (item !== undefined) params.append(key, item);
+        }
+    }
+    if (visitorId) params.set("visitor_id", visitorId);
+    return params;
+}
+
 export async function getWebinars(query?: QueryWebinar) {
     // Fetch all webinars without search query
     const params = new URLSearchParams();
@@ -79,13 +92,13 @@ export async function getWebinar(id: string, options?: GetWebinarOptions): Promi
     return getWebinarCached(id, Boolean(options?.fresh))
 }
 
-export async function getPublicWebinarState(id: string, options?: GetWebinarOptions): Promise<WebinarPublicState> {
+export async function getPublicWebinarState(id: string, options?: GetWebinarOptions, query?: PublicQueryParams): Promise<WebinarPublicState> {
     const fetchOptions: RequestInit = options?.fresh
         ? { cache: "no-store" }
         : { next: { revalidate: 60, tags: [`webinar-${id}`] } }
 
     const response = await retryTransientRequest(
-        () => fetch(`${webinarApiUrl}/v1/webinars/${id}/public/`, fetchOptions),
+        () => fetch(`${webinarApiUrl}/v1/webinars/${id}/public/?${createPublicQueryParams(query).toString()}`, fetchOptions),
         { method: "GET" },
     )
 
@@ -109,8 +122,9 @@ export async function getPublicWebinarState(id: string, options?: GetWebinarOpti
     return { kind: "not_found" }
 }
 
-export async function getRegistrationEmbedConfig(webinarId: string, source: string): Promise<RegistrationEmbedConfig | null> {
-    const params = new URLSearchParams({ source })
+export async function getRegistrationEmbedConfig(webinarId: string, source: string, query?: PublicQueryParams): Promise<RegistrationEmbedConfig | null> {
+    const params = createPublicQueryParams(query)
+    params.set("source", source)
     const response = await fetch(
         `${webinarApiUrl}/v1/webinars/${webinarId}/registration-embeds/by-source/?${params.toString()}`,
         {
@@ -239,6 +253,7 @@ type AttendeeRequestBody = {
     embed_source?: string;
     landing_page_source?: string;
     ref_source?: string;
+    visitor_id?: string;
 }
 
 async function resolveRegistrationShortLinks(
@@ -293,7 +308,7 @@ export const registerForWebinarAction = actionClient
     .inputSchema(registerForWebinarInput)
     .action(
         async (input) => {
-            const { webinar_id, session_id, first_name, last_name, email, phone, embed_source, landing_page_source, ref_source } = input.parsedInput;
+            const { webinar_id, session_id, first_name, last_name, email, phone, embed_source, landing_page_source, ref_source, visitor_id } = input.parsedInput;
 
             const baseRequestBody: AttendeeRequestBody = {
                 first_name,
@@ -305,6 +320,7 @@ export const registerForWebinarAction = actionClient
                 ...(embed_source ? { embed_source } : {}),
                 ...(landing_page_source ? { landing_page_source } : {}),
                 ...(ref_source ? { ref_source } : {}),
+                ...(visitor_id ? { visitor_id } : {}),
             };
 
             const location = await resolveAttendeeLocation();

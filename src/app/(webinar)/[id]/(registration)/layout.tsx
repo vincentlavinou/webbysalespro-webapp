@@ -2,6 +2,7 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 import { PausedWebinarNotice, WebinarFooter } from "@/webinar/components"
 import { getPublicWebinarState } from "@/webinar/service"
+import { getVisitorIdFromCookie } from "@/lib/visitor-id-server"
 
 interface RegistrationBranchLayoutProps {
   children: React.ReactNode
@@ -10,7 +11,7 @@ interface RegistrationBranchLayoutProps {
 
 export default async function RegistrationBranchLayout({ children, params }: RegistrationBranchLayoutProps) {
   const webinarId = (await params).id
-  const webinarState = await getPublicWebinarState(webinarId, { fresh: true })
+  const webinarState = await getPublicWebinarState(webinarId, { fresh: true }, { visitor_id: await getVisitorIdFromCookie() })
   if (webinarState.kind === "not_found") {
     notFound()
   }

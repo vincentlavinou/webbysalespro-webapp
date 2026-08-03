@@ -12,7 +12,8 @@ export const registerForWebinarInput = z.object({
     phone: z.string().optional().nullable(),
     embed_source: z.string().optional(),
     landing_page_source: z.string().optional(),
-    ref_source: z.string().optional(),
+  ref_source: z.string().optional(),
+  visitor_id: z.string().uuid().optional(),
 });
 
 export const anonymousRegisterForWebinarInput = z.object({

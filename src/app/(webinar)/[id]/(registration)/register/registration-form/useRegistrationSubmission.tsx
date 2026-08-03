@@ -13,6 +13,7 @@ import { allowsManualSessionSelection } from "@/webinar/service/guards";
 import type { AttendeeFormData } from "./schema";
 import { appendRegistrationQuery, findRegisteredSession, getRegistrationSuccessUrl } from "./navigation";
 import type { RegistrationSuccessState } from "./types";
+import { getVisitorId } from "@/lib/visitor-id";
 
 function isPauseInfo(value: unknown): value is WebinarPauseInfo {
   return Boolean(value && typeof value === "object" && typeof (value as Partial<WebinarPauseInfo>).support_email === "string");
@@ -73,7 +74,8 @@ export function useRegistrationSubmission({ webinarPromise, webinarId, embedSour
     const webinar = await webinarPromise;
     if (allowsManualSessionSelection(webinar) && !data.session_id) return setError("session_id", { message: "Please select a session" });
     setIsLocked(true);
-    execute({ webinar_id: webinarId, ...(data.session_id ? { session_id: data.session_id } : {}), first_name: data.first_name, last_name: data.last_name, email: data.email, phone: data.phone, ...(embedSource ? { embed_source: embedSource } : {}), ...(landingPageSource ? { landing_page_source: landingPageSource } : {}), ...(refSource ? { ref_source: refSource } : {}) });
+    const visitorId = getVisitorId();
+    execute({ webinar_id: webinarId, ...(data.session_id ? { session_id: data.session_id } : {}), first_name: data.first_name, last_name: data.last_name, email: data.email, phone: data.phone, ...(embedSource ? { embed_source: embedSource } : {}), ...(landingPageSource ? { landing_page_source: landingPageSource } : {}), ...(refSource ? { ref_source: refSource } : {}), ...(visitorId ? { visitor_id: visitorId } : {}) });
   }
 
   return { submit, isPending, isNavigating, pauseInfo };

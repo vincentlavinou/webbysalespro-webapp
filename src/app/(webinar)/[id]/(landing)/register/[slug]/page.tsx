@@ -4,27 +4,31 @@ import { getPublicWebinarState } from "@/webinar/service";
 import { getPublicLandingPage } from "@/webinar/landing-page/service";
 import { LandingPageRenderer } from "@/webinar/landing-page/LandingPageRenderer";
 import { PausedWebinarNotice, WebinarFooter } from "@/webinar/components";
+import { getVisitorIdFromCookie } from "@/lib/visitor-id-server";
 
-type Props = { params: Promise<{ id: string; slug: string }> };
+type Props = { params: Promise<{ id: string; slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-async function loadState(params: Props["params"]) {
+async function loadState(params: Props["params"], searchParams: Props["searchParams"]) {
   const { id, slug } = await params;
-  const [state, page] = await Promise.all([getPublicWebinarState(id, { fresh: true }), getPublicLandingPage(id, slug)]);
+  const query = await searchParams;
+  const visitorId = await getVisitorIdFromCookie();
+  const requestQuery = { ...query, visitor_id: visitorId };
+  const [state, page] = await Promise.all([getPublicWebinarState(id, { fresh: true }, requestQuery), getPublicLandingPage(id, slug, requestQuery)]);
   if (state.kind === "not_found") notFound();
   if (!page) redirect(`/${id}/register`);
   return { state, page };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { state, page } = await loadState(params);
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const { state, page } = await loadState(params, searchParams);
   if (state.kind === "paused") {
     return { title: page.name || "Webinar Registration Paused", description: state.pauseInfo.message || undefined };
   }
   return { title: page.name || state.webinar.title, description: state.webinar.description || undefined };
 }
 
-export default async function LandingPage({ params }: Props) {
-  const { state, page } = await loadState(params);
+export default async function LandingPage({ params, searchParams }: Props) {
+  const { state, page } = await loadState(params, searchParams);
 
   if (state.kind === "paused") {
     return (

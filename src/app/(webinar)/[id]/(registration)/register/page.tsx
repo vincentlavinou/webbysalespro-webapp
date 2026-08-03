@@ -7,19 +7,22 @@ import { WebinarDetailCard } from '@/webinar/components/WebinarDetailCard'
 import { PausedWebinarNotice } from '@/webinar/components/PausedWebinarNotice'
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getVisitorIdFromCookie } from '@/lib/visitor-id-server'
 
 interface DefaultRegistrationPageProps {
     params: Promise<{
         id: string
     }>
     searchParams: Promise<{
-        token: string
+        [key: string]: string | string[] | undefined
     }>
 }
 
-export async function generateMetadata({ params }: DefaultRegistrationPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: DefaultRegistrationPageProps): Promise<Metadata> {
     const webinarId = (await params).id
-    const webinarState = await getPublicWebinarState(webinarId, { fresh: true })
+    const query = await searchParams
+    const visitorId = await getVisitorIdFromCookie()
+    const webinarState = await getPublicWebinarState(webinarId, { fresh: true }, { ...query, visitor_id: visitorId })
     if (webinarState.kind === 'not_found') {
       return {
         title: 'Webinar Registration',

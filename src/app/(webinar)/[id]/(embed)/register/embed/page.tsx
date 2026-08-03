@@ -10,6 +10,7 @@ import {
 } from './EmbedRegistrationLoading'
 import type { Webinar } from '@/webinar/service'
 import { PausedWebinarNotice } from '@/webinar/components'
+import { getVisitorIdFromCookie } from '@/lib/visitor-id-server'
 
 interface EmbedRegistrationPageProps {
   params: Promise<{ id: string }>
@@ -25,6 +26,7 @@ interface EmbedRegistrationPageProps {
 
 export default async function EmbedRegistrationPage({ params, searchParams }: EmbedRegistrationPageProps) {
   const { id } = await params
+  const searchQuery = await searchParams
   const {
     source,
     background_color: backgroundColor,
@@ -32,7 +34,7 @@ export default async function EmbedRegistrationPage({ params, searchParams }: Em
     secondary_color: secondaryColor,
     secondary_background_color: secondaryBackgroundColor,
     button_text_color: buttonTextColor,
-  } = await searchParams
+  } = searchQuery
   const colorOverrides = {
     backgroundColor: normalizeColorOverride(backgroundColor),
     primaryColor: normalizeColorOverride(primaryColor),
@@ -50,7 +52,7 @@ export default async function EmbedRegistrationPage({ params, searchParams }: Em
         />
       }
     >
-      <EmbedRegistrationShell id={id} source={source} colorOverrides={colorOverrides} />
+      <EmbedRegistrationShell id={id} source={source} colorOverrides={colorOverrides} query={{ ...searchQuery, visitor_id: await getVisitorIdFromCookie() }} />
     </Suspense>
   )
 }
@@ -72,13 +74,15 @@ async function EmbedRegistrationShell({
   id,
   source,
   colorOverrides,
+  query,
 }: {
   id: string
   source?: string
   colorOverrides: EmbedColorOverrides
+  query: Record<string, string | string[] | undefined>
 }) {
-  const webinarState = await getPublicWebinarState(id, { fresh: true })
-  const embedConfig = source ? await getRegistrationEmbedConfig(id, source) : null
+  const webinarState = await getPublicWebinarState(id, { fresh: true }, query)
+  const embedConfig = source ? await getRegistrationEmbedConfig(id, source, query) : null
   const primaryColor = colorOverrides.primaryColor ?? embedConfig?.primary_color ?? undefined
   const secondaryColor = colorOverrides.secondaryColor ?? embedConfig?.secondary_color ?? undefined
   const secondaryBackgroundColor =
