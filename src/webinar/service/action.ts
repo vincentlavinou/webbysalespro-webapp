@@ -16,14 +16,14 @@ import { extractShortCode, resolveShortLink } from "./short-link";
 
 export type PublicQueryParams = Record<string, string | string[] | undefined>;
 
-function createPublicQueryParams(query?: PublicQueryParams, visitorId?: string) {
+function createPublicQueryParams(query?: PublicQueryParams) {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query ?? {})) {
         for (const item of Array.isArray(value) ? value : [value]) {
             if (item !== undefined) params.append(key, item);
         }
     }
-    if (visitorId) params.set("visitor_id", visitorId);
+    params.sort();
     return params;
 }
 
@@ -92,13 +92,13 @@ export async function getWebinar(id: string, options?: GetWebinarOptions): Promi
     return getWebinarCached(id, Boolean(options?.fresh))
 }
 
-export async function getPublicWebinarState(id: string, options?: GetWebinarOptions, query?: PublicQueryParams): Promise<WebinarPublicState> {
-    const fetchOptions: RequestInit = options?.fresh
+const getPublicWebinarStateCached = cache(async (id: string, fresh: boolean, queryString: string): Promise<WebinarPublicState> => {
+    const fetchOptions: RequestInit = fresh
         ? { cache: "no-store" }
         : { next: { revalidate: 60, tags: [`webinar-${id}`] } }
 
     const response = await retryTransientRequest(
-        () => fetch(`${webinarApiUrl}/v1/webinars/${id}/public/?${createPublicQueryParams(query).toString()}`, fetchOptions),
+        () => fetch(`${webinarApiUrl}/v1/webinars/${id}/public/?${queryString}`, fetchOptions),
         { method: "GET" },
     )
 
@@ -120,6 +120,10 @@ export async function getPublicWebinarState(id: string, options?: GetWebinarOpti
     }
 
     return { kind: "not_found" }
+});
+
+export async function getPublicWebinarState(id: string, options?: GetWebinarOptions, query?: PublicQueryParams): Promise<WebinarPublicState> {
+    return getPublicWebinarStateCached(id, Boolean(options?.fresh), createPublicQueryParams(query).toString());
 }
 
 export async function getRegistrationEmbedConfig(webinarId: string, source: string, query?: PublicQueryParams): Promise<RegistrationEmbedConfig | null> {
