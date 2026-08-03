@@ -38,13 +38,28 @@ export function WebinarRegistrationSuccessView({
 }: WebinarRegistrationSuccessViewProps) {
   const panelBackground = theme?.secondaryBackgroundColor ?? theme?.backgroundColor
   const contrast = panelBackground ? buildContrastTokens(panelBackground) : null
+  const pageContrast = theme?.backgroundColor ? buildContrastTokens(theme.backgroundColor) : null
 
   const wrapperStyle: CSSProperties | undefined =
-    theme?.backgroundColor || theme?.fontFamily
+    theme?.backgroundColor || theme?.fontFamily || theme?.primaryColor
       ? {
+          ...(theme?.primaryColor ? { "--primary": theme.primaryColor } : {}),
+          ...(theme?.secondaryColor ? { "--secondary": theme.secondaryColor } : {}),
           ...(theme?.backgroundColor ? { backgroundColor: theme.backgroundColor } : {}),
+          ...(theme?.backgroundColor ? { "--background": theme.backgroundColor, "--card": theme.backgroundColor } : {}),
+          ...(pageContrast
+            ? {
+                "--foreground": pageContrast.foreground,
+                "--card-foreground": pageContrast.foreground,
+                "--border": pageContrast.border,
+                "--input": pageContrast.border,
+                "--muted-foreground": pageContrast.mutedForeground,
+              }
+            : {}),
+          ...(theme?.secondaryBackgroundColor ? { "--muted": theme.secondaryBackgroundColor } : {}),
+          ...(theme?.buttonTextColor ? { "--primary-foreground": theme.buttonTextColor } : {}),
           ...(theme?.fontFamily ? { fontFamily: theme.fontFamily } : {}),
-        }
+        } as CSSProperties
       : undefined
 
   return (

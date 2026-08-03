@@ -69,22 +69,24 @@ export default async function LandingRegistrationSuccessPage(props: LandingRegis
   // setting theme; a blank field here means neither tier set a value, so the
   // client-side default theme is the final fallback tier.
   return (
-    <WebinarRegistrationSuccessView
-      webinar={webinar}
-      formattedDate={formattedDate}
-      timezone={timezone}
-      session={session}
-      joinPath={joinPath}
-      registrationPath={`/${webinarId}/register/${slug}`}
-      theme={{
-        primaryColor: page.theme.primary_color || webinar.registration_settings?.theme?.primary_color || DEFAULT_REGISTRATION_THEME.primary_color,
-        backgroundColor: page.theme.background_color || webinar.registration_settings?.theme?.background_color || DEFAULT_REGISTRATION_THEME.background_color,
-        secondaryColor: page.theme.secondary_color || webinar.registration_settings?.theme?.secondary_color || DEFAULT_REGISTRATION_THEME.secondary_color,
-        secondaryBackgroundColor:
-          page.theme.secondary_background_color || webinar.registration_settings?.theme?.secondary_background_color || DEFAULT_REGISTRATION_THEME.secondary_background_color,
-        buttonTextColor: page.theme.button_text_color || webinar.registration_settings?.theme?.button_text_color || DEFAULT_REGISTRATION_THEME.button_text_color,
-        fontFamily: REGISTRATION_FONT_STACKS[page.theme.font_family] || REGISTRATION_FONT_STACKS.system,
-      }}
-    />
+    <div className="mx-auto w-full max-w-5xl pt-20 pb-4">
+      <WebinarRegistrationSuccessView
+        webinar={webinar}
+        formattedDate={formattedDate}
+        timezone={timezone}
+        session={session}
+        joinPath={joinPath}
+        registrationPath={`/${webinarId}/register/${slug}`}
+        theme={{
+          primaryColor: page.theme.primary_color || webinar.registration_settings?.theme?.primary_color || DEFAULT_REGISTRATION_THEME.primary_color,
+          backgroundColor: page.theme.background_color || webinar.registration_settings?.theme?.background_color || DEFAULT_REGISTRATION_THEME.background_color,
+          secondaryColor: page.theme.secondary_color || webinar.registration_settings?.theme?.secondary_color || DEFAULT_REGISTRATION_THEME.secondary_color,
+          secondaryBackgroundColor:
+            page.theme.secondary_background_color || webinar.registration_settings?.theme?.secondary_background_color || DEFAULT_REGISTRATION_THEME.secondary_background_color,
+          buttonTextColor: page.theme.button_text_color || webinar.registration_settings?.theme?.button_text_color || DEFAULT_REGISTRATION_THEME.button_text_color,
+          fontFamily: REGISTRATION_FONT_STACKS[page.theme.font_family] || REGISTRATION_FONT_STACKS.system,
+        }}
+      />
+    </div>
   );
 }
