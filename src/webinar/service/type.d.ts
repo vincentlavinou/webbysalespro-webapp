@@ -127,6 +127,7 @@ export type RegistrationEmbedConfig = {
     id: string
     name: string
     source: string
+    show_title?: boolean
     background_color?: string | null
     primary_color?: string | null
     secondary_color?: string | null

@@ -21,6 +21,7 @@ interface EmbedRegistrationPageProps {
     secondary_color?: string
     secondary_background_color?: string
     button_text_color?: string
+    show_title?: string
   }>
 }
 
@@ -34,6 +35,7 @@ export default async function EmbedRegistrationPage({ params, searchParams }: Em
     secondary_color: secondaryColor,
     secondary_background_color: secondaryBackgroundColor,
     button_text_color: buttonTextColor,
+    show_title: showTitleOverride,
   } = searchQuery
   const colorOverrides = {
     backgroundColor: normalizeColorOverride(backgroundColor),
@@ -52,7 +54,13 @@ export default async function EmbedRegistrationPage({ params, searchParams }: Em
         />
       }
     >
-      <EmbedRegistrationShell id={id} source={source} colorOverrides={colorOverrides} query={{ ...searchQuery, visitor_id: await getVisitorIdFromCookie() }} />
+      <EmbedRegistrationShell
+        id={id}
+        source={source}
+        showTitleOverride={showTitleOverride}
+        colorOverrides={colorOverrides}
+        query={{ ...searchQuery, visitor_id: await getVisitorIdFromCookie() }}
+      />
     </Suspense>
   )
 }
@@ -70,14 +78,22 @@ function normalizeColorOverride(color?: string) {
   return normalizedColor || undefined
 }
 
+function parseBooleanQueryParam(value?: string) {
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return undefined
+}
+
 async function EmbedRegistrationShell({
   id,
   source,
+  showTitleOverride,
   colorOverrides,
   query,
 }: {
   id: string
   source?: string
+  showTitleOverride?: string
   colorOverrides: EmbedColorOverrides
   query: Record<string, string | string[] | undefined>
 }) {
@@ -91,6 +107,7 @@ async function EmbedRegistrationShell({
   const backgroundColor = colorOverrides.backgroundColor ?? embedConfig?.background_color ?? undefined
   const embedSuccessUrl = embedConfig?.success_url ?? undefined
   const headerScripts = embedConfig?.header_scripts?.trim()
+  const showTitle = parseBooleanQueryParam(showTitleOverride) ?? embedConfig?.show_title ?? true
 
   if (webinarState.kind === "not_found") {
     notFound()
@@ -118,9 +135,11 @@ async function EmbedRegistrationShell({
 
       <div className="p-4" style={backgroundColor ? { backgroundColor } : undefined}>
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-          <Suspense fallback={<div className="mx-auto mb-4 h-4 w-52 animate-pulse rounded bg-gray-200" />}>
-            <EmbedRegistrationHeading webinarPromise={webinarPromise} />
-          </Suspense>
+          {showTitle ? (
+            <Suspense fallback={<div className="mx-auto mb-4 h-4 w-52 animate-pulse rounded bg-gray-200" />}>
+              <EmbedRegistrationHeading webinarPromise={webinarPromise} />
+            </Suspense>
+          ) : null}
           <DefaultRegistrationForm
             webinarPromise={webinarPromise}
             webinarId={id}
