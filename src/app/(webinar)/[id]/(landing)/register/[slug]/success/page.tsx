@@ -5,7 +5,7 @@ import { isWebinarPayload } from "@/webinar/service/guards";
 import { resolveJoin } from "@/attendee-session/service/resolve-join";
 import { sanitizeJoinToken, sanitizeWebinarId } from "@/webinar/service/join-params";
 import { getPublicLandingPage } from "@/webinar/landing-page/service";
-import { WebinarRegistrationSuccessView } from "@/webinar/components/WebinarRegistrationSuccessView";
+import { WebinarFooter, WebinarRegistrationSuccessView } from "@/webinar/components";
 import { DEFAULT_REGISTRATION_THEME } from "@/webinar/theme/default-theme";
 import { REGISTRATION_FONT_STACKS } from "@/webinar/theme/fonts";
 
@@ -68,8 +68,12 @@ export default async function LandingRegistrationSuccessPage(props: LandingRegis
   // page.theme is already resolved server-side as landing page theme -> registration
   // setting theme; a blank field here means neither tier set a value, so the
   // client-side default theme is the final fallback tier.
+  const backgroundColor = page.theme.background_color || webinar.registration_settings?.theme?.background_color || DEFAULT_REGISTRATION_THEME.background_color;
+
   return (
-    <div className="mx-auto w-full max-w-5xl pt-20 pb-4">
+    <div className="flex min-h-screen flex-col text-foreground" style={{ backgroundColor }}>
+      <main className="flex-1">
+        <div className="mx-auto w-full max-w-5xl pt-20 pb-4">
       <WebinarRegistrationSuccessView
         webinar={webinar}
         formattedDate={formattedDate}
@@ -79,7 +83,7 @@ export default async function LandingRegistrationSuccessPage(props: LandingRegis
         registrationPath={`/${webinarId}/register/${slug}`}
         theme={{
           primaryColor: page.theme.primary_color || webinar.registration_settings?.theme?.primary_color || DEFAULT_REGISTRATION_THEME.primary_color,
-          backgroundColor: page.theme.background_color || webinar.registration_settings?.theme?.background_color || DEFAULT_REGISTRATION_THEME.background_color,
+          backgroundColor,
           secondaryColor: page.theme.secondary_color || webinar.registration_settings?.theme?.secondary_color || DEFAULT_REGISTRATION_THEME.secondary_color,
           secondaryBackgroundColor:
             page.theme.secondary_background_color || webinar.registration_settings?.theme?.secondary_background_color || DEFAULT_REGISTRATION_THEME.secondary_background_color,
@@ -87,6 +91,9 @@ export default async function LandingRegistrationSuccessPage(props: LandingRegis
           fontFamily: REGISTRATION_FONT_STACKS[page.theme.font_family] || REGISTRATION_FONT_STACKS.system,
         }}
       />
+        </div>
+      </main>
+      <WebinarFooter />
     </div>
   );
 }

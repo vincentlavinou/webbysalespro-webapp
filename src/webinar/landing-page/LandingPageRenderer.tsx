@@ -5,6 +5,7 @@ import { useEffect, useState, type CSSProperties, type ElementType } from "react
 import { Check } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DefaultRegistrationForm } from "@/app/(webinar)/[id]/(registration)/register/form";
+import { WebinarFooter } from "@/webinar/components";
 import type { Webinar } from "@/webinar/service";
 import { buildContrastTokens } from "@/webinar/theme/contrast";
 import { DEFAULT_REGISTRATION_THEME } from "@/webinar/theme/default-theme";
@@ -98,5 +99,5 @@ function Block({ block, webinar, page, nextSessionStart, webinarPromise }: { blo
 
 export function LandingPageRenderer({ page, webinar, webinarPromise }: { page: LandingPageRender; webinar: Webinar; webinarPromise: Promise<Webinar> }) {
   const nextSessionStart = webinar.series?.sessions?.[0]?.scheduled_start;
-  return <main className="min-h-screen" style={themeStyle(page.theme)}><div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">{page.definition.rows.map((row: LandingPageRow) => <div key={row.id} className={`grid gap-4 ${row.blocks.length === 1 ? "grid-cols-1" : row.blocks.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}>{row.blocks.map((block) => <div key={block.id} id={block.id} style={blockStyle(block.style)}><Block block={block} webinar={webinar} page={page} nextSessionStart={nextSessionStart} webinarPromise={webinarPromise} /></div>)}</div>)}</div></main>;
+  return <div className="flex min-h-screen flex-col" style={themeStyle(page.theme)}><main className="flex-1"><div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">{page.definition.rows.map((row: LandingPageRow) => <div key={row.id} className={`grid gap-4 ${row.blocks.length === 1 ? "grid-cols-1" : row.blocks.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}>{row.blocks.map((block) => <div key={block.id} id={block.id} style={blockStyle(block.style)}><Block block={block} webinar={webinar} page={page} nextSessionStart={nextSessionStart} webinarPromise={webinarPromise} /></div>)}</div>)}</div></main><WebinarFooter /></div>;
 }

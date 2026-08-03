@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getPublicWebinarState } from "@/webinar/service";
 import { getPublicLandingPage } from "@/webinar/landing-page/service";
 import { LandingPageRenderer } from "@/webinar/landing-page/LandingPageRenderer";
-import { PausedWebinarNotice } from "@/webinar/components";
+import { PausedWebinarNotice, WebinarFooter } from "@/webinar/components";
 
 type Props = { params: Promise<{ id: string; slug: string }> };
 
@@ -28,8 +28,13 @@ export default async function LandingPage({ params }: Props) {
 
   if (state.kind === "paused") {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-20">
-        <PausedWebinarNotice pauseInfo={state.pauseInfo} />
+      <div className="flex min-h-screen flex-col bg-background text-foreground">
+        <main className="flex-1">
+          <div className="mx-auto w-full max-w-3xl px-4 py-20">
+            <PausedWebinarNotice pauseInfo={state.pauseInfo} />
+          </div>
+        </main>
+        <WebinarFooter />
       </div>
     );
   }
