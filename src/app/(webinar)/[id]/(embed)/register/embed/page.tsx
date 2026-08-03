@@ -118,7 +118,7 @@ async function EmbedRegistrationShell({
       <>
         {headerScripts ? <EmbedHeaderScripts value={headerScripts} /> : null}
 
-        <div className="p-4" style={backgroundColor ? { backgroundColor } : undefined}>
+        <div className="min-h-screen p-4" style={backgroundColor ? { backgroundColor } : undefined}>
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <PausedWebinarNotice pauseInfo={webinarState.pauseInfo} title="Registration paused for this webinar" />
           </div>
@@ -133,7 +133,7 @@ async function EmbedRegistrationShell({
     <>
       {headerScripts ? <EmbedHeaderScripts value={headerScripts} /> : null}
 
-      <div className="p-4" style={backgroundColor ? { backgroundColor } : undefined}>
+      <div className="min-h-screen p-4" style={backgroundColor ? { backgroundColor } : undefined}>
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           {showTitle ? (
             <Suspense fallback={<div className="mx-auto mb-4 h-4 w-52 animate-pulse rounded bg-gray-200" />}>

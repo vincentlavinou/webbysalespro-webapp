@@ -51,7 +51,7 @@ export function EmbedRegistrationLoading({
 }: EmbedRegistrationLoadingProps = {}) {
   return (
     <div
-      className="min-h-[420px] bg-slate-50 p-4"
+      className="min-h-screen bg-slate-50 p-4"
       style={backgroundColor ? { backgroundColor } : undefined}
     >
       <EmbedRegistrationCardLoading primaryColor={primaryColor} />
