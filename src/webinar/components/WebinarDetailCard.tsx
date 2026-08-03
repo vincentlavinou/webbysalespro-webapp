@@ -7,7 +7,7 @@ import { buildContrastTokens } from "@/webinar/theme/contrast"
 
 interface WebinarDetailCardProps {
   webinar: Webinar | null
-  badge: ReactNode
+  badge?: ReactNode
   fallbackTitle?: string
   primaryColor?: string
   backgroundColor?: string
