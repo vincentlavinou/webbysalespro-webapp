@@ -19,12 +19,11 @@ async function loadState(params: Props["params"], searchParams: Props["searchPar
   return { state, page };
 }
 
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
-  const { state, page } = await loadState(params, searchParams);
-  if (state.kind === "paused") {
-    return { title: page.name || "Webinar Registration Paused", description: state.pauseInfo.message || undefined };
-  }
-  return { title: page.name || state.webinar.title, description: state.webinar.description || undefined };
+export function generateMetadata(): Metadata {
+  return {
+    title: "Webinar Registration",
+    description: "Register for this webinar.",
+  };
 }
 
 export default async function LandingPage({ params, searchParams }: Props) {
