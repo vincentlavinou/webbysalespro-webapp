@@ -60,7 +60,9 @@ export async function generateMetadata({ params, searchParams }: DefaultRegistra
 export default async function DefaultRegistrationPage(props: DefaultRegistrationPageProps) {
     
     const webinarId = (await props.params).id
-    const webinarState = await getPublicWebinarState(webinarId, { fresh: true })
+    const query = await props.searchParams
+    const visitorId = await getVisitorIdFromCookie()
+    const webinarState = await getPublicWebinarState(webinarId, { fresh: true }, { ...query, visitor_id: visitorId })
     if (webinarState.kind === 'not_found') {
       notFound()
     }

@@ -11,6 +11,8 @@ const SESSION_COOKIE = "attendee_session";
 // Short-lived cookie set when we forward to /join/live — prevents an infinite
 // room → /join/live → room loop if the session cookie never lands.
 const JOIN_REDIRECT_COOKIE = "_join_redirect";
+const VISITOR_ID_COOKIE = "visitor_id";
+const VISITOR_ID_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 2;
 
 function isNetlifyHost(hostname: string) {
   return NETLIFY_HOST_SUFFIXES.some(
@@ -38,6 +40,33 @@ export function middleware(request: NextRequest) {
   const hasRoomSuffix = ROOM_PATH_SUFFIXES.some((s) => nextUrl.pathname.endsWith(s));
   const hasCookie = request.cookies.has(SESSION_COOKIE);
   const alreadyTriedJoin = request.cookies.has(JOIN_REDIRECT_COOKIE);
+
+  // Establish the visitor identity before server components render. Setting only
+  // the response cookie would make it available on the next request, too late
+  // for this render's metadata and API calls.
+  const visitorId = request.cookies.get(VISITOR_ID_COOKIE)?.value ?? crypto.randomUUID();
+  const hasVisitorId = request.cookies.has(VISITOR_ID_COOKIE);
+  const requestHeaders = new Headers(request.headers);
+  if (!hasVisitorId) {
+    const cookieHeader = request.headers.get("cookie");
+    requestHeaders.set(
+      "cookie",
+      cookieHeader ? `${cookieHeader}; ${VISITOR_ID_COOKIE}=${visitorId}` : `${VISITOR_ID_COOKIE}=${visitorId}`,
+    );
+  }
+
+  const nextWithVisitorCookie = () => {
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    if (!hasVisitorId) {
+      response.cookies.set(VISITOR_ID_COOKIE, visitorId, {
+        maxAge: VISITOR_ID_MAX_AGE_SECONDS,
+        path: "/",
+        sameSite: "lax",
+        secure: nextUrl.protocol === "https:",
+      });
+    }
+    return response;
+  };
 
   if (hasRoomSuffix && webinarId && !t) {
     const registerUrl = nextUrl.clone();
@@ -78,7 +107,7 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  return NextResponse.next();
+  return nextWithVisitorCookie();
 }
 
 export const config = {
