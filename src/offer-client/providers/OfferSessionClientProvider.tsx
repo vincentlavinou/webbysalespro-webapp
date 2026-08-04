@@ -48,6 +48,10 @@ export function OfferSessionClientProvider({
         ref: string;
     } | undefined>(undefined);
 
+    useEffect(() => {
+        setOffers(initialOffers);
+    }, [initialOffers]);
+
     useAudienceEvent({
         eventType: "webinar:offer:visibility",
         sessionId: sessionId,
