@@ -6,6 +6,7 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useRef,
+  type CSSProperties,
 } from "react";
 import { WebinarMainLayoutLoading } from "@/broadcast/components";
 import { getSessionAction } from "@/webinar/service/action";
@@ -60,10 +61,12 @@ function StageVideoTile({
   participant,
   className,
   muted = false,
+  style,
 }: {
   participant: WebiSalesProParticipant;
   className?: string;
   muted?: boolean;
+  style?: CSSProperties;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -89,7 +92,7 @@ function StageVideoTile({
   const name = participant.participant.attributes?.name;
 
   return (
-    <div className={`relative overflow-hidden bg-black ${className ?? ""}`}>
+    <div className={`relative overflow-hidden bg-black ${className ?? ""}`} style={style}>
       <video
         ref={videoRef}
         autoPlay
@@ -106,17 +109,34 @@ function StageVideoTile({
   );
 }
 
+type PipCorner = "top_left" | "top_right" | "bottom_left" | "bottom_right";
+
+const DEFAULT_PIP_CORNER: PipCorner = "bottom_right";
+
+function normalizePipCorner(corner?: string): PipCorner {
+  const normalized = corner?.trim().toLowerCase().replace(/-/g, "_");
+
+  switch (normalized) {
+    case "top_left":
+    case "top_right":
+    case "bottom_left":
+    case "bottom_right":
+      return normalized;
+    default:
+      return DEFAULT_PIP_CORNER;
+  }
+}
+
 function pipPosition(
   pip?: { placement: "overlay" | "docked"; corner?: string; side?: string },
 ) {
-  switch (pip?.corner) {
-    case "top_left": return "left-3 top-3";
-    case "top_right": return "right-3 top-3";
-    case "bottom_left": return "bottom-3 left-3";
-    case "bottom_right": return "bottom-3 right-3";
-    default:
-      return pip?.side === "left" ? "bottom-3 left-3" : "bottom-3 right-3";
-  }
+  const corner = normalizePipCorner(pip?.corner);
+  const vertical = corner.startsWith("top") ? { top: "0.75rem" } : { bottom: "0.75rem" };
+  const horizontal = corner.endsWith("left")
+    ? { left: "0.75rem" }
+    : { right: "0.75rem" };
+
+  return { ...vertical, ...horizontal };
 }
 
 function pipSize(size?: "small" | "medium" | "large") {
@@ -308,7 +328,8 @@ export const AttendeeStageViewer = forwardRef<
             <StageVideoTile
               participant={layout.secondary}
               muted={secondaryVideoMuted}
-              className={`absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl ${pipSize(layout.pip?.size)} ${pipPosition(layout.pip)}`}
+              className={`absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl ${pipSize(layout.pip?.size)}`}
+              style={pipPosition(layout.pip)}
             />
           )}
         </>
