@@ -106,7 +106,7 @@ function StageVideoTile({
 function pipPosition(
   pip?: { placement: "overlay" | "docked"; corner?: string; side?: string },
 ) {
-  switch (pip.corner) {
+  switch (pip?.corner) {
     case "top_left": return "left-3 top-3";
     case "top_right": return "right-3 top-3";
     case "bottom_left": return "bottom-3 left-3";
