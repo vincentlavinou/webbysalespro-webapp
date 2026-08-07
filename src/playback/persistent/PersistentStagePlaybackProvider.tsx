@@ -17,7 +17,7 @@ import type { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
 import { getAttendeeStageStateAction } from "@/broadcast/service/action";
 import { onAudienceChatEvent } from "@/audience-events/service/event-emitter";
 import { onPlaybackMetadata } from "@/emitter/playback/playbackEventEmitter";
-import { resolveStageLayout, hasActiveVideo } from "../stage/stage-state";
+import { resolveStageLayout, hasActiveVideo, isPublishingRole } from "../stage/stage-state";
 import { useMediaSession } from "../player/ivs/hooks/use-media-session";
 import { useVisibilityResilience } from "../player/ivs/hooks/use-visibility-resilience";
 import {
@@ -128,13 +128,13 @@ export function PersistentStagePlaybackProvider({
       setMainPresenter: () => {},
       stageStreamsToPublish: () => [],
       shouldPublishParticipant: () => false,
-      shouldSubscribeToParticipant: (participant) => {
-        const role = participant.attributes?.role;
-        if (role === "host" || role === "cohost") {
-          return "audio_video" as SubscribeType;
-        }
-        return "none" as SubscribeType;
-      },
+      // Must stay in step with isRenderable: a publisher we decline to
+      // subscribe to has no tracks, so it can never satisfy isLiveVideo and
+      // drops out of whatever tile the host assigned it.
+      shouldSubscribeToParticipant: (participant) =>
+        (isPublishingRole(participant.attributes?.role)
+          ? "audio_video"
+          : "none") as SubscribeType,
       subscribeConfiguration: () => ({ inBandMessaging: { enabled: true } }),
     }),
     [],

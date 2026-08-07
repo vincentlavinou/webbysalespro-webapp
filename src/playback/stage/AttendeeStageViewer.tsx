@@ -133,22 +133,29 @@ function pipPosition(
 ) {
   const corner = normalizePipCorner(pip?.corner);
 
+  // 4px inset mirrors the host composite's pipMargin of 4 (admin
+  // broadcast/service/video.ts), so the attendee overlay hugs the edge the same
+  // way the burned-in canvas PiP does.
   switch (corner) {
     case "top_left":
-      return "left-3 top-3";
+      return "left-1 top-1";
     case "top_right":
-      return "right-3 top-3";
+      return "right-1 top-1";
     case "bottom_left":
-      return "bottom-3 left-3";
+      return "bottom-1 left-1";
     case "bottom_right":
-      return "bottom-3 right-3";
+      return "bottom-1 right-1";
   }
 }
 
+// Percentages track the host composite's geometry: its default targetHeight of
+// 140 on a 720p canvas is ~19% of the stage, and resolvePipRect caps a PiP at
+// 35% of canvas height. The tile is aspect-video inside a 16:9 surface, so a
+// width percentage equals that height percentage. min-w matches MIN_PIP_WIDTH.
 function pipSize(size?: "small" | "medium" | "large") {
-  if (size === "large") return "w-1/2 max-w-[420px]";
-  if (size === "medium") return "w-1/3 max-w-[320px]";
-  return "w-1/4 min-w-[120px] max-w-[240px]";
+  if (size === "large") return "w-[35%] min-w-[96px] max-w-[420px]";
+  if (size === "medium") return "w-[26%] min-w-[96px] max-w-[320px]";
+  return "w-[18%] min-w-[96px] max-w-[240px]";
 }
 
 export const AttendeeStageViewer = forwardRef<

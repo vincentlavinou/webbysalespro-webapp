@@ -28,12 +28,22 @@ function kind(participant: WebiSalesProParticipant) {
   return attributes(participant)?.kind;
 }
 
+/**
+ * Roles the backend mints PUBLISH-capable tokens for — mirrors
+ * STAGE_PUBLISHING_ROLES in webinarseries/core/usecases.py. Anything narrower
+ * silently drops a publisher from every layout it appears in: the host console
+ * filters on `role !== "spectator"`, so a role missing here shows up in the
+ * grid order (or as a PiP secondary) and then resolves to nothing on the
+ * attendee. A screen share inherits its sharer's role, so this covers those too.
+ */
+const PUBLISHING_ROLES = new Set(["host", "cohost", "presenter"]);
+
+export function isPublishingRole(participantRole: unknown) {
+  return typeof participantRole === "string" && PUBLISHING_ROLES.has(participantRole);
+}
+
 function isRenderable(participant: WebiSalesProParticipant) {
-  const participantRole = role(participant);
-  return (
-    (participantRole === "host" || participantRole === "cohost") &&
-    isLiveVideo(participant)
-  );
+  return isPublishingRole(role(participant)) && isLiveVideo(participant);
 }
 
 function fallbackOrder(participants: WebiSalesProParticipant[]) {
