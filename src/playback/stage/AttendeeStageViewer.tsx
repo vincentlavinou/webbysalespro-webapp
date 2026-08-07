@@ -7,6 +7,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { cn } from "@/lib/utils";
 import { WebinarMainLayoutLoading } from "@/broadcast/components";
 import { getSessionAction } from "@/webinar/service/action";
 import { WebinarSessionStatus } from "@/webinar/service/enum";
@@ -89,7 +90,10 @@ function StageVideoTile({
   const name = participant.participant.attributes?.name;
 
   return (
-    <div className={`relative overflow-hidden bg-black ${className ?? ""}`}>
+    // cn() must merge here: the overlay PiP passes `absolute`, and a plain
+    // template string would lose to the `relative` default because Tailwind
+    // emits `.relative` after `.absolute`, not because of class order.
+    <div className={cn("relative overflow-hidden bg-black", className)}>
       <video
         ref={videoRef}
         autoPlay
@@ -330,7 +334,11 @@ export const AttendeeStageViewer = forwardRef<
             <StageVideoTile
               participant={layout.secondary}
               muted={secondaryVideoMuted}
-              className={`absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl ${pipSize(layout.pip?.size)} ${pipPosition(layout.pip)}`}
+              className={cn(
+                "absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl",
+                pipSize(layout.pip?.size),
+                pipPosition(layout.pip),
+              )}
             />
           )}
         </>
