@@ -12,7 +12,12 @@ import { emitPlaybackPlaying } from "@/emitter/playback";
 import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
 import { joinStage, leaveStage } from "@/broadcast/service/utils";
 import type { RealtimeAttendeeStreamConfig, Strategy } from "@/broadcast/service/type";
+import type { StageState, StageStateDefinition } from "@/broadcast/service/type";
 import type { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
+import { getAttendeeStageStateAction } from "@/broadcast/service/action";
+import { onAudienceChatEvent } from "@/audience-events/service/event-emitter";
+import { onPlaybackMetadata } from "@/emitter/playback/playbackEventEmitter";
+import { resolveStageLayout, hasActiveVideo } from "../stage/stage-state";
 import { useMediaSession } from "../player/ivs/hooks/use-media-session";
 import { useVisibilityResilience } from "../player/ivs/hooks/use-visibility-resilience";
 import {
@@ -24,38 +29,23 @@ type Stage = import("amazon-ivs-web-broadcast").Stage;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
 
 type Props = {
+  sessionId: string;
   stream: RealtimeAttendeeStreamConfig;
+  initialStageState?: StageState;
   title?: string;
   artwork?: MediaImage[];
   children: React.ReactNode;
 };
 
-function selectPrimaryParticipant(participants: WebiSalesProParticipant[]) {
-  const eligible = participants.filter(({ participant }) => {
-    const role = participant.attributes?.role;
-    return role === "host" || role === "presenter";
-  });
-  const candidates = eligible.length > 0 ? eligible : participants;
-  return (
-    candidates.find(({ participant, streams }) => {
-      if (participant.videoStopped) return false;
-      return streams.some((s) => s.mediaStreamTrack.kind === "video");
-    }) ?? candidates[0]
-  );
-}
-
-function participantHasActiveVideo(participant?: WebiSalesProParticipant) {
-  if (!participant || participant.participant.videoStopped) return false;
-  return participant.streams.some((s) => s.mediaStreamTrack.kind === "video");
-}
-
-function getPresenterName(participant?: WebiSalesProParticipant) {
+function getParticipantName(participant?: WebiSalesProParticipant) {
   const name = participant?.participant.attributes?.name;
   return typeof name === "string" && name.trim() ? name.trim() : undefined;
 }
 
 export function PersistentStagePlaybackProvider({
+  sessionId,
   stream,
+  initialStageState,
   title,
   artwork,
   children,
@@ -67,22 +57,65 @@ export function PersistentStagePlaybackProvider({
 
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
+  const [stageDefinition, setStageDefinition] = useState<StageStateDefinition | undefined>(
+    initialStageState?.definition,
+  );
+  const lastAppliedRevisionRef = useRef(initialStageState?.revision ?? -1);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [surfaceMode, setSurfaceMode] = useState<StageSurfaceMode>("loading");
   const [aspectRatio, setAspectRatio] = useState("aspect-video");
 
-  const mainParticipant = useMemo(
-    () => selectPrimaryParticipant(participants),
-    [participants],
+  const layout = useMemo(
+    () => resolveStageLayout(stageDefinition, participants),
+    [stageDefinition, participants],
   );
+  const mainParticipant = layout.main;
   const mainParticipantHasActiveVideo = useMemo(
-    () => participantHasActiveVideo(mainParticipant),
+    () => hasActiveVideo(mainParticipant),
     [mainParticipant],
   );
-  const presenterName = useMemo(
-    () => getPresenterName(mainParticipant),
+  const participantName = useMemo(
+    () => getParticipantName(mainParticipant),
     [mainParticipant],
   );
+
+  const applyStageState = useCallback((state: StageState) => {
+    if (state.session_id !== sessionId || state.revision <= lastAppliedRevisionRef.current) return;
+    lastAppliedRevisionRef.current = state.revision;
+    setStageDefinition(state.definition);
+  }, [sessionId]);
+
+  useEffect(() => {
+    const parseMetadata = (raw: string) => {
+      try {
+        const event = JSON.parse(raw) as { type?: string; payload?: StageState };
+        if (event.type === "session:stage:state" && event.payload) applyStageState(event.payload);
+      } catch {
+        // Ignore unrelated or malformed metadata.
+      }
+    };
+
+    const offMetadata = onPlaybackMetadata(parseMetadata);
+    const offChat = onAudienceChatEvent((event) => {
+      if (event.eventName !== "session:stage:state") return;
+      try {
+        const payload = event.attributes?.payload_json;
+        if (payload) applyStageState(JSON.parse(payload) as StageState);
+      } catch {
+        // Ignore unrelated or malformed chat events.
+      }
+    });
+
+    return () => {
+      offMetadata();
+      offChat();
+    };
+  }, [applyStageState]);
+
+  const resyncStageState = useCallback(async () => {
+    const result = await getAttendeeStageStateAction({ sessionId });
+    if (result.data) applyStageState(result.data);
+  }, [applyStageState, sessionId]);
 
   const strategy = useMemo<Strategy>(
     () => ({
@@ -92,7 +125,7 @@ export function PersistentStagePlaybackProvider({
       shouldPublishParticipant: () => false,
       shouldSubscribeToParticipant: (participant) => {
         const role = participant.attributes?.role;
-        if (!role || role === "host" || role === "presenter") {
+        if (role === "host" || role === "cohost") {
           return "audio_video" as SubscribeType;
         }
         return "none" as SubscribeType;
@@ -120,6 +153,7 @@ export function PersistentStagePlaybackProvider({
     }
     prevTokenRef.current = token;
 
+    void resyncStageState();
     void joinStage(
       true,
       token,
@@ -130,7 +164,7 @@ export function PersistentStagePlaybackProvider({
       strategy,
       () => {},
     );
-  }, [connectionAttempt, stream.config.participant_token, strategy]);
+  }, [connectionAttempt, stream.config.participant_token, strategy, resyncStageState]);
 
   // True session end — only fires when the provider itself unmounts.
   useEffect(() => {
@@ -205,6 +239,38 @@ export function PersistentStagePlaybackProvider({
       return () => video.removeEventListener("loadedmetadata", onLoaded);
     }
   }, [mainParticipant, mainParticipantHasActiveVideo]);
+
+  // Keep audio from non-featured host/co-host/screen participants alive even
+  // when the current stage definition does not place them in a visible tile.
+  useEffect(() => {
+    const host = hiddenHostRef.current;
+    if (!host) return;
+
+    const audioElements = participants
+      .filter((participant) => participant.participant.userId !== mainParticipant?.participant.userId)
+      .filter((participant) => participant.participant.attributes?.role !== "spectator")
+      .map((participant) => {
+        const audioTrack = participant.streams.find(
+          ({ mediaStreamTrack }) => mediaStreamTrack.kind === "audio",
+        )?.mediaStreamTrack;
+        if (!audioTrack) return undefined;
+        const audio = document.createElement("audio");
+        audio.autoplay = true;
+        audio.srcObject = new MediaStream([audioTrack]);
+        host.appendChild(audio);
+        void audio.play().catch(() => {});
+        return audio;
+      })
+      .filter((audio): audio is HTMLAudioElement => Boolean(audio));
+
+    return () => {
+      audioElements.forEach((audio) => {
+        audio.pause();
+        audio.srcObject = null;
+        audio.remove();
+      });
+    };
+  }, [participants, mainParticipant?.participant.userId]);
 
   // Keep surfaceMode in sync with video element play/pause/mute events.
   useEffect(() => {
@@ -309,7 +375,7 @@ export function PersistentStagePlaybackProvider({
 
   useMediaSession({
     active: surfaceMode === "playing" || surfaceMode === "playing-muted",
-    title: presenterName ? `${presenterName} — ${title ?? "Live Webinar"}` : (title ?? "Live Webinar"),
+    title: participantName ? `${participantName} — ${title ?? "Live Webinar"}` : (title ?? "Live Webinar"),
     ariaLabel: "Live Webinar",
     artwork,
     onPlay: () => { videoRef.current?.play().catch(() => {}); },
@@ -324,7 +390,10 @@ export function PersistentStagePlaybackProvider({
         isConnected,
         mainParticipant,
         mainParticipantHasActiveVideo,
-        presenterName,
+        participantName,
+        participants,
+        layout,
+        stageDefinition,
         surfaceMode,
         aspectRatio,
         reconnectStage,

@@ -71,7 +71,9 @@ export function PlaybackClient(props: PlaybackClientProps) {
   if (realtimeStream) {
     return (
       <PersistentStagePlaybackProvider
+        sessionId={props.sessionId}
         stream={realtimeStream}
+        initialStageState={props.playbackToken.stage_state}
         title={props.playbackToken.webinar.title}
         artwork={artwork}
       >

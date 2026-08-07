@@ -16,6 +16,7 @@ import { useTransientFullscreenControl } from "@/playback/player/ivs/hooks/use-t
 import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
 import { useFullscreen } from "../player/ivs/hooks/use-fullscreen";
 import { useRouter } from "next/navigation";
+import type { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
 
 type AttendeeStageViewerProps = {
   sessionId: string;
@@ -32,9 +33,9 @@ export type AttendeeStageViewerHandle = {
 };
 
 function StageParticipantFallback({
-  presenterName,
+  participantName,
 }: {
-  presenterName?: string;
+  participantName?: string;
 }) {
   return (
     <div className="relative w-full max-h-[80vh] aspect-video overflow-hidden rounded-md border bg-black">
@@ -45,14 +46,82 @@ function StageParticipantFallback({
             Live stage paused
           </p>
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">
-            {presenterName
-              ? `${presenterName} will be right back`
-              : "The presenter will be right back"}
+            {participantName
+              ? `${participantName} will be right back`
+              : "The live stage will be right back"}
           </h2>
         </div>
       </div>
     </div>
   );
+}
+
+function StageVideoTile({
+  participant,
+  className,
+}: {
+  participant: WebiSalesProParticipant;
+  className?: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const tracks = participant.streams
+      .map(({ mediaStreamTrack }) => mediaStreamTrack)
+      .filter((track) => track.kind === "video" || track.kind === "audio");
+    const stream = new MediaStream(tracks);
+    video.srcObject = stream;
+    video.muted = true;
+    void video.play().catch(() => {});
+
+    return () => {
+      video.pause();
+      video.srcObject = null;
+    };
+  }, [participant]);
+
+  const name = participant.participant.attributes?.name;
+
+  return (
+    <div className={`relative overflow-hidden bg-black ${className ?? ""}`}>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="h-full w-full object-contain"
+      />
+      {typeof name === "string" && name.trim() && (
+        <div className="absolute bottom-0 left-0 w-full truncate bg-black/60 px-2 py-1 text-xs text-white">
+          {name}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function pipPosition(
+  pip?: { placement: "overlay" | "docked"; corner?: string; side?: string },
+) {
+  if (!pip || pip.placement === "docked") {
+    return pip?.side === "left" ? "left-0 top-0 h-full" : "right-0 top-0 h-full";
+  }
+
+  switch (pip.corner) {
+    case "top_left": return "left-3 top-3";
+    case "top_right": return "right-3 top-3";
+    case "bottom_left": return "bottom-3 left-3";
+    default: return "bottom-3 right-3";
+  }
+}
+
+function pipSize(size?: "small" | "medium" | "large") {
+  if (size === "large") return "w-1/2";
+  if (size === "medium") return "w-2/5";
+  return "w-1/3";
 }
 
 export const AttendeeStageViewer = forwardRef<
@@ -70,7 +139,8 @@ export const AttendeeStageViewer = forwardRef<
     isConnected,
     mainParticipant,
     mainParticipantHasActiveVideo,
-    presenterName,
+    participantName,
+    layout,
     surfaceMode,
     aspectRatio,
     reconnectStage,
@@ -118,6 +188,7 @@ export const AttendeeStageViewer = forwardRef<
     hiddenHostRef,
     isConnected,
     mainParticipantHasActiveVideo,
+    layout.mode,
     videoRef,
   ]);
 
@@ -195,7 +266,7 @@ export const AttendeeStageViewer = forwardRef<
   }
 
   if (!mainParticipant || !mainParticipantHasActiveVideo) {
-    return <StageParticipantFallback presenterName={presenterName} />;
+    return <StageParticipantFallback participantName={participantName} />;
   }
 
   return (
@@ -205,8 +276,36 @@ export const AttendeeStageViewer = forwardRef<
       onPointerUp={toggleControls}
       style={{ touchAction: "manipulation" }}
     >
-      {/* video is reparented here via useLayoutEffect */}
-      <div ref={videoContainerRef} className="absolute inset-0" />
+      {layout.mode === "grid" ? (
+        <div className="grid h-full w-full grid-cols-1 gap-1 bg-black sm:grid-cols-2">
+          <div ref={videoContainerRef} className="relative min-h-0 overflow-hidden bg-black" />
+          {layout.grid.slice(1).map((participant) => (
+            <StageVideoTile
+              key={participant.participant.id}
+              participant={participant}
+              className="min-h-0"
+            />
+          ))}
+        </div>
+      ) : layout.mode === "pip" && layout.secondary && layout.pip?.placement === "docked" ? (
+        <div className={`flex h-full w-full ${layout.pip.side === "left" ? "flex-row-reverse" : "flex-row"}`}>
+          <div ref={videoContainerRef} className="relative min-w-0 flex-1 overflow-hidden bg-black" />
+          <StageVideoTile
+            participant={layout.secondary}
+            className="h-full w-1/3 shrink-0 border-white/30"
+          />
+        </div>
+      ) : (
+        <>
+          <div ref={videoContainerRef} className="absolute inset-0" />
+          {layout.mode === "pip" && layout.secondary && (
+            <StageVideoTile
+              participant={layout.secondary}
+              className={`absolute z-10 aspect-video rounded-md border border-white/30 shadow-xl ${pipSize(layout.pip?.size)} ${pipPosition(layout.pip)}`}
+            />
+          )}
+        </>
+      )}
 
       {/* No tap-to-start gate: when even muted autoplay is blocked
           ("blocked"), the unmute nudge doubles as the start gesture —

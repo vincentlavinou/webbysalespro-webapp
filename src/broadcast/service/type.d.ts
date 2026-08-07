@@ -69,6 +69,35 @@ export type RealtimeAttendeeStreamConfig = {
     config: RealtimeAttendeeConfig
 }
 
+export type StageParticipantRole = "host" | "cohost" | "spectator" | string;
+export type StageParticipantKind = "camera" | "screen" | string;
+
+export type StageStateDefinition =
+  | { mode: "solo"; featured: string }
+  | {
+      mode: "pip";
+      featured: string;
+      secondary: {
+        participant_id: string;
+        placement: "overlay" | "docked";
+        corner?: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+        side?: "left" | "right";
+        size?: "small" | "medium" | "large";
+      };
+    }
+  | {
+      mode: "grid";
+      grid: { order: string[]; max_tiles?: number };
+    };
+
+export type StageState = {
+  session_id: string;
+  definition: StageStateDefinition;
+  revision: number;
+  updated_at: string | null;
+  applies_to_attendees: boolean;
+};
+
 export type AttendeeStreamConfig =
     | ChannelAttendeeStreamConfig
     | RealtimeAttendeeStreamConfig
@@ -84,7 +113,8 @@ export type AttendeeBroadcastServiceToken = {
     email?: string
     first_name?: string
     last_name?: string
-    phone?: string
+  phone?: string
+  stage_state?: StageState
     webinar: Webinar
     session: SeriesSession
 }

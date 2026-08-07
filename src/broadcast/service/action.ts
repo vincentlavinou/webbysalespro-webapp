@@ -5,7 +5,7 @@ import { handleStatus } from "@/lib/http";
 import { attendeeFetch } from "@/lib/attendee-fetch";
 import { z } from "zod";
 import { broadcastApiUrl } from ".";
-import { AttendeeBroadcastServiceToken, BroadcastServiceToken } from "./type";
+import { AttendeeBroadcastServiceToken, BroadcastServiceToken, StageState } from "./type";
 
 const createBroadcastServiceTokenSchema = z.object({
   sessionId: z.string(),
@@ -31,6 +31,8 @@ const recordEventSchema = z.object({
   attendanceId: z.string(),
   payload: z.record(z.string(), z.unknown()).optional(),
 });
+
+const getStageStateSchema = z.object({ sessionId: z.string() });
 
 function unwrapActionData<T>(result: {
   data?: T;
@@ -74,6 +76,17 @@ export const createAttendeeBroadcastServiceTokenAction = actionClient
 
     const checkedResponse = await handleStatus(response);
     return (await checkedResponse.json()) as AttendeeBroadcastServiceToken;
+  });
+
+export const getAttendeeStageStateAction = actionClient
+  .inputSchema(getStageStateSchema)
+  .action(async ({ parsedInput }) => {
+    const response = await attendeeFetch(
+      `${broadcastApiUrl}/v1/sessions/${parsedInput.sessionId}/stage-state/`,
+      { method: "GET", cache: "no-store" },
+    );
+    const checkedResponse = await handleStatus(response);
+    return (await checkedResponse.json()) as StageState;
   });
 
 export const setMainPresenterAction = actionClient
