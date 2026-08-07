@@ -13,18 +13,21 @@ import {
   useAttendeeStreamRefresh,
 } from "@/broadcast/hooks/use-attendee-stream-refresh";
 import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
+import { AttendeeStageViewerWithLayout } from "@/playback/stage/AttendeeStageViewerWithLayout";
 import { getPlaybackArtwork } from "@/playback/client/get-playback-artwork";
 
 type AttendeeDesktopExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
   title?: string;
   compact?: boolean;
+  stageLayoutEnabled?: boolean;
 };
 
 export function AttendeeDesktopExperience({
   playbackToken,
   title,
   compact = false,
+  stageLayoutEnabled = false,
 }: AttendeeDesktopExperienceProps) {
   const desktopPlayerWidth = "min(100%, calc((100dvh - 7rem) * 1.7777778))";
   const playerRef = useRef<AttendeeStreamRecoveryHandle | null>(null);
@@ -62,6 +65,12 @@ export function AttendeeDesktopExperience({
                   title={playbackToken.webinar.title}
                   onPlaybackStatusChange={setStatus}
                   artwork={getPlaybackArtwork(playbackToken.webinar.media)}
+                />
+              ) : realtimeStream && stageLayoutEnabled ? (
+                <AttendeeStageViewerWithLayout
+                  ref={playerRef}
+                  sessionId={playbackToken.session.id}
+                  onPlaybackStatusChange={setStatus}
                 />
               ) : realtimeStream ? (
                 <AttendeeStageViewer

@@ -55,6 +55,8 @@ export type BroadcastServiceToken = {
     last_name?: string
     webinar: Webinar
     session: SeriesSession
+    /** Explicit capability for the separate Stage layout path. */
+    stage_layout_supported?: boolean
 }
 
 export type ChannelAttendeeStreamConfig = {
@@ -117,6 +119,8 @@ export type AttendeeBroadcastServiceToken = {
   stage_state?: StageState
     webinar: Webinar
     session: SeriesSession
+    /** Explicit capability for the separate Stage layout path. */
+    stage_layout_supported?: boolean
 }
 
 export type CreateBroadcastToken = {

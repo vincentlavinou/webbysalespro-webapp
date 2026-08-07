@@ -7,6 +7,7 @@ import { AttendeeCountProvider } from "@/broadcast/attendee-count/provider/Atten
 import { useAttendeeLayoutMode } from "@/broadcast/hooks/use-attendee-layout-mode";
 import { AttendeeDesktopExperience } from "./AttendeeDesktopExperience";
 import { AttendeeMobileExperience } from "./AttendeeMobileExperience";
+import { supportsAttendeeStageLayout } from "@/playback/stage/capability";
 
 type AttendeeExperienceLayoutProps = {
   playbackToken: AttendeeBroadcastServiceToken;
@@ -19,6 +20,7 @@ export function AttendeeExperienceLayout({
 }: AttendeeExperienceLayoutProps) {
   const layoutMode = useAttendeeLayoutMode();
   const isMobileLayout = layoutMode === "mobile";
+  const stageLayoutEnabled = supportsAttendeeStageLayout(playbackToken);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -64,12 +66,17 @@ export function AttendeeExperienceLayout({
         initialVisible={playbackToken.session.is_attendee_count_visible}
       >
         {layoutMode === "mobile" ? (
-          <AttendeeMobileExperience playbackToken={playbackToken} title={title} />
+          <AttendeeMobileExperience
+            playbackToken={playbackToken}
+            title={title}
+            stageLayoutEnabled={stageLayoutEnabled}
+          />
         ) : (
           <AttendeeDesktopExperience
             playbackToken={playbackToken}
             title={title}
             compact={layoutMode === "desktop-compact"}
+            stageLayoutEnabled={stageLayoutEnabled}
           />
         )}
       </AttendeeCountProvider>

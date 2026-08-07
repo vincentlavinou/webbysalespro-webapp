@@ -17,11 +17,13 @@ import {
   useAttendeeStreamRefresh,
 } from "@/broadcast/hooks/use-attendee-stream-refresh";
 import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
+import { AttendeeStageViewerWithLayout } from "@/playback/stage/AttendeeStageViewerWithLayout";
 import { getPlaybackArtwork } from "@/playback/client/get-playback-artwork";
 
 type AttendeeMobileExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
   title?: string;
+  stageLayoutEnabled?: boolean;
 };
 
 type ViewportSize = {
@@ -78,6 +80,7 @@ function readKeyboardInset(): number {
 
 export function AttendeeMobileExperience({
   playbackToken,
+  stageLayoutEnabled = false,
 }: AttendeeMobileExperienceProps) {
   const { view: offerView } = useOfferSessionClient();
   const showOfferSheet =
@@ -241,6 +244,12 @@ export function AttendeeMobileExperience({
           title={playbackToken.webinar.title}
           onPlaybackStatusChange={setStatus}
           artwork={getPlaybackArtwork(playbackToken.webinar.media)}
+        />
+      ) : realtimeStream && stageLayoutEnabled ? (
+        <AttendeeStageViewerWithLayout
+          ref={playerRef}
+          sessionId={playbackToken.session.id}
+          onPlaybackStatusChange={setStatus}
         />
       ) : realtimeStream ? (
         <AttendeeStageViewer
