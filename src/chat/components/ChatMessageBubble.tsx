@@ -1,8 +1,27 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { LinkifiedText } from "./LinkifiedText";
-import { Info } from "lucide-react";
+import { Info, Star } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+/**
+ * Staff roles worth calling out next to a name, and what to call them. Sourced
+ * from `sender.attributes.role`, which the chat token endpoint stamps on every
+ * participant (metadata['role'] in chat/serializers.py) — so this is the
+ * backend's own answer, not a guess from the display name.
+ *
+ * Presenter is deliberately absent: the role is being wound down in favour of
+ * cohost, so badging it would advertise something we're moving away from.
+ */
+const STAFF_ROLE_LABELS: Record<string, string> = {
+  host: "Host",
+  cohost: "Co-host",
+};
+
+export function staffRoleLabel(role?: string) {
+  return role ? STAFF_ROLE_LABELS[role] : undefined;
+}
 
 interface Reaction {
   emoji: string;
@@ -18,6 +37,8 @@ interface ChatMessageProps {
   avatarBgColor?: string
   isWarning?: boolean;
   warningMessage?: string;
+  /** Raw `sender.attributes.role`; badged only for the roles in STAFF_ROLE_LABELS. */
+  senderRole?: string;
 }
 
 export function ChatMessageBubble({
@@ -29,7 +50,9 @@ export function ChatMessageBubble({
   avatarBgColor,
   isWarning = false,
   warningMessage,
+  senderRole,
 }: ChatMessageProps) {
+  const staffLabel = staffRoleLabel(senderRole);
   return (
     <div className="flex items-center px-4 py-1 text-sx">
       {/* Avatar */}
@@ -92,6 +115,15 @@ export function ChatMessageBubble({
               </Tooltip>
             )}
           </span>
+          {staffLabel && (
+            <Badge
+              variant="outline"
+              className="mr-1 h-5 gap-1 border-amber-400/40 bg-amber-400/10 px-1.5 align-middle text-[10px] font-medium text-amber-700 dark:text-amber-300"
+            >
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+              {staffLabel}
+            </Badge>
+          )}
           <LinkifiedText
             className={cn(
               "whitespace-normal break-words [overflow-wrap:anywhere] [word-break:break-word]",

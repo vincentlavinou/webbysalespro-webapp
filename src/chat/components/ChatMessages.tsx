@@ -94,6 +94,7 @@ export function ChatMessages({ scrollRef, autoStick }: ChatMessagesProps) {
                   name={msg.sender.attributes?.name || 'unknown'}
                   content={msg.content}
                   isSelf={msg.sender.userId === registrantId}
+                  senderRole={msg.sender.attributes?.role}
                   avatarBgColor={msg.sender.attributes?.avatar_bg_color}
                   isWarning={isBlocked}
                   warningMessage={blockedReason}
