@@ -106,22 +106,20 @@ function StageVideoTile({
 function pipPosition(
   pip?: { placement: "overlay" | "docked"; corner?: string; side?: string },
 ) {
-  if (!pip || pip.placement === "docked") {
-    return pip?.side === "left" ? "left-0 top-0 h-full" : "right-0 top-0 h-full";
-  }
-
   switch (pip.corner) {
     case "top_left": return "left-3 top-3";
     case "top_right": return "right-3 top-3";
     case "bottom_left": return "bottom-3 left-3";
-    default: return "bottom-3 right-3";
+    case "bottom_right": return "bottom-3 right-3";
+    default:
+      return pip?.side === "left" ? "bottom-3 left-3" : "bottom-3 right-3";
   }
 }
 
 function pipSize(size?: "small" | "medium" | "large") {
-  if (size === "large") return "w-1/2";
-  if (size === "medium") return "w-2/5";
-  return "w-1/3";
+  if (size === "large") return "w-1/2 max-w-[420px]";
+  if (size === "medium") return "w-1/3 max-w-[320px]";
+  return "w-1/4 min-w-[120px] max-w-[240px]";
 }
 
 export const AttendeeStageViewer = forwardRef<
@@ -287,21 +285,13 @@ export const AttendeeStageViewer = forwardRef<
             />
           ))}
         </div>
-      ) : layout.mode === "pip" && layout.secondary && layout.pip?.placement === "docked" ? (
-        <div className={`flex h-full w-full ${layout.pip.side === "left" ? "flex-row-reverse" : "flex-row"}`}>
-          <div ref={videoContainerRef} className="relative min-w-0 flex-1 overflow-hidden bg-black" />
-          <StageVideoTile
-            participant={layout.secondary}
-            className="h-full w-1/3 shrink-0 border-white/30"
-          />
-        </div>
       ) : (
         <>
           <div ref={videoContainerRef} className="absolute inset-0" />
           {layout.mode === "pip" && layout.secondary && (
             <StageVideoTile
               participant={layout.secondary}
-              className={`absolute z-10 aspect-video rounded-md border border-white/30 shadow-xl ${pipSize(layout.pip?.size)} ${pipPosition(layout.pip)}`}
+              className={`absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl ${pipSize(layout.pip?.size)} ${pipPosition(layout.pip)}`}
             />
           )}
         </>
