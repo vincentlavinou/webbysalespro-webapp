@@ -6,7 +6,6 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useRef,
-  type CSSProperties,
 } from "react";
 import { WebinarMainLayoutLoading } from "@/broadcast/components";
 import { getSessionAction } from "@/webinar/service/action";
@@ -61,12 +60,10 @@ function StageVideoTile({
   participant,
   className,
   muted = false,
-  style,
 }: {
   participant: WebiSalesProParticipant;
   className?: string;
   muted?: boolean;
-  style?: CSSProperties;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -92,7 +89,7 @@ function StageVideoTile({
   const name = participant.participant.attributes?.name;
 
   return (
-    <div className={`relative overflow-hidden bg-black ${className ?? ""}`} style={style}>
+    <div className={`relative overflow-hidden bg-black ${className ?? ""}`}>
       <video
         ref={videoRef}
         autoPlay
@@ -131,12 +128,17 @@ function pipPosition(
   pip?: { placement: "overlay" | "docked"; corner?: string; side?: string },
 ) {
   const corner = normalizePipCorner(pip?.corner);
-  const vertical = corner.startsWith("top") ? { top: "0.75rem" } : { bottom: "0.75rem" };
-  const horizontal = corner.endsWith("left")
-    ? { left: "0.75rem" }
-    : { right: "0.75rem" };
 
-  return { ...vertical, ...horizontal };
+  switch (corner) {
+    case "top_left":
+      return "left-3 top-3";
+    case "top_right":
+      return "right-3 top-3";
+    case "bottom_left":
+      return "bottom-3 left-3";
+    case "bottom_right":
+      return "bottom-3 right-3";
+  }
 }
 
 function pipSize(size?: "small" | "medium" | "large") {
@@ -328,8 +330,7 @@ export const AttendeeStageViewer = forwardRef<
             <StageVideoTile
               participant={layout.secondary}
               muted={secondaryVideoMuted}
-              className={`absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl ${pipSize(layout.pip?.size)}`}
-              style={pipPosition(layout.pip)}
+              className={`absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl ${pipSize(layout.pip?.size)} ${pipPosition(layout.pip)}`}
             />
           )}
         </>
