@@ -50,6 +50,20 @@ function fallbackOrder(participants: WebiSalesProParticipant[]) {
     });
 }
 
+function legacyFallbackOrder(participants: WebiSalesProParticipant[]) {
+  return participants
+    .filter(isRenderable)
+    .sort((a, b) => {
+      const aHost = role(a) === "host" ? 0 : 1;
+      const bHost = role(b) === "host" ? 0 : 1;
+      if (aHost !== bHost) return aHost - bHost;
+
+      const aCamera = kind(a) === "camera" ? 0 : 1;
+      const bCamera = kind(b) === "camera" ? 0 : 1;
+      return aCamera - bCamera;
+    });
+}
+
 function findLive(
   participants: WebiSalesProParticipant[],
   participantId: string,
@@ -70,10 +84,11 @@ function resolveFeatured(
 export function resolveStageLayout(
   definition: StageStateDefinition | undefined,
   participants: WebiSalesProParticipant[],
+  stageStateEnabled = Boolean(definition),
 ): ResolvedStageLayout {
   const liveParticipants = participants.filter(isRenderable);
-  if (!definition) {
-    return { mode: "solo", main: fallbackOrder(participants)[0], grid: liveParticipants };
+  if (!stageStateEnabled || !definition) {
+    return { mode: "solo", main: legacyFallbackOrder(participants)[0], grid: liveParticipants };
   }
 
   if (definition.mode === "grid") {

@@ -58,7 +58,10 @@ export function PersistentStagePlaybackProvider({
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
   const [stageDefinition, setStageDefinition] = useState<StageStateDefinition | undefined>(
-    initialStageState?.definition,
+    initialStageState?.applies_to_attendees ? initialStageState.definition : undefined,
+  );
+  const [stageStateEnabled, setStageStateEnabled] = useState(
+    initialStageState?.applies_to_attendees === true,
   );
   const lastAppliedRevisionRef = useRef(initialStageState?.revision ?? -1);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
@@ -66,8 +69,8 @@ export function PersistentStagePlaybackProvider({
   const [aspectRatio, setAspectRatio] = useState("aspect-video");
 
   const layout = useMemo(
-    () => resolveStageLayout(stageDefinition, participants),
-    [stageDefinition, participants],
+    () => resolveStageLayout(stageDefinition, participants, stageStateEnabled),
+    [stageDefinition, participants, stageStateEnabled],
   );
   const mainParticipant = layout.main;
   const mainParticipantHasActiveVideo = useMemo(
@@ -82,6 +85,8 @@ export function PersistentStagePlaybackProvider({
   const applyStageState = useCallback((state: StageState) => {
     if (state.session_id !== sessionId || state.revision <= lastAppliedRevisionRef.current) return;
     lastAppliedRevisionRef.current = state.revision;
+    if (!state.applies_to_attendees) return;
+    setStageStateEnabled(true);
     setStageDefinition(state.definition);
   }, [sessionId]);
 
@@ -393,6 +398,7 @@ export function PersistentStagePlaybackProvider({
         participantName,
         participants,
         layout,
+        stageStateEnabled,
         stageDefinition,
         surfaceMode,
         aspectRatio,

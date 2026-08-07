@@ -14,6 +14,7 @@ export type PersistentStagePlaybackState = {
   mainParticipant: WebiSalesProParticipant | undefined;
   participants: WebiSalesProParticipant[];
   layout: ResolvedStageLayout;
+  stageStateEnabled: boolean;
   stageDefinition?: StageStateDefinition;
   mainParticipantHasActiveVideo: boolean;
   participantName: string | undefined;

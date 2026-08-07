@@ -59,9 +59,11 @@ function StageParticipantFallback({
 function StageVideoTile({
   participant,
   className,
+  muted = false,
 }: {
   participant: WebiSalesProParticipant;
   className?: string;
+  muted?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -71,17 +73,18 @@ function StageVideoTile({
 
     const tracks = participant.streams
       .map(({ mediaStreamTrack }) => mediaStreamTrack)
-      .filter((track) => track.kind === "video" || track.kind === "audio");
+      .filter((track) => track.kind === "video" || (!muted && track.kind === "audio"));
     const stream = new MediaStream(tracks);
     video.srcObject = stream;
-    video.muted = true;
+    video.muted = muted;
+    video.defaultMuted = muted;
     void video.play().catch(() => {});
 
     return () => {
       video.pause();
       video.srcObject = null;
     };
-  }, [participant]);
+  }, [muted, participant]);
 
   const name = participant.participant.attributes?.name;
 
@@ -91,7 +94,7 @@ function StageVideoTile({
         ref={videoRef}
         autoPlay
         playsInline
-        muted
+        muted={muted}
         className="h-full w-full object-contain"
       />
       {typeof name === "string" && name.trim() && (
@@ -139,12 +142,15 @@ export const AttendeeStageViewer = forwardRef<
     mainParticipantHasActiveVideo,
     participantName,
     layout,
+    stageStateEnabled,
     surfaceMode,
     aspectRatio,
     reconnectStage,
     handleStartPlayback,
     handleUnmute,
   } = usePersistentStagePlayback();
+
+  const secondaryVideoMuted = surfaceMode !== "playing";
 
   const { enterFullscreen, exitFullscreen } = useFullscreen({
     videoRef,
@@ -274,23 +280,34 @@ export const AttendeeStageViewer = forwardRef<
       onPointerUp={toggleControls}
       style={{ touchAction: "manipulation" }}
     >
-      {layout.mode === "grid" ? (
+      {stageStateEnabled && layout.mode === "grid" ? (
         <div className="grid h-full w-full grid-cols-1 gap-1 bg-black sm:grid-cols-2">
           <div ref={videoContainerRef} className="relative min-h-0 overflow-hidden bg-black" />
           {layout.grid.slice(1).map((participant) => (
             <StageVideoTile
               key={participant.participant.id}
               participant={participant}
+              muted={secondaryVideoMuted}
               className="min-h-0"
             />
           ))}
         </div>
+      ) : stageStateEnabled && layout.mode === "pip" && layout.secondary && layout.pip?.placement === "docked" ? (
+        <div className={`flex h-full w-full ${layout.pip.side === "left" ? "flex-row-reverse" : "flex-row"}`}>
+          <div ref={videoContainerRef} className="relative min-w-0 flex-1 overflow-hidden bg-black" />
+          <StageVideoTile
+            participant={layout.secondary}
+            muted={secondaryVideoMuted}
+            className="h-full w-1/3 shrink-0 border-white/30"
+          />
+        </div>
       ) : (
         <>
           <div ref={videoContainerRef} className="absolute inset-0" />
-          {layout.mode === "pip" && layout.secondary && (
+          {stageStateEnabled && layout.mode === "pip" && layout.secondary && (
             <StageVideoTile
               participant={layout.secondary}
+              muted={secondaryVideoMuted}
               className={`absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl ${pipSize(layout.pip?.size)} ${pipPosition(layout.pip)}`}
             />
           )}
