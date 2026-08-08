@@ -61,10 +61,14 @@ function StageVideoTile({
   participant,
   className,
   muted = false,
+  showName = true,
+  fill = "contain",
 }: {
   participant: WebiSalesProParticipant;
   className?: string;
   muted?: boolean;
+  showName?: boolean;
+  fill?: "contain" | "cover";
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -89,6 +93,12 @@ function StageVideoTile({
 
   const name = participant.participant.attributes?.name;
 
+  // Cropping a camera to fill its cell costs a little headroom; cropping a
+  // screen share costs whatever sits outside the centre — slide edges, terminal
+  // text, the thing being demoed — so a share stays letterboxed regardless.
+  const isScreenShare = participant.participant.attributes?.kind === "screen";
+  const objectFit = fill === "cover" && !isScreenShare ? "object-cover" : "object-contain";
+
   return (
     // cn() must merge here: the overlay PiP passes `absolute`, and a plain
     // template string would lose to the `relative` default because Tailwind
@@ -99,9 +109,9 @@ function StageVideoTile({
         autoPlay
         playsInline
         muted={muted}
-        className="h-full w-full object-contain"
+        className={cn("h-full w-full", objectFit)}
       />
-      {typeof name === "string" && name.trim() && (
+      {showName && typeof name === "string" && name.trim() && (
         <div className="absolute bottom-0 left-0 w-full truncate bg-black/60 px-2 py-1 text-xs text-white">
           {name}
         </div>
@@ -148,14 +158,17 @@ function pipPosition(
   }
 }
 
-// Percentages track the host composite's geometry: its default targetHeight of
-// 140 on a 720p canvas is ~19% of the stage, and resolvePipRect caps a PiP at
-// 35% of canvas height. The tile is aspect-video inside a 16:9 surface, so a
-// width percentage equals that height percentage. min-w matches MIN_PIP_WIDTH.
+// Sizes are ordered off the host composite's geometry (small/medium/large track
+// its targetHeight steps up to resolvePipRect's 35%-of-canvas cap), but the
+// attendee overlay runs deliberately narrower than the burned-in canvas PiP:
+// this tile floats on top of the main video instead of being composited into
+// it, so every extra percent is main-stage footage the viewer loses. The tile is
+// aspect-video inside a 16:9 surface, so a width percentage is also its height
+// percentage. min-w keeps it legible on phones without eating the small screen.
 function pipSize(size?: "small" | "medium" | "large") {
-  if (size === "large") return "w-[35%] min-w-[96px] max-w-[420px]";
-  if (size === "medium") return "w-[26%] min-w-[96px] max-w-[320px]";
-  return "w-[18%] min-w-[96px] max-w-[240px]";
+  if (size === "large") return "w-[26%] min-w-[72px] max-w-[320px]";
+  if (size === "medium") return "w-[20%] min-w-[64px] max-w-[240px]";
+  return "w-[14%] min-w-[56px] max-w-[180px]";
 }
 
 export const AttendeeStageViewer = forwardRef<
@@ -306,21 +319,36 @@ export const AttendeeStageViewer = forwardRef<
     return <StageParticipantFallback participantName={participantName} />;
   }
 
+  const isGridLayout = stageStateEnabled && layout.mode === "grid";
+  const gridTileCount = layout.grid.length;
+
+  // A 16:9 surface has no vertical room to split: stacking tiles in the single
+  // mobile column letterboxes each one down to a sliver. Grid gets a taller
+  // surface on phones (still capped by max-h-[80vh]) and a second column past
+  // two tiles, which is where one column starts costing the most height. The
+  // surface ratio only frames the mosaic here — each tile still contains its own
+  // video — so grid ignores the source aspect the solo/PiP surfaces follow.
+  const surfaceAspect =
+    isGridLayout && gridTileCount > 1 ? "aspect-[4/3] sm:aspect-video" : aspectRatio;
+  const gridColumns =
+    gridTileCount > 2 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2";
+
   return (
     <div
       ref={playerSurfaceRef}
-      className={`relative w-full overflow-hidden rounded-md border bg-black max-h-[80vh] ${aspectRatio}`}
+      className={`relative w-full overflow-hidden rounded-md border bg-black max-h-[80vh] ${surfaceAspect}`}
       onPointerUp={toggleControls}
       style={{ touchAction: "manipulation" }}
     >
-      {stageStateEnabled && layout.mode === "grid" ? (
-        <div className="grid h-full w-full grid-cols-1 gap-1 bg-black sm:grid-cols-2">
+      {isGridLayout ? (
+        <div className={`grid h-full w-full gap-1 bg-black ${gridColumns}`}>
           <div ref={videoContainerRef} className="relative min-h-0 overflow-hidden bg-black" />
           {layout.grid.slice(1).map((participant) => (
             <StageVideoTile
               key={participant.participant.id}
               participant={participant}
               muted={secondaryVideoMuted}
+              fill="cover"
               className="min-h-0"
             />
           ))}
@@ -331,6 +359,7 @@ export const AttendeeStageViewer = forwardRef<
           <StageVideoTile
             participant={layout.secondary}
             muted={secondaryVideoMuted}
+            showName={false}
             className="h-full w-1/3 shrink-0 border-white/30"
           />
         </div>
@@ -341,6 +370,7 @@ export const AttendeeStageViewer = forwardRef<
             <StageVideoTile
               participant={layout.secondary}
               muted={secondaryVideoMuted}
+              showName={false}
               className={cn(
                 "absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl",
                 pipSize(layout.pip?.size),
