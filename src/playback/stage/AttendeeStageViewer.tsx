@@ -180,6 +180,20 @@ export const AttendeeStageViewer = forwardRef<
     },
   });
 
+  const isGallery = layout.shape === "gallery";
+  const hasRail = layout.shape === "feature" && layout.rail.length > 0;
+  const isDockedRail = hasRail && layout.placement === "docked";
+  const isFloatingRail = hasRail && layout.placement === "floating";
+
+  /**
+   * Which of the three container divs below the persistent <video> belongs to.
+   *
+   * The attachment effect keys on this rather than on `layout.shape`, because a
+   * docked rail and a full-bleed main tile are both the `feature` shape yet render
+   * different containers.
+   */
+  const mainTileSlot = isGallery ? "gallery" : isDockedRail ? "docked" : "bleed";
+
   // The stage viewer swaps between loading/fallback/live surfaces, so the
   // attachment effect must re-run when the active video surface appears.
   useLayoutEffect(() => {
@@ -192,11 +206,15 @@ export const AttendeeStageViewer = forwardRef<
     // same rule as the tiles beside it — it was pinned to `contain` while its
     // neighbours cropped, which made tile one the odd one out in every gallery.
     // A gallery only forms when no source is live, so its tiles are all cameras.
-    const objectFit = layout.shape === "gallery" ? "cover" : "contain";
+    const objectFit = mainTileSlot === "gallery" ? "cover" : "contain";
     video.style.cssText =
       `position:absolute;inset:0;width:100%;height:100%;object-fit:${objectFit};pointer-events:none;`;
     if (video.parentElement !== container) {
       container.appendChild(video);
+      // Re-appending can leave the element paused in some browsers. The provider
+      // auto-resumes on a pause event, but nudging it here recovers immediately
+      // rather than after a round trip through that handler.
+      void video.play().catch(() => {});
     }
 
     return () => {
@@ -210,7 +228,15 @@ export const AttendeeStageViewer = forwardRef<
     hiddenHostRef,
     isConnected,
     mainParticipantHasActiveVideo,
-    layout.shape,
+    // `mainTileSlot`, not `layout.shape`: the three branches below each render
+    // their own container div, and two of them share a shape. Keying on shape
+    // alone meant that going from full-bleed content to content-plus-rail — a
+    // camera simply turning on — swapped the container without re-running this,
+    // leaving the one persistent <video> parented to a div React had already
+    // removed. The main stage went black while the rail, which renders its own
+    // elements, kept showing content. That is why content only appeared once it
+    // was in the rail.
+    mainTileSlot,
     videoRef,
   ]);
 
@@ -291,14 +317,9 @@ export const AttendeeStageViewer = forwardRef<
     return <StageParticipantFallback participantName={participantName} />;
   }
 
-  const isGallery = layout.shape === "gallery";
-  const galleryTileCount = layout.tiles.length;
-  const hasRail = layout.shape === "feature" && layout.rail.length > 0;
-  const isDockedRail = hasRail && layout.placement === "docked";
-  const isFloatingRail = hasRail && layout.placement === "floating";
-
   // Every proportion below comes from stage-geometry, shared with the console, so
   // a host reading their stage is reading this one.
+  const galleryTileCount = layout.tiles.length;
   const surfaceAspect = stageSurfaceAspect(layout.shape, galleryTileCount, aspectRatio);
 
   return (
