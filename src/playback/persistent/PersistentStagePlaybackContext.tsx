@@ -3,7 +3,7 @@
 import { createContext } from "react";
 import type { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
 import type { StageStateDefinition } from "@/broadcast/service/type";
-import type { ResolvedStageLayout } from "../stage/stage-state";
+import type { ResolvedStageArrangement } from "../stage/stage-state";
 
 export type StageSurfaceMode = "loading" | "blocked" | "playing" | "playing-muted";
 
@@ -13,7 +13,7 @@ export type PersistentStagePlaybackState = {
   isConnected: boolean;
   mainParticipant: WebiSalesProParticipant | undefined;
   participants: WebiSalesProParticipant[];
-  layout: ResolvedStageLayout;
+  layout: ResolvedStageArrangement;
   stageStateEnabled: boolean;
   stageDefinition?: StageStateDefinition;
   mainParticipantHasActiveVideo: boolean;

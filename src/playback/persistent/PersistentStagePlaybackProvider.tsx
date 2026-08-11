@@ -17,7 +17,7 @@ import type { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
 import { getAttendeeStageStateAction } from "@/broadcast/service/action";
 import { onAudienceChatEvent } from "@/audience-events/service/event-emitter";
 import { onPlaybackMetadata } from "@/emitter/playback/playbackEventEmitter";
-import { resolveStageLayout, hasActiveVideo, isPublishingRole } from "../stage/stage-state";
+import { resolveStageArrangement, hasActiveVideo, isPublishingRole } from "../stage/stage-state";
 import { useMediaSession } from "../player/ivs/hooks/use-media-session";
 import { useVisibilityResilience } from "../player/ivs/hooks/use-visibility-resilience";
 import {
@@ -69,7 +69,7 @@ export function PersistentStagePlaybackProvider({
   const [aspectRatio, setAspectRatio] = useState("aspect-video");
 
   const layout = useMemo(
-    () => resolveStageLayout(stageDefinition, participants, stageStateEnabled),
+    () => resolveStageArrangement(stageDefinition, participants, stageStateEnabled),
     [stageDefinition, participants, stageStateEnabled],
   );
   const mainParticipant = layout.main;

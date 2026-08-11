@@ -120,56 +120,15 @@ function StageVideoTile({
   );
 }
 
-type PipCorner = "top_left" | "top_right" | "bottom_left" | "bottom_right";
-
-const DEFAULT_PIP_CORNER: PipCorner = "bottom_right";
-
-function normalizePipCorner(corner?: string): PipCorner {
-  const normalized = corner?.trim().toLowerCase().replace(/-/g, "_");
-
-  switch (normalized) {
-    case "top_left":
-    case "top_right":
-    case "bottom_left":
-    case "bottom_right":
-      return normalized;
-    default:
-      return DEFAULT_PIP_CORNER;
-  }
-}
-
-function pipPosition(
-  pip?: { placement: "overlay" | "docked"; corner?: string; side?: string },
-) {
-  const corner = normalizePipCorner(pip?.corner);
-
-  // 4px inset mirrors the host composite's pipMargin of 4 (admin
-  // broadcast/service/video.ts), so the attendee overlay hugs the edge the same
-  // way the burned-in canvas PiP does.
-  switch (corner) {
-    case "top_left":
-      return "left-1 top-1";
-    case "top_right":
-      return "right-1 top-1";
-    case "bottom_left":
-      return "bottom-1 left-1";
-    case "bottom_right":
-      return "bottom-1 right-1";
-  }
-}
-
-// Sizes are ordered off the host composite's geometry (small/medium/large track
-// its targetHeight steps up to resolvePipRect's 35%-of-canvas cap), but the
-// attendee overlay runs deliberately narrower than the burned-in canvas PiP:
-// this tile floats on top of the main video instead of being composited into
-// it, so every extra percent is main-stage footage the viewer loses. The tile is
-// aspect-video inside a 16:9 surface, so a width percentage is also its height
-// percentage. min-w keeps it legible on phones without eating the small screen.
-function pipSize(size?: "small" | "medium" | "large") {
-  if (size === "large") return "w-[26%] min-w-[72px] max-w-[320px]";
-  if (size === "medium") return "w-[20%] min-w-[64px] max-w-[240px]";
-  return "w-[14%] min-w-[56px] max-w-[180px]";
-}
+/*
+ * The corner/size helpers this file used to carry are gone with PiP mode.
+ *
+ * A rail is a column at a side, so `placement` and `side` off the arrangement are
+ * the only geometry left. A floating rail runs deliberately narrow (w-1/5) for the
+ * same reason the old overlay PiP did: it sits on top of the main video rather
+ * than being composited into it, so every extra percent is main-stage footage the
+ * viewer loses.
+ */
 
 export const AttendeeStageViewer = forwardRef<
   AttendeeStageViewerHandle,
@@ -187,8 +146,10 @@ export const AttendeeStageViewer = forwardRef<
     mainParticipant,
     mainParticipantHasActiveVideo,
     participantName,
+    // The arrangement already folded the legacy path in, so nothing here needs
+    // to ask whether the definition applies — every shape it returns is
+    // renderable as-is.
     layout,
-    stageStateEnabled,
     surfaceMode,
     aspectRatio,
     reconnectStage,
@@ -238,7 +199,7 @@ export const AttendeeStageViewer = forwardRef<
     hiddenHostRef,
     isConnected,
     mainParticipantHasActiveVideo,
-    layout.mode,
+    layout.shape,
     videoRef,
   ]);
 
@@ -319,19 +280,22 @@ export const AttendeeStageViewer = forwardRef<
     return <StageParticipantFallback participantName={participantName} />;
   }
 
-  const isGridLayout = stageStateEnabled && layout.mode === "grid";
-  const gridTileCount = layout.grid.length;
+  const isGallery = layout.shape === "gallery";
+  const galleryTileCount = layout.tiles.length;
+  const hasRail = layout.shape === "feature" && layout.rail.length > 0;
+  const isDockedRail = hasRail && layout.placement === "docked";
+  const isFloatingRail = hasRail && layout.placement === "floating";
 
   // A 16:9 surface has no vertical room to split: stacking tiles in the single
-  // mobile column letterboxes each one down to a sliver. Grid gets a taller
+  // mobile column letterboxes each one down to a sliver. A gallery gets a taller
   // surface on phones (still capped by max-h-[80vh]) and a second column past
   // two tiles, which is where one column starts costing the most height. The
-  // surface ratio only frames the mosaic here — each tile still contains its own
-  // video — so grid ignores the source aspect the solo/PiP surfaces follow.
+  // surface ratio only frames the mosaic there — each tile still contains its own
+  // video — so a gallery ignores the source aspect the feature surface follows.
   const surfaceAspect =
-    isGridLayout && gridTileCount > 1 ? "aspect-[4/3] sm:aspect-video" : aspectRatio;
-  const gridColumns =
-    gridTileCount > 2 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2";
+    isGallery && galleryTileCount > 1 ? "aspect-[4/3] sm:aspect-video" : aspectRatio;
+  const galleryColumns =
+    galleryTileCount > 2 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2";
 
   return (
     <div
@@ -340,10 +304,12 @@ export const AttendeeStageViewer = forwardRef<
       onPointerUp={toggleControls}
       style={{ touchAction: "manipulation" }}
     >
-      {isGridLayout ? (
-        <div className={`grid h-full w-full gap-1 bg-black ${gridColumns}`}>
+      {isGallery ? (
+        <div className={`grid h-full w-full gap-1 bg-black ${galleryColumns}`}>
+          {/* The persistent element carries the main participant's tracks, so it
+              is always tile one rather than being mapped with the rest. */}
           <div ref={videoContainerRef} className="relative min-h-0 overflow-hidden bg-black" />
-          {layout.grid.slice(1).map((participant) => (
+          {layout.tiles.slice(1).map((participant) => (
             <StageVideoTile
               key={participant.participant.id}
               participant={participant}
@@ -353,30 +319,41 @@ export const AttendeeStageViewer = forwardRef<
             />
           ))}
         </div>
-      ) : stageStateEnabled && layout.mode === "pip" && layout.secondary && layout.pip?.placement === "docked" ? (
-        <div className={`flex h-full w-full ${layout.pip.side === "left" ? "flex-row-reverse" : "flex-row"}`}>
+      ) : isDockedRail ? (
+        <div className={`flex h-full w-full ${layout.side === "left" ? "flex-row-reverse" : "flex-row"}`}>
           <div ref={videoContainerRef} className="relative min-w-0 flex-1 overflow-hidden bg-black" />
-          <StageVideoTile
-            participant={layout.secondary}
-            muted={secondaryVideoMuted}
-            showName={false}
-            className="h-full w-1/3 shrink-0 border-white/30"
-          />
+          <div className="flex h-full w-1/3 shrink-0 flex-col gap-1">
+            {layout.rail.map((participant) => (
+              <StageVideoTile
+                key={participant.participant.id}
+                participant={participant}
+                muted={secondaryVideoMuted}
+                showName={false}
+                className="min-h-0 flex-1 border-white/30"
+              />
+            ))}
+          </div>
         </div>
       ) : (
         <>
           <div ref={videoContainerRef} className="absolute inset-0" />
-          {stageStateEnabled && layout.mode === "pip" && layout.secondary && (
-            <StageVideoTile
-              participant={layout.secondary}
-              muted={secondaryVideoMuted}
-              showName={false}
+          {isFloatingRail && (
+            <div
               className={cn(
-                "absolute z-10 aspect-video rounded-lg border border-white/30 shadow-2xl",
-                pipSize(layout.pip?.size),
-                pipPosition(layout.pip),
+                "absolute top-2 z-10 flex max-h-[calc(100%-1rem)] w-1/5 min-w-[64px] flex-col gap-1 overflow-y-auto",
+                layout.side === "left" ? "left-2" : "right-2",
               )}
-            />
+            >
+              {layout.rail.map((participant) => (
+                <StageVideoTile
+                  key={participant.participant.id}
+                  participant={participant}
+                  muted={secondaryVideoMuted}
+                  showName={false}
+                  className="aspect-video shrink-0 rounded-lg border border-white/30 shadow-2xl"
+                />
+              ))}
+            </div>
           )}
         </>
       )}

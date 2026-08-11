@@ -74,23 +74,35 @@ export type RealtimeAttendeeStreamConfig = {
 export type StageParticipantRole = "host" | "cohost" | "spectator" | string;
 export type StageParticipantKind = "camera" | "screen" | string;
 
-export type StageStateDefinition =
-  | { mode: "solo"; featured: string }
-  | {
-      mode: "pip";
-      featured: string;
-      secondary: {
-        participant_id: string;
-        placement: "overlay" | "docked";
-        corner?: "top_left" | "top_right" | "bottom_left" | "bottom_right";
-        side?: "left" | "right";
-        size?: "small" | "medium" | "large";
-      };
-    }
-  | {
-      mode: "grid";
-      grid: { order: string[]; max_tiles?: number };
-    };
+export type StageSide = "left" | "right";
+export type RailPlacement = "docked" | "floating";
+
+export type StageRailSettings = {
+  placement?: RailPlacement;
+  side?: StageSide;
+  max_tiles?: number;
+};
+
+/**
+ * The stage's stored *intent* — three scalars, no participant list.
+ *
+ * Clients derive the arrangement from this plus who is actually publishing video
+ * (see `resolveStageArrangement` in src/playback/stage/stage-state.ts), which is
+ * why nothing here names a camera: one turning on or off changes the picture with
+ * no event at all.
+ *
+ * `content` is the ownership lock for the stage's single content slot; `feature`
+ * is presentation only. An attendee never writes either, but must read both:
+ * `feature` can name a camera while `content` still names a running presentation,
+ * which is the "spotlight with the slide in the rail" case.
+ */
+export type StageStateDefinition = {
+  /** Source participant holding the content slot, or "" for none. */
+  content: string;
+  /** Participant on the main tile, or "" for automatic. */
+  feature: string;
+  rail?: StageRailSettings;
+};
 
 export type StageState = {
   session_id: string;
