@@ -18,6 +18,19 @@ import { PlaybackStatus } from "../context/PlaybackRuntimeContext";
 import { useFullscreen } from "../player/ivs/hooks/use-fullscreen";
 import { useRouter } from "next/navigation";
 import type { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
+import {
+  DOCKED_RAIL,
+  DOCKED_RAIL_TILE,
+  FLOATING_RAIL_TILE,
+  MAIN_TILE_FILL,
+  dockedRowClass,
+  floatingRailClass,
+  galleryGridClass,
+  showTileName,
+  stageSurfaceAspect,
+  tileObjectFit,
+  type StageTileSlot,
+} from "./stage-geometry";
 
 type AttendeeStageViewerProps = {
   sessionId: string;
@@ -61,14 +74,12 @@ function StageVideoTile({
   participant,
   className,
   muted = false,
-  showName = true,
-  fill = "contain",
+  slot = "main",
 }: {
   participant: WebiSalesProParticipant;
   className?: string;
   muted?: boolean;
-  showName?: boolean;
-  fill?: "contain" | "cover";
+  slot?: StageTileSlot;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -92,15 +103,10 @@ function StageVideoTile({
   }, [muted, participant]);
 
   const name = participant.participant.attributes?.name;
-
-  // Cropping a camera to fill its cell costs a little headroom; cropping a
-  // screen share costs whatever sits outside the centre — slide edges, terminal
-  // text, the thing being demoed — so a share stays letterboxed regardless.
-  const isScreenShare = participant.participant.attributes?.kind === "screen";
-  const objectFit = fill === "cover" && !isScreenShare ? "object-cover" : "object-contain";
+  const objectFit = tileObjectFit(participant.participant.attributes?.kind, slot);
 
   return (
-    // cn() must merge here: the overlay PiP passes `absolute`, and a plain
+    // cn() must merge here: a floating rail tile passes `absolute`, and a plain
     // template string would lose to the `relative` default because Tailwind
     // emits `.relative` after `.absolute`, not because of class order.
     <div className={cn("relative overflow-hidden bg-black", className)}>
@@ -111,7 +117,7 @@ function StageVideoTile({
         muted={muted}
         className={cn("h-full w-full", objectFit)}
       />
-      {showName && typeof name === "string" && name.trim() && (
+      {showTileName(slot) && typeof name === "string" && name.trim() && (
         <div className="absolute bottom-0 left-0 w-full truncate bg-black/60 px-2 py-1 text-xs text-white">
           {name}
         </div>
@@ -182,8 +188,13 @@ export const AttendeeStageViewer = forwardRef<
     const host = hiddenHostRef.current;
     if (!video || !container) return;
 
+    // The persistent element is gallery tile one, so its fit has to follow the
+    // same rule as the tiles beside it — it was pinned to `contain` while its
+    // neighbours cropped, which made tile one the odd one out in every gallery.
+    // A gallery only forms when no source is live, so its tiles are all cameras.
+    const objectFit = layout.shape === "gallery" ? "cover" : "contain";
     video.style.cssText =
-      "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;";
+      `position:absolute;inset:0;width:100%;height:100%;object-fit:${objectFit};pointer-events:none;`;
     if (video.parentElement !== container) {
       container.appendChild(video);
     }
@@ -286,16 +297,9 @@ export const AttendeeStageViewer = forwardRef<
   const isDockedRail = hasRail && layout.placement === "docked";
   const isFloatingRail = hasRail && layout.placement === "floating";
 
-  // A 16:9 surface has no vertical room to split: stacking tiles in the single
-  // mobile column letterboxes each one down to a sliver. A gallery gets a taller
-  // surface on phones (still capped by max-h-[80vh]) and a second column past
-  // two tiles, which is where one column starts costing the most height. The
-  // surface ratio only frames the mosaic there — each tile still contains its own
-  // video — so a gallery ignores the source aspect the feature surface follows.
-  const surfaceAspect =
-    isGallery && galleryTileCount > 1 ? "aspect-[4/3] sm:aspect-video" : aspectRatio;
-  const galleryColumns =
-    galleryTileCount > 2 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2";
+  // Every proportion below comes from stage-geometry, shared with the console, so
+  // a host reading their stage is reading this one.
+  const surfaceAspect = stageSurfaceAspect(layout.shape, galleryTileCount, aspectRatio);
 
   return (
     <div
@@ -305,7 +309,7 @@ export const AttendeeStageViewer = forwardRef<
       style={{ touchAction: "manipulation" }}
     >
       {isGallery ? (
-        <div className={`grid h-full w-full gap-1 bg-black ${galleryColumns}`}>
+        <div className={galleryGridClass(galleryTileCount)}>
           {/* The persistent element carries the main participant's tracks, so it
               is always tile one rather than being mapped with the rest. */}
           <div ref={videoContainerRef} className="relative min-h-0 overflow-hidden bg-black" />
@@ -314,22 +318,22 @@ export const AttendeeStageViewer = forwardRef<
               key={participant.participant.id}
               participant={participant}
               muted={secondaryVideoMuted}
-              fill="cover"
+              slot="gallery"
               className="min-h-0"
             />
           ))}
         </div>
       ) : isDockedRail ? (
-        <div className={`flex h-full w-full ${layout.side === "left" ? "flex-row-reverse" : "flex-row"}`}>
-          <div ref={videoContainerRef} className="relative min-w-0 flex-1 overflow-hidden bg-black" />
-          <div className="flex h-full w-1/3 shrink-0 flex-col gap-1">
+        <div className={dockedRowClass(layout.side)}>
+          <div ref={videoContainerRef} className={MAIN_TILE_FILL} />
+          <div className={DOCKED_RAIL}>
             {layout.rail.map((participant) => (
               <StageVideoTile
                 key={participant.participant.id}
                 participant={participant}
                 muted={secondaryVideoMuted}
-                showName={false}
-                className="min-h-0 flex-1 border-white/30"
+                slot="rail"
+                className={DOCKED_RAIL_TILE}
               />
             ))}
           </div>
@@ -338,19 +342,14 @@ export const AttendeeStageViewer = forwardRef<
         <>
           <div ref={videoContainerRef} className="absolute inset-0" />
           {isFloatingRail && (
-            <div
-              className={cn(
-                "absolute top-2 z-10 flex max-h-[calc(100%-1rem)] w-1/5 min-w-[64px] flex-col gap-1 overflow-y-auto",
-                layout.side === "left" ? "left-2" : "right-2",
-              )}
-            >
+            <div className={cn(floatingRailClass(layout.side))}>
               {layout.rail.map((participant) => (
                 <StageVideoTile
                   key={participant.participant.id}
                   participant={participant}
                   muted={secondaryVideoMuted}
-                  showName={false}
-                  className="aspect-video shrink-0 rounded-lg border border-white/30 shadow-2xl"
+                  slot="rail"
+                  className={FLOATING_RAIL_TILE}
                 />
               ))}
             </div>
