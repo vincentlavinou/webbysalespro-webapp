@@ -70,19 +70,32 @@ export function dockedRowClass(side: 'left' | 'right') {
  */
 export const MAIN_TILE_FILL = 'relative min-w-0 flex-1 overflow-hidden bg-black'
 
-/** A docked rail: a third of the width, tiles splitting its height. */
-export const DOCKED_RAIL = `flex h-full w-1/3 shrink-0 flex-col ${GAP}`
-export const DOCKED_RAIL_TILE = 'min-h-0 flex-1 border-white/30'
+/**
+ * How wide a rail is, docked or floating.
+ *
+ * One value for both. A rail is a glance at who else is on the call; the main
+ * tile is what the viewer came for, so the rail takes as little width as it can
+ * read at. The docked rail used to take a third — the same stage lost a visibly
+ * bigger bite of its main tile when a host docked the rail than when they
+ * floated it, for no reason the viewer could see.
+ */
+const RAIL_WIDTH = 'w-1/5 min-w-[64px]'
 
 /**
- * A floating rail: a narrow column laid over the main tile.
+ * A docked rail: the same narrow column as a floating one, beside the main tile
+ * rather than over it. Tiles keep their own aspect and the column scrolls, so a
+ * two-camera rail does not stretch each tile down half the stage.
+ */
+export const DOCKED_RAIL = `flex h-full ${RAIL_WIDTH} shrink-0 flex-col overflow-y-auto ${GAP}`
+export const DOCKED_RAIL_TILE = 'aspect-video shrink-0 overflow-hidden border-white/30'
+
+/**
+ * A floating rail: the rail laid over the main tile instead of beside it.
  *
- * Narrower than a docked rail on purpose — it covers main-stage footage rather
- * than taking space beside it, so every extra percent is content the viewer
- * loses. Height is capped so a full rail scrolls instead of running off the stage.
+ * Height is capped so a full rail scrolls instead of running off the stage.
  */
 export function floatingRailClass(side: 'left' | 'right') {
-  return `absolute top-2 z-10 flex max-h-[calc(100%-1rem)] w-1/5 min-w-[64px] flex-col overflow-y-auto ${GAP} ${side === 'left' ? 'left-2' : 'right-2'}`
+  return `absolute top-2 z-10 flex max-h-[calc(100%-1rem)] ${RAIL_WIDTH} flex-col overflow-y-auto ${GAP} ${side === 'left' ? 'left-2' : 'right-2'}`
 }
 export const FLOATING_RAIL_TILE = 'aspect-video shrink-0 overflow-hidden rounded-lg border border-white/30 shadow-2xl'
 
