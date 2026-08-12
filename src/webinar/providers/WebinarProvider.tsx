@@ -16,6 +16,7 @@ import { useRealtimeChannel } from "@/realtime";
 import { getSessionAction } from "../service/action";
 import { useAction } from "next-safe-action/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";
+import { captureApiErrorResponse } from "@/lib/error";
 import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-session";
 import { useAudienceEvent } from "@/audience-events/hooks/use-audience-event";
 import { webinarSessionUpdateAudienceEventSchema } from "../service/schema";
@@ -120,9 +121,15 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
 
         try {
             const res = await fire();
+            if (!res.ok) {
+                await captureApiErrorResponse(res, { operation: "record-session-event" });
+            }
             if (res.status >= 500) {
                 await new Promise((r) => setTimeout(r, 500));
-                await fire();
+                const retryResponse = await fire();
+                if (!retryResponse.ok) {
+                    await captureApiErrorResponse(retryResponse, { operation: "record-session-event-retry" });
+                }
             }
         } catch (e) {
             console.warn("[WebinarProvider] recordEventBeacon failed", e);

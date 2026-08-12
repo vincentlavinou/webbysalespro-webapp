@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { captureApiErrorResponse } from "@/lib/error";
 
 type HeaderLike = {
   get(name: string): string | null;
@@ -167,9 +168,8 @@ async function lookupExternalGeo(ip: string): Promise<AttendeeLocation | null> {
       signal: controller.signal,
     });
 
-    console.log(await response.clone().json())
-
     if (!response.ok) {
+      await captureApiErrorResponse(response, { operation: "geolocation-lookup" });
       // Still check rate limit headers on 429
       checkIpApiRateLimit(response);
       return null;

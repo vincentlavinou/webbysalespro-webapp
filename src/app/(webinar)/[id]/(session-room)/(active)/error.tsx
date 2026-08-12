@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { webinarAppUrl } from '@/webinar/service'
+import * as Sentry from '@sentry/nextjs'
 
 function getSessionIdFromPathname(pathname: string) {
   const [sessionId] = pathname.split('/').filter(Boolean)
@@ -12,6 +13,7 @@ function getSessionIdFromPathname(pathname: string) {
 }
 
 export default function ActiveSessionError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string }
@@ -19,6 +21,12 @@ export default function ActiveSessionError({
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+
+  useEffect(() => {
+    Sentry.captureException(error, {
+      tags: { area: 'active-session' },
+    })
+  }, [error])
 
   const liveRecoveryPath = useMemo(() => {
     const sessionId = getSessionIdFromPathname(pathname)

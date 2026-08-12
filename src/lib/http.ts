@@ -5,10 +5,13 @@ import {
   UnauthorizedError,
   fallbackErrorMessage,
   safeDecodeErrorPayload,
+  captureApiErrorResponse,
 } from "./error";
 
 export async function handleStatus(response: Response): Promise<Response> {
   if (response.ok) return response;
+
+  await captureApiErrorResponse(response);
 
   const { payload, decoded } = await safeDecodeErrorPayload(response);
 

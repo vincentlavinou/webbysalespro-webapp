@@ -3,6 +3,7 @@
 import { actionClient } from '@/lib/safe-action'
 import { clearAttendeeSessionCookie, getAttendeeSessionCookie, setAttendeeSessionCookie } from '@/lib/attendee-cookie'
 import { attendeeFetch } from '@/lib/attendee-fetch'
+import { captureApiErrorResponse } from '@/lib/error'
 import { handleStatus } from '@/lib/http'
 import { retryTransientRequest } from '@/lib/retry'
 import { ClaimRegistrantResponse, JoinResolveResponse, JoinSessionRefreshResponse } from './type'
@@ -77,6 +78,7 @@ export const refreshJoinSessionAction = actionClient
         )
 
         if (!response.ok) {
+            await captureApiErrorResponse(response, { operation: 'refresh-join-session' })
             if (response.status < 500) {
                 await clearAttendeeSessionCookie()
             }

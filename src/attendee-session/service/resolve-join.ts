@@ -2,6 +2,7 @@ import "server-only";
 
 import * as Sentry from "@sentry/nextjs";
 import { retryTransientRequest } from "@/lib/retry";
+import { captureApiErrorResponse } from "@/lib/error";
 
 import type { JoinResolveResponse } from "./type";
 
@@ -80,6 +81,7 @@ async function fetchJoinResolve(rawJoinToken: string, tokenHash: string): Promis
   );
 
   if (!response.ok) {
+    await captureApiErrorResponse(response, { operation: "join-resolve" });
     if (response.status >= 500) {
       Sentry.captureMessage("join resolve failed after retries", {
         level: "error",

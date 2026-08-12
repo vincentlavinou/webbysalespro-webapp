@@ -2,6 +2,7 @@ import { webinarApiUrl } from "@/webinar/service";
 import type { PublicQueryParams } from "@/webinar/service/action";
 import type { LandingPageRender } from "./types";
 import { cache } from "react";
+import { captureApiErrorResponse } from "@/lib/error";
 
 function createLandingPageQuery(query?: PublicQueryParams) {
   const params = new URLSearchParams();
@@ -20,7 +21,10 @@ const getPublicLandingPageCached = cache(async (webinarId: string, queryString: 
     { cache: "no-store" },
   );
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    await captureApiErrorResponse(response, { operation: "landing-page-render" });
+    return null;
+  }
   return response.json() as Promise<LandingPageRender>;
 });
 

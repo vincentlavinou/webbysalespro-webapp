@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { ApiError, safeDecodeErrorPayload } from '@/lib/error'
+import { ApiError, captureApiErrorResponse, safeDecodeErrorPayload } from '@/lib/error'
 import { retryTransientRequest } from '@/lib/retry'
 
 const SHORT_LINK_RESOLVE_TIMEOUT_MS = 5_000
@@ -50,6 +50,8 @@ export async function resolveShortLink(shortCode: string): Promise<ShortLinkReso
 
     return { status: 'resolved', url }
   }
+
+  await captureApiErrorResponse(response, { operation: 'short-link-resolve' })
 
   const { decoded, payload } = await safeDecodeErrorPayload(response)
   if (response.status === 404 && decoded && payload?.code === 'SL-001') {

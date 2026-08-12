@@ -7,6 +7,7 @@ import {
 } from './attendee-cookie'
 import { retryTransientRequest } from './retry'
 import { resolveJoin } from '@/attendee-session/service/resolve-join'
+import { captureApiErrorResponse } from '@/lib/error'
 
 const webinarApiUrl =
     process.env.WEBINAR_BASE_API_URL ??
@@ -46,6 +47,7 @@ async function performRefresh(
     )
 
     if (!res.ok) {
+        await captureApiErrorResponse(res, { operation: 'attendee-session-refresh' })
         await clearAttendeeSessionCookie()
         return null
     }
@@ -168,6 +170,10 @@ export async function attendeeFetch(
             ? await serverReResolve()
             : await serverRefreshToken()
         if (recoveredToken) return request(recoveredToken)
+    }
+
+    if (!res.ok) {
+        await captureApiErrorResponse(res, { operation: 'attendee-api-request' })
     }
 
     return res

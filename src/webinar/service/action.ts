@@ -5,7 +5,7 @@ import { emptyPage, PaginationPage } from "@/components/pagination";
 import { webinarApiUrl } from ".";
 import { AlreadyRegisteredError } from "./error";
 import { handleStatus } from "@/lib/http";
-import { ApiError, safeDecodeErrorPayload } from "@/lib/error";
+import { ApiError, captureApiErrorResponse, safeDecodeErrorPayload } from "@/lib/error";
 import { resolveAttendeeLocation } from "@/lib/geo";
 import { retryTransientRequest } from "@/lib/retry";
 import * as Sentry from "@sentry/nextjs";
@@ -56,6 +56,12 @@ export async function getWebinars(query?: QueryWebinar) {
               tags: ["webinars-public"],
           },
         })
+    if (!response.ok) {
+        await captureApiErrorResponse(response, { operation: "get-webinars" })
+        // A gateway 5xx returns HTML, so parsing on would throw SyntaxError and
+        // fail the whole server-component render instead of degrading to empty.
+        return emptyPage<Webinar[]>([])
+    }
     const data: PaginationPage<Webinar[]> = await response.json()
     return data ? data : emptyPage<Webinar[]>([]);
 }
@@ -83,6 +89,7 @@ const getWebinarCached = cache(async (id: string, fresh: boolean): Promise<Webin
     )
 
     if (!response.ok) {
+        await captureApiErrorResponse(response, { operation: "get-webinar" });
         return {} as Webinar
     }
     return await response.json()
@@ -138,7 +145,10 @@ export async function getRegistrationEmbedConfig(webinarId: string, source: stri
             },
         }
     )
-    if (!response.ok) return null
+    if (!response.ok) {
+        await captureApiErrorResponse(response, { operation: "registration-embed-config" });
+        return null
+    }
     return await response.json() as RegistrationEmbedConfig
 }
 
@@ -161,6 +171,7 @@ export async function registerForWebinar(formData: FormData): Promise<void> {
     })
 
     if (response.status >= 400) {
+        await captureApiErrorResponse(response, { operation: "register-for-webinar" });
         const errorData = await response.json()
         if (errorData.code === 'already_registered_single') {
             throw new AlreadyRegisteredError(errorData.detail)
@@ -190,6 +201,7 @@ export async function updateSession(formData: FormData): Promise<void> {
     })
 
     if (response.status >= 400) {
+        await captureApiErrorResponse(response, { operation: "update-session" });
         const errorData = await response.json()
         if (errorData.code === 'already_registered_single') {
             throw new AlreadyRegisteredError(errorData.detail)
