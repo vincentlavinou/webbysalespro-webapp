@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { ApiError, captureApiErrorResponse, safeDecodeErrorPayload } from '@/lib/error'
-import { retryTransientRequest } from '@/lib/retry'
+import { retryTransientRequest } from '@lavinou/webbysalespro/networking'
 
 const SHORT_LINK_RESOLVE_TIMEOUT_MS = 5_000
 

@@ -5,7 +5,7 @@ import { clearAttendeeSessionCookie, getAttendeeSessionCookie, setAttendeeSessio
 import { attendeeFetch } from '@/lib/attendee-fetch'
 import { captureApiErrorResponse } from '@/lib/error'
 import { handleStatus } from '@/lib/http'
-import { retryTransientRequest } from '@/lib/retry'
+import { retryTransientRequest } from '@lavinou/webbysalespro/networking'
 import { ClaimRegistrantResponse, JoinResolveResponse, JoinSessionRefreshResponse } from './type'
 import { claimRegistrantSchema } from './schema'
 import { resolveJoin } from './resolve-join'

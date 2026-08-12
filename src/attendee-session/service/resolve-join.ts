@@ -1,7 +1,7 @@
 import "server-only";
 
 import * as Sentry from "@sentry/nextjs";
-import { retryTransientRequest } from "@/lib/retry";
+import { retryTransientRequest } from "@lavinou/webbysalespro/networking";
 import { captureApiErrorResponse } from "@/lib/error";
 
 import type { JoinResolveResponse } from "./type";

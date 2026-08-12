@@ -7,7 +7,7 @@ import { AlreadyRegisteredError } from "./error";
 import { handleStatus } from "@/lib/http";
 import { ApiError, captureApiErrorResponse, safeDecodeErrorPayload } from "@/lib/error";
 import { resolveAttendeeLocation } from "@/lib/geo";
-import { retryTransientRequest } from "@/lib/retry";
+import { retryTransientRequest } from "@lavinou/webbysalespro/networking";
 import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import { anonymousRegisterForWebinarInput, registerForWebinarInput } from "./schema";
