@@ -30,29 +30,58 @@ const GAP = 'gap-1'
  * third column costs width, and a 16:9 cell squashed into a third of the width is
  * worse than a slightly letterboxed one. The console previously went to three and
  * four columns, so a five-camera stage looked nothing like the audience's.
+ *
+ * Two columns at every width, phones included. Stacking there was tried and is
+ * worse: a viewer needs to see that two people are on the stage more than they
+ * need either face large, and the stacked layout read as the co-host not being
+ * there at all. A solo gallery takes the whole grid — putting the only camera on
+ * the stage in a two-column grid parks it in the left half.
  */
 export function galleryColumns(count: number) {
-  return count > 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'
+  return count > 1 ? 'grid-cols-2' : 'grid-cols-1'
 }
 
+/**
+ * `auto-rows-fr` is load-bearing, not tidying.
+ *
+ * Implicit grid rows are `auto`, so they take their height from their content —
+ * and the attendee's first cell has none to give. It is an empty container that
+ * the persistent <video> is appended into as `position:absolute`, which adds
+ * nothing to its parent's height. Any row holding only that cell collapsed to a
+ * sliver while the row below overflowed the surface, which is what stacking on a
+ * phone produced. Equal fractional rows make every cell a real share of the
+ * surface whether or not anything inside it has an intrinsic size.
+ *
+ * The console never hit this — it renders a real <video> in every cell — which is
+ * why the rule belongs in this shared file rather than in whichever surface
+ * happens to trip over it.
+ */
 export function galleryGridClass(count: number) {
-  return `grid h-full w-full bg-black ${GAP} ${galleryColumns(count)}`
+  return `grid h-full w-full auto-rows-fr bg-black ${GAP} ${galleryColumns(count)}`
 }
 
 /**
  * The aspect the surface should take.
  *
- * A 16:9 surface has no vertical room to split, so a multi-tile gallery gets a
- * taller box on small screens. A single tile — and any feature shape — follows the
- * source's own aspect instead, because there the surface frames one video rather
- * than a mosaic.
+ * A multi-tile gallery is a mosaic, not a window onto one source, so it takes a
+ * fixed 16:9 box rather than following whatever the main track happens to
+ * publish. At 2x2 that box divides into four 16:9 cells exactly; at two tiles the
+ * cells come out portrait and `tileObjectFit` crops them to the centre, which is
+ * where a webcam puts a face.
+ *
+ * The taller small-screen box this used to return existed only to give a stacked
+ * mobile gallery vertical room. Nothing stacks now, and keeping it would have
+ * squeezed two side-by-side cells into an even narrower slice.
+ *
+ * A single tile — and any feature shape — follows the source's own aspect, because
+ * there the surface really is framing one video.
  */
 export function stageSurfaceAspect(
   shape: 'off-air' | 'gallery' | 'feature',
   tileCount: number,
   sourceAspect = 'aspect-video',
 ) {
-  return shape === 'gallery' && tileCount > 1 ? 'aspect-[4/3] sm:aspect-video' : sourceAspect
+  return shape === 'gallery' && tileCount > 1 ? 'aspect-video' : sourceAspect
 }
 
 /** The row holding a main tile and a docked rail. */
