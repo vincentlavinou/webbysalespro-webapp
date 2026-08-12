@@ -17,13 +17,13 @@ import {
   useAttendeeStreamRefresh,
 } from "@/broadcast/hooks/use-attendee-stream-refresh";
 import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
-import { AttendeeStageViewerWithLayout } from "@/playback/stage/AttendeeStageViewerWithLayout";
+import { AttendeeSoloViewer } from "@/playback/solo/AttendeeSoloViewer";
+import { useAttendeeStageLayoutEnabled } from "@/playback/capability/AttendeeStageCapabilityContext";
 import { getPlaybackArtwork } from "@/playback/client/get-playback-artwork";
 
 type AttendeeMobileExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
   title?: string;
-  stageLayoutEnabled?: boolean;
 };
 
 type ViewportSize = {
@@ -80,8 +80,10 @@ function readKeyboardInset(): number {
 
 export function AttendeeMobileExperience({
   playbackToken,
-  stageLayoutEnabled = false,
 }: AttendeeMobileExperienceProps) {
+  // Read live rather than passed down: granting a co-host mid-session flips the
+  // capability, and the viewer has to follow it.
+  const stageLayoutEnabled = useAttendeeStageLayoutEnabled();
   const { view: offerView } = useOfferSessionClient();
   const showOfferSheet =
     offerView === "offer-checkingout" || offerView === "offer-purchased";
@@ -246,13 +248,13 @@ export function AttendeeMobileExperience({
           artwork={getPlaybackArtwork(playbackToken.webinar.media)}
         />
       ) : realtimeStream && stageLayoutEnabled ? (
-        <AttendeeStageViewerWithLayout
+        <AttendeeStageViewer
           ref={playerRef}
           sessionId={playbackToken.session.id}
           onPlaybackStatusChange={setStatus}
         />
       ) : realtimeStream ? (
-        <AttendeeStageViewer
+        <AttendeeSoloViewer
           ref={playerRef}
           sessionId={playbackToken.session.id}
           onPlaybackStatusChange={setStatus}

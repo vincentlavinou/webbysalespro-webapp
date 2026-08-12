@@ -6,7 +6,7 @@ import { PlaybackConfigurationProvider } from "../provider/PlaybackConfiguration
 import { PlaybackRuntimeProvider } from "../provider/PlaybackRuntimeProvider";
 import { PlaybackUserProvider } from "../provider/PlaybackUserProvider";
 import { PersistentChannelPlaybackProvider } from "../persistent/PersistentChannelPlaybackProvider";
-import { PersistentStagePlaybackProvider } from "../persistent/PersistentStagePlaybackProvider";
+import { PersistentRealtimePlayback } from "../persistent/PersistentRealtimePlayback";
 import { AttendeeExperienceManager } from "@/attendee-experience/AttendeeExperienceManager";
 import { getPlaybackArtwork } from "./get-playback-artwork";
 
@@ -70,15 +70,16 @@ export function PlaybackClient(props: PlaybackClientProps) {
 
   if (realtimeStream) {
     return (
-      <PersistentStagePlaybackProvider
+      <PersistentRealtimePlayback
         sessionId={props.sessionId}
         stream={realtimeStream}
+        layoutSupported={props.playbackToken.stage_layout_supported}
         initialStageState={props.playbackToken.stage_state}
         title={props.playbackToken.webinar.title}
         artwork={artwork}
       >
         {inner}
-      </PersistentStagePlaybackProvider>
+      </PersistentRealtimePlayback>
     );
   }
 

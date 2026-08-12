@@ -1,55 +1,68 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SubscribeType } from "amazon-ivs-web-broadcast";
 import { emitPlaybackPlaying } from "@/emitter/playback";
 import { setSharedAudioContext } from "@/chat/hooks/use-cta-announcements";
 import { joinStage, leaveStage } from "@/broadcast/service/utils";
 import type { RealtimeAttendeeStreamConfig, Strategy } from "@/broadcast/service/type";
-import type { StageState, StageStateDefinition } from "@/broadcast/service/type";
 import type { WebiSalesProParticipant } from "@/broadcast/context/StageContext";
-import { getAttendeeStageStateAction } from "@/broadcast/service/action";
-import { onAudienceChatEvent } from "@/audience-events/service/event-emitter";
-import { onPlaybackMetadata } from "@/emitter/playback/playbackEventEmitter";
-import { resolveStageArrangement, hasActiveVideo, isPublishingRole } from "../stage/stage-state";
+import {
+  getParticipantName,
+  hasActiveVideo,
+  isPublishingRole,
+  participantRole,
+} from "../participants/participant-state";
 import { useMediaSession } from "../player/ivs/hooks/use-media-session";
 import { useVisibilityResilience } from "../player/ivs/hooks/use-visibility-resilience";
-import {
-  PersistentStagePlaybackContext,
-  type StageSurfaceMode,
-} from "./PersistentStagePlaybackContext";
+import type {
+  PlaybackSurfaceMode,
+  PlaybackSurfaceState,
+} from "../surface/PlaybackSurfaceContext";
 
 type Stage = import("amazon-ivs-web-broadcast").Stage;
 type StageParticipantInfo = import("amazon-ivs-web-broadcast").StageParticipantInfo;
 
-type Props = {
-  sessionId: string;
+type UseRealtimeConnectionOptions = {
   stream: RealtimeAttendeeStreamConfig;
-  initialStageState?: StageState;
+  /**
+   * Which participant owns the persistent video element.
+   *
+   * Injected rather than derived, so this hook holds no notion of arrangement:
+   * the solo path passes the single-publisher rule, the layout path passes its
+   * resolver. Must be stable (useCallback) — it keys the attachment effect.
+   */
+  resolveMainParticipant: (
+    participants: WebiSalesProParticipant[],
+  ) => WebiSalesProParticipant | undefined;
   title?: string;
   artwork?: MediaImage[];
-  children: React.ReactNode;
 };
 
-function getParticipantName(participant?: WebiSalesProParticipant) {
-  const name = participant?.participant.attributes?.name;
-  return typeof name === "string" && name.trim() ? name.trim() : undefined;
-}
+export type RealtimeConnection = PlaybackSurfaceState & {
+  participants: WebiSalesProParticipant[];
+};
 
-export function PersistentStagePlaybackProvider({
-  sessionId,
+/**
+ * The attendee's realtime transport: join, subscribe, and keep one video element
+ * playing.
+ *
+ * Everything here is true of any realtime session — a solo host compositing onto
+ * their own canvas, or a multi-publisher stage being arranged from the console.
+ * Nothing here reads or fetches stage state; a caller that needs an arrangement
+ * layers it on top by way of `resolveMainParticipant`.
+ *
+ * "Stage" appears below only as the AWS IVS primitive both paths connect to
+ * (`joinStage`/`leaveStage`). It carries none of the stage-*layout* meaning that
+ * lives in src/playback/stage — keeping those two senses of the word apart is
+ * the whole reason this module exists.
+ */
+export function useRealtimeConnection({
   stream,
-  initialStageState,
+  resolveMainParticipant,
   title,
   artwork,
-  children,
-}: Props) {
+}: UseRealtimeConnectionOptions): RealtimeConnection {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hiddenHostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | undefined>(undefined);
@@ -57,22 +70,14 @@ export function PersistentStagePlaybackProvider({
 
   const [isConnected, setIsConnected] = useState(false);
   const [participants, setParticipants] = useState<WebiSalesProParticipant[]>([]);
-  const [stageDefinition, setStageDefinition] = useState<StageStateDefinition | undefined>(
-    initialStageState?.applies_to_attendees ? initialStageState.definition : undefined,
-  );
-  const [stageStateEnabled, setStageStateEnabled] = useState(
-    initialStageState?.applies_to_attendees === true,
-  );
-  const lastAppliedRevisionRef = useRef(initialStageState?.revision ?? -1);
   const [connectionAttempt, setConnectionAttempt] = useState(0);
-  const [surfaceMode, setSurfaceMode] = useState<StageSurfaceMode>("loading");
+  const [surfaceMode, setSurfaceMode] = useState<PlaybackSurfaceMode>("loading");
   const [aspectRatio, setAspectRatio] = useState("aspect-video");
 
-  const layout = useMemo(
-    () => resolveStageArrangement(stageDefinition, participants, stageStateEnabled),
-    [stageDefinition, participants, stageStateEnabled],
+  const mainParticipant = useMemo(
+    () => resolveMainParticipant(participants),
+    [participants, resolveMainParticipant],
   );
-  const mainParticipant = layout.main;
   const mainParticipantHasActiveVideo = useMemo(
     () => hasActiveVideo(mainParticipant),
     [mainParticipant],
@@ -82,46 +87,6 @@ export function PersistentStagePlaybackProvider({
     [mainParticipant],
   );
 
-  const applyStageState = useCallback((state: StageState) => {
-    if (state.session_id !== sessionId || state.revision <= lastAppliedRevisionRef.current) return;
-    lastAppliedRevisionRef.current = state.revision;
-    if (!state.applies_to_attendees) return;
-    setStageStateEnabled(true);
-    setStageDefinition(state.definition);
-  }, [sessionId]);
-
-  useEffect(() => {
-    const parseMetadata = (raw: string) => {
-      try {
-        const event = JSON.parse(raw) as { type?: string; payload?: StageState };
-        if (event.type === "session:stage:state" && event.payload) applyStageState(event.payload);
-      } catch {
-        // Ignore unrelated or malformed metadata.
-      }
-    };
-
-    const offMetadata = onPlaybackMetadata(parseMetadata);
-    const offChat = onAudienceChatEvent((event) => {
-      if (event.eventName !== "session:stage:state") return;
-      try {
-        const payload = event.attributes?.payload_json;
-        if (payload) applyStageState(JSON.parse(payload) as StageState);
-      } catch {
-        // Ignore unrelated or malformed chat events.
-      }
-    });
-
-    return () => {
-      offMetadata();
-      offChat();
-    };
-  }, [applyStageState]);
-
-  const resyncStageState = useCallback(async () => {
-    const result = await getAttendeeStageStateAction({ sessionId });
-    if (result.data) applyStageState(result.data);
-  }, [applyStageState, sessionId]);
-
   const strategy = useMemo<Strategy>(
     () => ({
       updateTracks: () => {},
@@ -130,7 +95,7 @@ export function PersistentStagePlaybackProvider({
       shouldPublishParticipant: () => false,
       // Must stay in step with isRenderable: a publisher we decline to
       // subscribe to has no tracks, so it can never satisfy isLiveVideo and
-      // drops out of whatever tile the host assigned it.
+      // drops out of whatever tile a renderer assigned it.
       shouldSubscribeToParticipant: (participant) =>
         (isPublishingRole(participant.attributes?.role)
           ? "audio_video"
@@ -140,10 +105,10 @@ export function PersistentStagePlaybackProvider({
     [],
   );
 
-  // Join the stage. The cleanup does NOT call leaveStage — the stage persists
-  // through UI unmounts (layout switches, route changes, backgrounding).
-  // leaveStage is only called by reconnectStage (explicit reconnect) or the
-  // unmount-only effect below (true session end).
+  // Join the stage. The cleanup does NOT call leaveStage — the connection
+  // persists through UI unmounts (layout switches, route changes,
+  // backgrounding). leaveStage is only called by reconnectStage (explicit
+  // reconnect) or the unmount-only effect below (true session end).
   const prevTokenRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const token = stream.config.participant_token;
@@ -158,7 +123,6 @@ export function PersistentStagePlaybackProvider({
     }
     prevTokenRef.current = token;
 
-    void resyncStageState();
     void joinStage(
       true,
       token,
@@ -169,9 +133,9 @@ export function PersistentStagePlaybackProvider({
       strategy,
       () => {},
     );
-  }, [connectionAttempt, stream.config.participant_token, strategy, resyncStageState]);
+  }, [connectionAttempt, stream.config.participant_token, strategy]);
 
-  // True session end — only fires when the provider itself unmounts.
+  // True session end — only fires when the owning provider unmounts.
   useEffect(() => {
     const stageRefSnapshot = stageRef;
     return () => {
@@ -245,37 +209,86 @@ export function PersistentStagePlaybackProvider({
     }
   }, [mainParticipant, mainParticipantHasActiveVideo]);
 
-  // Keep audio from non-featured host/co-host/screen participants alive even
-  // when the current stage definition does not place them in a visible tile.
+  /**
+   * Audio from publishers who are not on the main tile.
+   *
+   * This is the whole path for a co-host who has their camera off and their mic
+   * on: nothing renders them, so the persistent video element never carries
+   * their track and they are only ever heard through here.
+   *
+   * Reconciled per participant rather than rebuilt. The previous version tore
+   * every element down and recreated it on each `participants` update — which is
+   * every stream event — so a co-host's audio restarted constantly, and each
+   * restart was a fresh play() that could be refused.
+   */
+  const secondaryAudioRef = useRef(new Map<string, HTMLAudioElement>());
   useEffect(() => {
     const host = hiddenHostRef.current;
     if (!host) return;
 
-    const audioElements = participants
-      .filter((participant) => participant.participant.userId !== mainParticipant?.participant.userId)
-      .filter((participant) => participant.participant.attributes?.role !== "spectator")
-      .map((participant) => {
-        const audioTrack = participant.streams.find(
-          ({ mediaStreamTrack }) => mediaStreamTrack.kind === "audio",
-        )?.mediaStreamTrack;
-        if (!audioTrack) return undefined;
-        const audio = document.createElement("audio");
-        audio.autoplay = true;
-        audio.srcObject = new MediaStream([audioTrack]);
-        host.appendChild(audio);
-        void audio.play().catch(() => {});
-        return audio;
-      })
-      .filter((audio): audio is HTMLAudioElement => Boolean(audio));
+    const elements = secondaryAudioRef.current;
+    const video = videoRef.current;
 
+    const wanted = new Map<string, MediaStreamTrack>();
+    participants.forEach((participant) => {
+      if (participant.participant.userId === mainParticipant?.participant.userId) return;
+      if (!isPublishingRole(participantRole(participant))) return;
+      const audioTrack = participant.streams.find(
+        ({ mediaStreamTrack }) => mediaStreamTrack.kind === "audio",
+      )?.mediaStreamTrack;
+      if (audioTrack) wanted.set(participant.participant.id, audioTrack);
+    });
+
+    elements.forEach((audio, participantId) => {
+      const track = wanted.get(participantId);
+      if (track && audio.dataset.trackId === track.id) return;
+      audio.pause();
+      audio.srcObject = null;
+      audio.remove();
+      elements.delete(participantId);
+    });
+
+    wanted.forEach((track, participantId) => {
+      if (elements.has(participantId)) return;
+      const audio = document.createElement("audio");
+      audio.autoplay = true;
+      audio.dataset.trackId = track.id;
+      // Follows the main element: while autoplay has the stage muted, a co-host
+      // must not be the one voice that comes through.
+      audio.muted = video?.muted ?? false;
+      audio.srcObject = new MediaStream([track]);
+      host.appendChild(audio);
+      void audio.play().catch(() => {});
+      elements.set(participantId, audio);
+    });
+  }, [participants, mainParticipant?.participant.userId, hiddenHostRef, videoRef]);
+
+  // Follow the main element through mute and autoplay transitions. Without this
+  // the tap-to-unmute gesture reached only the main video: a co-host whose audio
+  // element was created while autoplay was blocked stayed silent for the rest of
+  // the session, with nothing left to retry it.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    secondaryAudioRef.current.forEach((audio) => {
+      audio.muted = video.muted;
+      if (!video.paused) void audio.play().catch(() => {});
+    });
+  }, [surfaceMode, videoRef]);
+
+  // Torn down only when the connection itself goes away — the effect above owns
+  // the per-participant lifecycle.
+  useEffect(() => {
+    const elements = secondaryAudioRef.current;
     return () => {
-      audioElements.forEach((audio) => {
+      elements.forEach((audio) => {
         audio.pause();
         audio.srcObject = null;
         audio.remove();
       });
+      elements.clear();
     };
-  }, [participants, mainParticipant?.participant.userId]);
+  }, []);
 
   // Keep surfaceMode in sync with video element play/pause/mute events.
   useEffect(() => {
@@ -295,7 +308,7 @@ export function PersistentStagePlaybackProvider({
     return () => events.forEach((e) => video.removeEventListener(e, sync));
   }, []);
 
-  // Emit playing event when stage goes live.
+  // Emit playing event when the stream goes live.
   useEffect(() => {
     if (isConnected && mainParticipantHasActiveVideo) {
       emitPlaybackPlaying();
@@ -387,50 +400,18 @@ export function PersistentStagePlaybackProvider({
     onPause: () => { videoRef.current?.play().catch(() => {}); },
   });
 
-  return (
-    <PersistentStagePlaybackContext.Provider
-      value={{
-        videoRef,
-        hiddenHostRef,
-        isConnected,
-        mainParticipant,
-        mainParticipantHasActiveVideo,
-        participantName,
-        participants,
-        layout,
-        stageStateEnabled,
-        stageDefinition,
-        surfaceMode,
-        aspectRatio,
-        reconnectStage,
-        handleStartPlayback,
-        handleUnmute,
-      }}
-    >
-      {/*
-        Always-mounted hidden host — keeps WebRTC audio alive when the
-        player view unmounts during layout switches or navigation.
-      */}
-      <div
-        ref={hiddenHostRef}
-        aria-hidden="true"
-        style={{
-          position: "fixed",
-          width: 0,
-          height: 0,
-          overflow: "hidden",
-          opacity: 0,
-          pointerEvents: "none",
-          zIndex: -9999,
-        }}
-      >
-        <video
-          ref={videoRef}
-          playsInline
-          style={{ width: 0, height: 0 }}
-        />
-      </div>
-      {children}
-    </PersistentStagePlaybackContext.Provider>
-  );
+  return {
+    videoRef,
+    hiddenHostRef,
+    isConnected,
+    participants,
+    mainParticipant,
+    mainParticipantHasActiveVideo,
+    participantName,
+    surfaceMode,
+    aspectRatio,
+    reconnectStage,
+    handleStartPlayback,
+    handleUnmute,
+  };
 }

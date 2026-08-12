@@ -134,17 +134,34 @@ export const joinStage = async (
         return [...prev, { participant, streams }];
       }
 
-      const oldTrackIds = existing.streams.map(s => s.mediaStreamTrack.id).sort();
-      const newTrackIds = streams.map(s => s.mediaStreamTrack.id).sort();
-      const isSame = oldTrackIds.join(',') === newTrackIds.join(',');
+      // `streams` is what this event added, not the participant's full set, so
+      // it has to merge: keep the tracks already held, swap in any that arrived
+      // again under the same id, append the rest. Replacing wholesale dropped
+      // whichever track was not in the latest event — audio when a camera came
+      // back, video when a mic did — and a participant with no video track left
+      // in our copy reads as nobody publishing at all.
+      const addedTrackIds = new Set(streams.map(s => s.mediaStreamTrack.id));
+      const merged = [
+        ...existing.streams.filter(s => !addedTrackIds.has(s.mediaStreamTrack.id)),
+        ...streams,
+      ];
 
-      if (isSame) {
-        return prev; // No change needed
+      const sameTracks =
+        merged.length === existing.streams.length &&
+        merged.every(s =>
+          existing.streams.some(e => e.mediaStreamTrack.id === s.mediaStreamTrack.id)
+        );
+
+      // The participant object is still taken when the track set is unchanged:
+      // it carries videoStopped, which is what decides whether this publisher is
+      // renderable. Bailing out here kept a stale copy of that flag.
+      if (sameTracks && existing.participant === participant) {
+        return prev;
       }
 
       return prev.map(p =>
         p.participant.id === participant.id
-          ? { participant, streams }
+          ? { participant, streams: merged }
           : p
       );
     });

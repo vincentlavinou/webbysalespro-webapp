@@ -13,22 +13,24 @@ import {
   useAttendeeStreamRefresh,
 } from "@/broadcast/hooks/use-attendee-stream-refresh";
 import { AttendeeStageViewer } from "@/playback/stage/AttendeeStageViewer";
-import { AttendeeStageViewerWithLayout } from "@/playback/stage/AttendeeStageViewerWithLayout";
+import { AttendeeSoloViewer } from "@/playback/solo/AttendeeSoloViewer";
+import { useAttendeeStageLayoutEnabled } from "@/playback/capability/AttendeeStageCapabilityContext";
 import { getPlaybackArtwork } from "@/playback/client/get-playback-artwork";
 
 type AttendeeDesktopExperienceProps = {
   playbackToken: AttendeeBroadcastServiceToken;
   title?: string;
   compact?: boolean;
-  stageLayoutEnabled?: boolean;
 };
 
 export function AttendeeDesktopExperience({
   playbackToken,
   title,
   compact = false,
-  stageLayoutEnabled = false,
 }: AttendeeDesktopExperienceProps) {
+  // Read live rather than passed down: granting a co-host mid-session flips the
+  // capability, and the viewer has to follow it.
+  const stageLayoutEnabled = useAttendeeStageLayoutEnabled();
   const desktopPlayerWidth = "min(100%, calc((100dvh - 7rem) * 1.7777778))";
   const playerRef = useRef<AttendeeStreamRecoveryHandle | null>(null);
   const { status, setStatus } = usePlaybackRuntime();
@@ -67,13 +69,13 @@ export function AttendeeDesktopExperience({
                   artwork={getPlaybackArtwork(playbackToken.webinar.media)}
                 />
               ) : realtimeStream && stageLayoutEnabled ? (
-                <AttendeeStageViewerWithLayout
+                <AttendeeStageViewer
                   ref={playerRef}
                   sessionId={playbackToken.session.id}
                   onPlaybackStatusChange={setStatus}
                 />
               ) : realtimeStream ? (
-                <AttendeeStageViewer
+                <AttendeeSoloViewer
                   ref={playerRef}
                   sessionId={playbackToken.session.id}
                   onPlaybackStatusChange={setStatus}

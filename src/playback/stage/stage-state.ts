@@ -5,9 +5,20 @@ import type {
   StageSide,
   StageStateDefinition,
 } from "@/broadcast/service/type";
+import {
+  SOURCE_KINDS,
+  isRenderable,
+  isSourceParticipant,
+  participantRole,
+} from "../participants/participant-state";
 
 /**
  * The attendee's arrangement resolver.
+ *
+ * Only reached on sessions where layout setup applies. A session without it has
+ * a single publisher and runs the solo path, which never loads this module —
+ * that separation is deliberate, so do not reintroduce a "no layout" branch
+ * here. See `src/playback/solo/solo-state.ts`.
  *
  * Parity is the whole contract: keep this in sync with
  * `src/broadcast/service/attendee-stage-layout.ts` in webbysalespro-admin-webapp.
@@ -47,56 +58,6 @@ const DEFAULT_SIDE: StageSide = "right";
 /** IVS caps a stage at 12 publishers, so more tiles than that cannot exist. */
 const DEFAULT_MAX_TILES = 12;
 
-/** Kinds that publish as their own participant and compete for the content slot. */
-const SOURCE_KINDS = ["screen", "presentation", "video_injection"];
-
-function attributes(participant: WebiSalesProParticipant) {
-  return participant.participant.attributes as Record<string, unknown> | undefined;
-}
-
-function role(participant: WebiSalesProParticipant) {
-  return attributes(participant)?.role;
-}
-
-function kind(participant: WebiSalesProParticipant) {
-  return attributes(participant)?.kind;
-}
-
-/**
- * Screen shares, presentations and video injections join the stage as their own
- * participants. They are content, not people — which is what lets the same
- * derivation put them on the main tile and keep them out of anywhere the app
- * lists who is on camera.
- */
-export function isSourceParticipant(participant: WebiSalesProParticipant) {
-  return SOURCE_KINDS.includes(kind(participant) as string);
-}
-
-function isLiveVideo(participant: WebiSalesProParticipant) {
-  return (
-    !participant.participant.videoStopped &&
-    participant.streams.some((stream) => stream.mediaStreamTrack.kind === "video")
-  );
-}
-
-/**
- * Roles the backend mints PUBLISH-capable tokens for — mirrors
- * STAGE_PUBLISHING_ROLES in webinarseries/core/usecases.py. An allowlist rather
- * than `!== "spectator"`: a role missing from the publishing set can still carry a
- * video track, and this renderer drops it, so admitting it in the console would
- * put a tile on the host's stage that no attendee can see. A screen share
- * inherits its sharer's role, so this covers those too.
- */
-const PUBLISHING_ROLES = new Set(["host", "cohost", "presenter"]);
-
-export function isPublishingRole(participantRole: unknown) {
-  return typeof participantRole === "string" && PUBLISHING_ROLES.has(participantRole);
-}
-
-function isRenderable(participant: WebiSalesProParticipant) {
-  return isPublishingRole(role(participant)) && isLiveVideo(participant);
-}
-
 /** Content first, then the host — the order tiles are promoted in. */
 function renderOrder(participants: WebiSalesProParticipant[]) {
   return participants.filter(isRenderable).sort((a, b) => {
@@ -104,22 +65,9 @@ function renderOrder(participants: WebiSalesProParticipant[]) {
     const bSource = isSourceParticipant(b) ? 0 : 1;
     if (aSource !== bSource) return aSource - bSource;
 
-    const aHost = role(a) === "host" ? 0 : 1;
-    const bHost = role(b) === "host" ? 0 : 1;
+    const aHost = participantRole(a) === "host" ? 0 : 1;
+    const bHost = participantRole(b) === "host" ? 0 : 1;
     return aHost - bHost;
-  });
-}
-
-/** Host first, then their camera — the ordering legacy single-canvas sessions get. */
-function legacyFallbackOrder(participants: WebiSalesProParticipant[]) {
-  return participants.filter(isRenderable).sort((a, b) => {
-    const aHost = role(a) === "host" ? 0 : 1;
-    const bHost = role(b) === "host" ? 0 : 1;
-    if (aHost !== bHost) return aHost - bHost;
-
-    const aCamera = kind(a) === "camera" ? 0 : 1;
-    const bCamera = kind(b) === "camera" ? 0 : 1;
-    return aCamera - bCamera;
   });
 }
 
@@ -134,7 +82,7 @@ function findLive(participants: WebiSalesProParticipant[], participantId: string
 function resolveMainKind(
   main: WebiSalesProParticipant | undefined,
 ): ResolvedStageArrangement["mainKind"] {
-  const value = main ? kind(main) : undefined;
+  const value = main ? main.participant.attributes?.kind : undefined;
   return SOURCE_KINDS.includes(value as string)
     ? (value as ResolvedStageArrangement["mainKind"])
     : "camera";
@@ -156,26 +104,16 @@ function railSettings(rail: StageRailSettings | undefined) {
  * (an empty rail is full-bleed — do not reserve rail space for it).
  *
  * `content` or `feature` naming someone who has left simply fails `findLive` and
- * falls through, so the arrangement self-heals with no event.
+ * falls through, so the arrangement self-heals with no event. A missing
+ * definition degrades the same way — the tiles still derive from who is
+ * publishing, which is the right picture while the first state is in flight.
  */
 export function resolveStageArrangement(
   definition: StageStateDefinition | undefined,
   participants: WebiSalesProParticipant[],
-  stageStateEnabled = Boolean(definition),
 ): ResolvedStageArrangement {
   const { placement, side, maxTiles } = railSettings(definition?.rail);
   const base = { placement, side, tiles: [], rail: [], onStage: [] };
-
-  // The legacy single-canvas path: one camera token with screen and presentation
-  // composited into it, so there is exactly one track to show and no rail to
-  // draw. `onStage` still lists everyone publishing, because a server-side
-  // composition includes them even though this client only has the one track.
-  if (!stageStateEnabled || !definition) {
-    const legacyOrder = legacyFallbackOrder(participants);
-    const main = legacyOrder[0];
-    if (!main) return { ...base, shape: "off-air", mainKind: "camera" };
-    return { ...base, shape: "feature", main, onStage: legacyOrder, mainKind: resolveMainKind(main) };
-  }
 
   const renderable = renderOrder(participants);
   if (renderable.length === 0) return { ...base, shape: "off-air", mainKind: "camera" };
@@ -184,8 +122,8 @@ export function resolveStageArrangement(
   // source at all — which covers the beat between a source publishing and its
   // claim landing.
   const main =
-    findLive(renderable, definition.feature) ??
-    findLive(renderable, definition.content) ??
+    findLive(renderable, definition?.feature ?? "") ??
+    findLive(renderable, definition?.content ?? "") ??
     renderable.find(isSourceParticipant);
 
   // Nothing is privileged, so the cameras are peers: equal tiles rather than one
@@ -207,8 +145,4 @@ export function resolveStageArrangement(
     onStage: [main, ...rail],
     mainKind: resolveMainKind(main),
   };
-}
-
-export function hasActiveVideo(participant?: WebiSalesProParticipant) {
-  return Boolean(participant && isLiveVideo(participant));
 }
