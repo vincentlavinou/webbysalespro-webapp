@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { WebinarContext } from "../context/WebinarContext";
 import {
     SeriesSession,
@@ -12,17 +12,25 @@ import { createBroadcastServiceToken, recordEvent } from "@/broadcast/service";
 import { BroadcastServiceToken } from "@/broadcast/service/type";
 import { onPlaybackEnded } from "@/emitter/playback";
 import { WebinarSessionStatus } from "../service/enum";
-import { useRealtimeChannel } from "@/realtime";
+import { getRealtimeConfig } from "@/realtime/service/action";
+import { SessionChannelBridge } from "@/realtime/components/SessionChannelBridge";
+import { realtimeAuthUrl } from "@lavinou/webbysalespro/realtime";
+import { RealtimePusherProvider } from "@lavinou/webbysalespro/realtime/react";
+import type { RealtimeCredentials } from "@lavinou/webbysalespro/realtime/pusher";
 import { getSessionAction } from "../service/action";
 import { useAction } from "next-safe-action/hooks";
 import { notifyErrorUiMessage } from "@/lib/notify";
 import { captureApiErrorResponse } from "@/lib/error";
 import { useAttendeeSession } from "@/attendee-session/hooks/use-attendee-session";
 import { useAudienceEvent } from "@/audience-events/hooks/use-audience-event";
+import { RealtimeEventsProvider } from "@lavinou/webbysalespro/realtime/react";
+import { audienceEventSources } from "@/audience-events/service/sources";
 import { webinarSessionUpdateAudienceEventSchema } from "../service/schema";
 
-// ---- Tuning knobs (can be shared with hook defaults or overridden) ----
-const HEARTBEAT_TIMEOUT_MS = 45_000;
+// The SSE heartbeat window that used to live here is gone with the transport.
+// Its equivalent — pusher-js's activity and pong timeouts, tuned well below the
+// library's ~120s default so a silently dropped socket reconnects before an
+// attendee misses the live transition — is set by the shared Pusher client.
 const PRESENCE_RELEVANT_EVENT_CODES = new Set([
     "live_joined",
     "reentered",
@@ -225,23 +233,10 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
         },
     });
 
-    // ---- Build SSE fallback URL ----
-    // EventSource cannot send custom headers, so auth is passed via ?token=.
-    const buildSseUrl = useCallback(
-        (lastEventId: string | null) => {
-            if (!broadcastServiceToken) return "";
-            const base = `${webinarApiUrl}/v1/sessions/events/`;
-            const params = new URLSearchParams();
-            params.set(
-                "channels",
-                `webinar-session-${broadcastServiceToken.session?.id || sessionId}`
-            );
-            if (attendeeToken) params.set("token", attendeeToken);
-            if (lastEventId) params.set("lastEventId", lastEventId);
-            return `${base}?${params.toString()}`;
-        },
-        [broadcastServiceToken, sessionId, attendeeToken]
-    );
+    // The SSE fallback is gone: the backend removed it, and `client_config()`
+    // now hardcodes `use_pusher: True`. Falling back to it on a config failure
+    // selected a transport that could not answer, which for an attendee in the
+    // waiting room meant never learning the session had gone live.
 
     const realtimeEnabled =
         !disableSse &&
@@ -250,23 +245,38 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
         mountedRef.current &&
         session?.status !== WebinarSessionStatus.COMPLETED;
 
-    useRealtimeChannel({
-        enabled: realtimeEnabled,
-        sessionId: broadcastServiceToken?.session?.id || sessionId,
-        attendeeToken,
-        buildSseUrl,
-        eventHandlers: {
-            "webinar:session:update": handleEventUpdateSession,
-        },
-        onOpen: async () => {
-            await getSession({ id: sessionId })
-        },
-        onError: (err) => {
-            console.error("[Realtime] Error in WebinarProvider", err);
-        },
-        onTokenExpired: refreshJoinToken,
-        heartbeatTimeoutMs: HEARTBEAT_TIMEOUT_MS,
-    });
+    const realtimeSessionId = broadcastServiceToken?.session?.id || sessionId;
+
+    // Read through refs so the credentials object stays stable: rebuilding it
+    // would rebuild the socket.
+    const attendeeTokenRef = useRef(attendeeToken);
+    attendeeTokenRef.current = attendeeToken;
+    const refreshJoinTokenRef = useRef(refreshJoinToken);
+    refreshJoinTokenRef.current = refreshJoinToken;
+
+    const realtimeCredentials = useMemo<RealtimeCredentials>(
+        () => ({
+            headers: (): Record<string, string> =>
+                attendeeTokenRef.current
+                    ? { Authorization: `Bearer ${attendeeTokenRef.current}` }
+                    : {},
+            recover: async () => {
+                // `refresh()` resolves with the new token, so the retry can
+                // authorize with it immediately instead of waiting a render for
+                // the context update to land.
+                const refreshed = await refreshJoinTokenRef.current();
+                if (!refreshed) return "fail";
+                attendeeTokenRef.current = refreshed;
+                return "retry";
+            },
+        }),
+        []
+    );
+
+    const fetchRealtimeConfig = useCallback(
+        () => getRealtimeConfig(realtimeSessionId),
+        [realtimeSessionId]
+    );
 
     return (
         <WebinarContext.Provider
@@ -283,7 +293,32 @@ export const WebinarProvider = ({ children, sessionId, disableSse = false }: Pro
                 regenerateBroadcastToken,
             }}
         >
-            {children}
+            <RealtimePusherProvider
+                enabled={realtimeEnabled}
+                fetchConfig={fetchRealtimeConfig}
+                authUrl={realtimeAuthUrl(webinarApiUrl)}
+                credentials={realtimeCredentials}
+                hasCredential={!!attendeeToken}
+            >
+                <SessionChannelBridge
+                    sessionId={realtimeSessionId}
+                    onSessionUpdate={handleEventUpdateSession}
+                    onSubscribed={() => {
+                        void getSession({ id: sessionId });
+                    }}
+                />
+                {/*
+                  * Every audience-event consumer renders beneath a
+                  * WebinarProvider, so mounting the fan-in here covers all of
+                  * them without each route layout having to remember to. One
+                  * listener set also means an event delivered over both timed
+                  * metadata and chat is de-duplicated once rather than per
+                  * subscribing hook.
+                  */}
+                <RealtimeEventsProvider sources={audienceEventSources}>
+                    {children}
+                </RealtimeEventsProvider>
+            </RealtimePusherProvider>
         </WebinarContext.Provider>
     );
 };

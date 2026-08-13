@@ -1,48 +1,28 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { ChatEvent } from "amazon-ivs-chat-messaging";
 import { z } from "zod";
-import { onPlaybackMetadata } from "@/emitter/playback/playbackEventEmitter";
-import { onAudienceChatEvent } from "../service/event-emitter";
-import { AudienceEvent, AudienceRole } from "../service/type";
+import { useAudienceEvent as useSharedAudienceEvent } from "@lavinou/webbysalespro/realtime/react";
+import type { AudienceEvent, AudienceRole } from "@lavinou/webbysalespro/realtime";
 
-const DEFAULT_SEEN_EVENT_KEY_LIMIT = 500;
-
-function parseStreamEnvelope(raw: unknown): unknown {
-  if (typeof raw !== "string") {
-    return raw;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function parseJsonAttribute(value: string | undefined, fallback: unknown): unknown {
-  if (!value) return fallback;
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
-
-function parseChatEnvelope(event: ChatEvent): unknown {
-  return {
-    type: event.attributes?.type ?? event.eventName,
-    version: Number(event.attributes?.version),
-    session_id: event.attributes?.session_id,
-    event_key: event.attributes?.event_key,
-    emitted_at: event.attributes?.emitted_at,
-    audience: parseJsonAttribute(event.attributes?.audience_json, []),
-    payload: parseJsonAttribute(event.attributes?.payload_json, {}),
-  };
-}
-
+/**
+ * Thin adapter over `@lavinou/webbysalespro/realtime`.
+ *
+ * The envelope pipeline — validation, audience gating, `event_key`
+ * de-duplication, stale rejection, signature collapsing — now lives in the
+ * shared module, which merged this hook with the near-identical
+ * `usePlaybackMetadataEvent` that sat beside it. That merge fixed several
+ * things one copy or the other got wrong; see the package CHANGELOG for 0.1.2.
+ *
+ * Only two things stay here, because only they are app-specific:
+ *
+ *   1. zod. The package ships zero runtime dependencies and cannot import it,
+ *      so validation is injected. This is where `safeParse` is adapted.
+ *   2. The default audience. The shared hook requires `targetAudience`
+ *      explicitly, precisely because the copy that left it implicit ended up
+ *      applying host-targeted events on attendee surfaces.
+ *
+ * Requires a `RealtimeEventsProvider` above it, which `WebinarProvider` mounts.
+ */
 export function useAudienceEvent<
   TType extends string,
   TPayload extends Record<string, unknown>,
@@ -50,137 +30,34 @@ export function useAudienceEvent<
   eventType: TType;
   schema: z.ZodType<AudienceEvent<TType, TPayload>>;
   sessionId?: string;
+  /**
+   * Defaults to `"attendee"`, which is what this surface already assumed. A
+   * host or presenter viewing it therefore still receives only
+   * attendee-targeted events — unchanged from before, and worth revisiting
+   * separately rather than inside a migration.
+   */
   targetAudience?: AudienceRole;
   onEvent: (evt: AudienceEvent<TType, TPayload>) => void;
   getEventKey?: (evt: AudienceEvent<TType, TPayload>) => string | undefined;
   getStateScope?: (evt: AudienceEvent<TType, TPayload>) => string | undefined;
+  /**
+   * Rarely needed now: the shared default already compares lexicographically,
+   * which is chronological for real `event_key`s because the backend zero-pads
+   * the millisecond timestamp ahead of the uuid.
+   */
   compareEventKeys?: (incoming: string, latestApplied: string) => number;
   getSignature?: (evt: AudienceEvent<TType, TPayload>) => string;
-  onError?: (error: string) => void;
 }) {
-  const optionsRef = useRef(options);
-  const lastSigRef = useRef("");
-  const seenEventKeysRef = useRef<Set<string>>(new Set());
-  const seenEventKeyOrderRef = useRef<string[]>([]);
-  const latestEventKeyByScopeRef = useRef<Map<string, string>>(new Map());
-  const eventIdentityRef = useRef(`${options.eventType}:${options.sessionId ?? ""}`);
+  const { schema, targetAudience = "attendee", ...rest } = options;
 
-  useLayoutEffect(() => {
-    optionsRef.current = options;
-
-    const eventIdentity = `${options.eventType}:${options.sessionId ?? ""}`;
-    if (eventIdentityRef.current === eventIdentity) return;
-
-    eventIdentityRef.current = eventIdentity;
-    lastSigRef.current = "";
-    seenEventKeysRef.current.clear();
-    seenEventKeyOrderRef.current = [];
-    latestEventKeyByScopeRef.current.clear();
-  }, [options]);
-
-  useEffect(() => {
-    const processEnvelope = (obj: unknown, transport: "stream" | "chat") => {
-      const {
-        eventType,
-        schema,
-        sessionId,
-        targetAudience = "attendee",
-        onEvent,
-        getEventKey,
-        getStateScope,
-        compareEventKeys,
-        getSignature,
-        onError,
-      } = optionsRef.current;
-
-      if (!obj || typeof obj !== "object") {
-        onError?.(`[${transport}] event is not an object`);
-        return;
-      }
-
-      const type = (obj as { type?: string }).type;
-      if (type !== eventType) {
-        return;
-      }
-
-      const parsed = schema.safeParse(obj);
-      if (!parsed.success) {
-        onError?.(`[${transport}] ${parsed.error}`);
-        return;
-      }
-
-      const evt = parsed.data;
-
-      if (sessionId && evt.session_id !== sessionId) {
-        onError?.(
-          `[${transport}] session_id ${evt.session_id} does not match ${sessionId}`,
-        );
-        return;
-      }
-
-      if (!evt.audience.includes(targetAudience)) {
-        return;
-      }
-
-      const resolvedEventKey = getEventKey?.(evt) ?? evt.event_key;
-
-      if (resolvedEventKey) {
-        if (seenEventKeysRef.current.has(resolvedEventKey)) {
-          onError?.(`[${transport}] duplicate event_key ignored: ${resolvedEventKey}`);
-          return;
-        }
-
-        const stateScope = getStateScope?.(evt);
-        if (stateScope && compareEventKeys) {
-          const latestAppliedEventKey = latestEventKeyByScopeRef.current.get(stateScope);
-          if (
-            latestAppliedEventKey &&
-            compareEventKeys(resolvedEventKey, latestAppliedEventKey) <= 0
-          ) {
-            onError?.(
-              `[${transport}] stale event_key ignored for scope ${stateScope}: ${resolvedEventKey} <= ${latestAppliedEventKey}`,
-            );
-            return;
-          }
-        }
-      }
-
-      if (getSignature) {
-        const sig = getSignature(evt);
-        if (sig && lastSigRef.current === sig) return;
-        lastSigRef.current = sig;
-      }
-
-      if (resolvedEventKey) {
-        seenEventKeysRef.current.add(resolvedEventKey);
-        seenEventKeyOrderRef.current.push(resolvedEventKey);
-
-        if (seenEventKeyOrderRef.current.length > DEFAULT_SEEN_EVENT_KEY_LIMIT) {
-          const oldestEventKey = seenEventKeyOrderRef.current.shift();
-          if (oldestEventKey) {
-            seenEventKeysRef.current.delete(oldestEventKey);
-          }
-        }
-
-        const stateScope = getStateScope?.(evt);
-        if (stateScope) {
-          latestEventKeyByScopeRef.current.set(stateScope, resolvedEventKey);
-        }
-      }
-
-      onEvent(evt);
-    };
-
-    const offPlayback = onPlaybackMetadata((raw: string) => {
-      processEnvelope(parseStreamEnvelope(raw), "stream");
-    });
-    const offChat = onAudienceChatEvent((event) => {
-      processEnvelope(parseChatEnvelope(event), "chat");
-    });
-
-    return () => {
-      offPlayback();
-      offChat();
-    };
-  }, []);
+  useSharedAudienceEvent<TType, TPayload>({
+    ...rest,
+    targetAudience,
+    validate: (raw) => {
+      const parsed = schema.safeParse(raw);
+      return parsed.success
+        ? { ok: true, value: parsed.data }
+        : { ok: false, error: parsed.error.message };
+    },
+  });
 }
