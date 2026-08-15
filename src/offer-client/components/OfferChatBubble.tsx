@@ -5,10 +5,14 @@ import { FanBasisCheckout } from "../checkout/fanbasis";
 import { WhopCheckout } from "../checkout/whop";
 import { CalendlyCheckout } from "../checkout/calendly";
 import { useOfferSessionClient } from "../hooks/use-offer-session-client";
-import { getPaymentProviderLabel, PaymentProviderType } from "@/paymentprovider/service/enum";
+import {
+    getPaymentProviderLabel,
+    isPaymentProviderType,
+    PaymentProviderType,
+} from "@lavinou/webbysalespro/paymentprovider";
 import OfferPurchaseSuccess from "./OfferPurchaseSuccess";
 
-function UnsupportedProviderCheckout({ provider }: { provider: PaymentProviderType | null }) {
+function UnsupportedProviderCheckout({ provider }: { provider: PaymentProviderType | string | null }) {
     const { cancelCheckout } = useOfferSessionClient();
 
     return (
@@ -24,7 +28,7 @@ function UnsupportedProviderCheckout({ provider }: { provider: PaymentProviderTy
                     <h3 className="text-sm font-semibold text-foreground">Payment unavailable</h3>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                         {provider
-                            ? `Checkout via ${getPaymentProviderLabel(provider)} isn't supported yet. Please try again later.`
+                            ? `Checkout via ${isPaymentProviderType(provider) ? getPaymentProviderLabel(provider) : provider} isn't supported yet. Please try again later.`
                             : "This offer isn't configured with a payment method yet."}
                     </p>
                 </div>
@@ -45,7 +49,12 @@ function UnsupportedProviderCheckout({ provider }: { provider: PaymentProviderTy
     );
 }
 
-function renderCheckout(provider: PaymentProviderType | null) {
+function renderCheckout(rawProvider: PaymentProviderType | string | null) {
+    if (!isPaymentProviderType(rawProvider)) {
+        return <UnsupportedProviderCheckout provider={rawProvider} />;
+    }
+
+    const provider = rawProvider;
     switch (provider) {
         case PaymentProviderType.STRIPE:
             return <StripeCheckout />;

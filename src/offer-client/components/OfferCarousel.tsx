@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { usePulseOnChange } from '@/hooks/use-pulse-on-change';
 import type { OfferSessionDto } from '../service/type';
+import { discountPercent } from '@lavinou/webbysalespro/offer';
 
 function getCurrencySymbol(code: string): string {
   if (!code) return "";
@@ -77,14 +78,11 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
   const compareAt = offer.offer.price?.compare_at ?? null;
 
   const showCompareAt =
-    compareAt != null &&
-    effective != null &&
-    Number(compareAt) > Number(effective);
+    compareAt != null && effective != null && Number(compareAt) > Number(effective);
 
-  const discountPct =
-    showCompareAt && compareAt != null && effective != null
-      ? Math.round(((Number(compareAt) - Number(effective)) / Number(compareAt)) * 100)
-      : null;
+  const discountPct = showCompareAt && compareAt != null && effective != null
+    ? discountPercent(compareAt, effective)
+    : null;
 
   const display = offer.offer.display ?? null;
   const badgeText = display?.badge_text ?? null;
@@ -105,7 +103,7 @@ function VisibleOffer({ offer, onClick }: VisibleOfferProps) {
         : undefined;
 
   const hasScarcity = offer.scarcity_mode !== "none";
-  const scarcityDisplayType = offer.display_type ?? "percentage";
+  const scarcityDisplayType = offer.scarcity_display_type ?? "percentage";
   const percentSold = offer.display_percent_sold;
   const availableCount = offer.display_available_count;
   const totalSlots = offer.quantity_total;

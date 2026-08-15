@@ -30,7 +30,7 @@ import { report } from "./error";
  *
  * What stays here is only where the session is kept.
  */
-const store: GuestSessionStore = {
+export const guestSessionStore: GuestSessionStore = {
   read: () => getAttendeeSessionCookie(),
 
   /**
@@ -57,7 +57,7 @@ export function guestCredentials(): Credentials {
   if (!cached) {
     cached = createGuestCredentials({
       baseUrl: resolveBaseApiUrl(),
-      store,
+      store: guestSessionStore,
       // Reuses this app's resolver, which adds request-scoped caching and the
       // debug instrumentation the package's built-in one does not have.
       resolveJoin,

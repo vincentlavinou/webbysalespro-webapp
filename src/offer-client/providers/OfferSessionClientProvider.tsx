@@ -1,12 +1,13 @@
 'use client'
+
 import { useCallback, useEffect, useRef, useState } from "react";
+import { OfferSessionsProvider, useOfferSessions } from "@lavinou/webbysalespro/offer/react";
+import type { OfferSessionDto } from "@lavinou/webbysalespro/offer";
 import { OfferSessionClientContext } from "../contexts/OfferSessionClientContext"
-import { OfferClientUser, OfferSessionDto, OfferView } from "../service/type";
+import { OfferClientUser, OfferView } from "../service/type";
 import { onPlaybackPlaying } from "@/emitter/playback";
-import { offerVisibilityMetadataSchema, offerScarcityUpdateMetadataSchema } from "../service/schema";
 import { getOfferSessionsForAttendee } from "../service/action";
 import { useWebinar } from "@/webinar/hooks";
-import { useAudienceEvent } from "@/audience-events/hooks/use-audience-event";
 
 function getExternalUrl(actionPayload: Record<string, unknown> | undefined): string | null {
     if (!actionPayload) return null;
@@ -31,14 +32,26 @@ interface OfferSessionClientProviderProps {
     user: OfferClientUser,
 }
 
-export function OfferSessionClientProvider({
+export function OfferSessionClientProvider(props: OfferSessionClientProviderProps) {
+    return (
+        <OfferSessionsProvider
+            sessionId={props.sessionId}
+            targetAudience="attendee"
+            initialSessions={props.initialOffers}
+        >
+            <OfferSessionClientState {...props} />
+        </OfferSessionsProvider>
+    );
+}
+
+function OfferSessionClientState({
     children,
     sessionId,
     initialOffers,
     user,
 }: OfferSessionClientProviderProps) {
     const { recordEvent } = useWebinar();
-    const [offers, setOffers] = useState(initialOffers)
+    const { sessions: offers, replaceSessions } = useOfferSessions();
     const [selectedOffer, setSelectedOffer] = useState<OfferSessionDto | undefined>(undefined);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [view, setView] = useState<OfferView>("offers-hidden")
@@ -49,66 +62,28 @@ export function OfferSessionClientProvider({
     } | undefined>(undefined);
 
     useEffect(() => {
-        setOffers(initialOffers);
-    }, [initialOffers]);
-
-    useAudienceEvent({
-        eventType: "webinar:offer:visibility",
-        sessionId: sessionId,
-        schema: offerVisibilityMetadataSchema,
-        getStateScope: (evt) => evt.payload.id,
-        compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
-        onEvent: (event) => {
-            setOffers((prev) => {
-                return prev.map((os) => os.id === event.payload.id ? { ...os, status: event.payload.status } : os)
-            })
-        }
-    })
-
-    useAudienceEvent({
-        eventType: "session:offer:scarcity:update",
-        sessionId: sessionId,
-        schema: offerScarcityUpdateMetadataSchema,
-        getStateScope: (evt) => evt.payload.offer_session_id,
-        compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
-        onEvent: (event) => {
-            setOffers((prev) => {
-                return prev.map((os) =>
-                    os.id === event.payload.offer_session_id
-                        ? {
-                            ...os,
-                            scarcity_mode: event.payload.mode,
-                            display_type: event.payload.display_type,
-                            quantity_total: event.payload.quantity_total,
-                            display_percent_sold: event.payload.display_percent_sold,
-                            display_available_count: event.payload.display_available_count,
-                        }
-                        : os
-                )
-            })
-        },
-        getSignature: (evt) => `${evt.payload.offer_session_id}-${evt.payload.mode}-${evt.payload.display_type}-${evt.payload.display_percent_sold}-${evt.payload.display_available_count}`,
-    })
+        replaceSessions(initialOffers);
+    }, [initialOffers, replaceSessions]);
 
     useEffect(() => {
         return onPlaybackPlaying(() => {
             if (hasFetchedOnPlayRef.current) return;
             hasFetchedOnPlayRef.current = true;
             getOfferSessionsForAttendee({ sessionId }).then((result) => {
-                if (result?.data) setOffers(result.data);
+                if (result?.data) replaceSessions(result.data);
             });
         });
-    }, [sessionId]);
+    }, [replaceSessions, sessionId]);
 
     useEffect(() => {
         const handleStreamRefresh = () => {
             getOfferSessionsForAttendee({ sessionId }).then((result) => {
-                if (result?.data) setOffers(result.data);
+                if (result?.data) replaceSessions(result.data);
             });
         };
         window.addEventListener("webinar:stream:refresh", handleStreamRefresh);
         return () => window.removeEventListener("webinar:stream:refresh", handleStreamRefresh);
-    }, [sessionId]);
+    }, [replaceSessions, sessionId]);
 
     useEffect(() => {
         const hasVisibleOffer = offers.some(
@@ -130,23 +105,16 @@ export function OfferSessionClientProvider({
     }, [offers, selectedOffer]);
 
     useEffect(() => {
-        const calculateView = () => {
-            const hasVisibleOffer = offers.find((os) => !["closed", "scheduled"].includes(os.status))
-            const hasSelectedOffer = selectedOffer !== undefined
-            const hasPurchasedOffer = purchasedOffer !== undefined
+        const hasVisibleOffer = offers.find((os) => !["closed", "scheduled"].includes(os.status))
+        const hasSelectedOffer = selectedOffer !== undefined
+        const hasPurchasedOffer = purchasedOffer !== undefined
 
-            if (hasPurchasedOffer) return "offer-purchased" as OfferView
-            if (isCheckingOut) return "offer-checkingout" as OfferView
-            if (hasSelectedOffer) return "offer-selected" as OfferView
-            if (hasVisibleOffer) return "offers-visible" as OfferView
-
-            return "offers-hidden" as OfferView
-        }
-
-        const updatedView = calculateView()
-        setView(updatedView)
-    }, [offers, selectedOffer, purchasedOffer, isCheckingOut, setView])
-
+        if (hasPurchasedOffer) setView("offer-purchased");
+        else if (isCheckingOut) setView("offer-checkingout");
+        else if (hasSelectedOffer) setView("offer-selected");
+        else if (hasVisibleOffer) setView("offers-visible");
+        else setView("offers-hidden");
+    }, [offers, selectedOffer, purchasedOffer, isCheckingOut])
 
     const handleOfferClick = useCallback(async (offer: OfferSessionDto) => {
         const offerType = offer.offer.offer_type;
@@ -179,7 +147,7 @@ export function OfferSessionClientProvider({
     const closeSheetAfterPurchase = useCallback(() => {
         resetView()
         setView("offers-hidden")
-    },[setView])
+    },[])
 
     const cancelCheckout = useCallback(async () => {
         await recordEvent('checkout_canceled');
@@ -193,14 +161,13 @@ export function OfferSessionClientProvider({
         }
     }, [selectedOffer]);
 
-
     return (
         <OfferSessionClientContext.Provider value={{
             sessionId,
             view,
             user,
             isPurchasingOffer: isCheckingOut,
-            offers: offers,
+            offers,
             selectedOffer,
             purchasedOffer,
             setPurchasedOffer,

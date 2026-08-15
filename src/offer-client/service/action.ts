@@ -1,67 +1,15 @@
-'use server'
+"use server";
+
+import { createOfferGuestActions } from "@lavinou/webbysalespro/offer/guest";
+
 import { actionClient } from "@/lib/safe-action";
-import { CalendlyCheckoutDto, FanbasisCheckoutDto, OfferSessionDto, StripeCheckout, WhopCheckoutDto } from "./type";
-import { paymentProviderApiUrl } from "@/paymentprovider/service";
-import { offersForSessionSchema, startCheckoutSchema } from "./schema";
-import { handleStatus } from "@/lib/http";
-import { attendeeFetch } from "@/lib/attendee-fetch";
+import { offerGuestApi } from "./api";
 
-export const startCheckout = actionClient
-    .inputSchema(startCheckoutSchema)
-    .action(async ({ parsedInput: { offerId, sessionId } }) => {
-        const response = await attendeeFetch(
-            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
-            { method: 'POST', body: JSON.stringify({}) }
-        )
-        const checkedResponse = await handleStatus(response)
-        const data = await checkedResponse.json() as StripeCheckout
-        return data
-    })
+/** App-owned server-action declarations backed by the shared guest binding. */
+const actions = createOfferGuestActions({
+  actionClient,
+  api: offerGuestApi,
+});
 
-export const startFanbasisCheckout = actionClient
-    .inputSchema(startCheckoutSchema)
-    .action(async ({ parsedInput: { offerId, sessionId } }) => {
-        const response = await attendeeFetch(
-            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
-            { method: 'POST', body: JSON.stringify({}) }
-        )
-        const checkedResponse = await handleStatus(response)
-        const data = await checkedResponse.json() as FanbasisCheckoutDto
-        return data
-    })
-
-export const startWhopCheckout = actionClient
-    .inputSchema(startCheckoutSchema)
-    .action(async ({ parsedInput: { offerId, sessionId } }) => {
-        const response = await attendeeFetch(
-            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
-            { method: 'POST', body: JSON.stringify({}) }
-        )
-        const checkedResponse = await handleStatus(response)
-        const data = await checkedResponse.json() as WhopCheckoutDto
-        return data
-    })
-
-export const startCalendlyCheckout = actionClient
-    .inputSchema(startCheckoutSchema)
-    .action(async ({ parsedInput: { offerId, sessionId } }) => {
-        const response = await attendeeFetch(
-            `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/${offerId}/checkout/`,
-            { method: 'POST', body: JSON.stringify({}) }
-        )
-        const checkedResponse = await handleStatus(response)
-        const data = await checkedResponse.json() as CalendlyCheckoutDto
-        return data
-    })
-
-export const getOfferSessionsForAttendee = actionClient
-  .inputSchema(offersForSessionSchema)
-  .action(async ({ parsedInput: { sessionId } }) => {
-    const response = await attendeeFetch(
-      `${paymentProviderApiUrl}/v1/sessions/${sessionId}/offers/`,
-      { method: "GET" }
-    );
-
-    const checkedResponse = await handleStatus(response);
-    return (await checkedResponse.json()) as OfferSessionDto[];
-  });
+export const getOfferSessionsForAttendee = actions.listSessionOffers;
+export const startCheckout = actions.startCheckout;
