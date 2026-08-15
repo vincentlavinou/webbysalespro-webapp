@@ -1,135 +1,20 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@plugin "@tailwindcss/typography";
-@custom-variant dark (&:is(.dark *));
+/* Design tokens — the palette, radius scale, brand gradient and base layer are
+ * shared with the admin app. See node_modules/@lavinou/webbysalespro/README.md.
+ *
+ * `@source` is what makes the shared components' classes exist: Tailwind v4 does
+ * not scan node_modules, so without it every component from
+ * @lavinou/webbysalespro/ui renders as unstyled markup, with no error. */
+@import "@lavinou/webbysalespro/theme.css";
+@source "../../node_modules/@lavinou/webbysalespro/dist";
 
+@plugin "@tailwindcss/typography";
+
+/* Fonts stay app-owned — this app loads Geist via next/font, the admin app uses
+ * a system stack, so the shared theme deliberately declares neither. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --background-image-brand-gradient: var(--brand-gradient);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-}
-
-:root {
-  --radius: 0.625rem;
-  --background: oklch(0.99 0.003 277);
-  --foreground: oklch(0.18 0.02 277);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 277);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 277);
-  --primary: oklch(0.511 0.262 276.966);
-  --primary-foreground: oklch(0.985 0.005 277);
-  --secondary: oklch(0.962 0.008 277);
-  --secondary-foreground: oklch(0.28 0.05 277);
-  --muted: oklch(0.962 0.008 277);
-  --muted-foreground: oklch(0.52 0.025 277);
-  --accent: oklch(0.948 0.014 277);
-  --accent-foreground: oklch(0.28 0.06 277);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.912 0.012 277);
-  --input: oklch(0.912 0.012 277);
-  --ring: oklch(0.585 0.233 277.117);
-  --chart-1: oklch(0.585 0.233 277.117);
-  --chart-2: oklch(0.606 0.25 292.717);
-  --chart-3: oklch(0.685 0.169 237.323);
-  --chart-4: oklch(0.769 0.188 70.08);
-  --chart-5: oklch(0.656 0.241 354.308);
-  --sidebar: oklch(0.976 0.006 277);
-  --sidebar-foreground: oklch(0.24 0.025 277);
-  --sidebar-primary: oklch(0.511 0.262 276.966);
-  --sidebar-primary-foreground: oklch(0.985 0.005 277);
-  --sidebar-accent: oklch(0.938 0.016 277);
-  --sidebar-accent-foreground: oklch(0.28 0.06 277);
-  --sidebar-border: oklch(0.906 0.014 277);
-  --sidebar-ring: oklch(0.673 0.182 276.935);
-  --brand-gradient: linear-gradient(
-    to right,
-    oklch(0.511 0.262 276.966),
-    oklch(0.541 0.281 293.009)
-  );
-}
-
-.dark {
-  --background: oklch(0.16 0.018 277);
-  --foreground: oklch(0.97 0.005 277);
-  --card: oklch(0.205 0.022 277);
-  --card-foreground: oklch(0.97 0.005 277);
-  --popover: oklch(0.205 0.022 277);
-  --popover-foreground: oklch(0.97 0.005 277);
-  --primary: oklch(0.585 0.233 277.117);
-  --primary-foreground: oklch(0.985 0.005 277);
-  --secondary: oklch(0.27 0.025 277);
-  --secondary-foreground: oklch(0.97 0.005 277);
-  --muted: oklch(0.27 0.025 277);
-  --muted-foreground: oklch(0.72 0.02 277);
-  --accent: oklch(0.29 0.035 277);
-  --accent-foreground: oklch(0.97 0.005 277);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.673 0.182 276.935);
-  --chart-1: oklch(0.673 0.182 276.935);
-  --chart-2: oklch(0.702 0.183 293.541);
-  --chart-3: oklch(0.746 0.16 232.661);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.718 0.202 349.761);
-  --sidebar: oklch(0.19 0.02 277);
-  --sidebar-foreground: oklch(0.97 0.005 277);
-  --sidebar-primary: oklch(0.585 0.233 277.117);
-  --sidebar-primary-foreground: oklch(0.985 0.005 277);
-  --sidebar-accent: oklch(0.27 0.03 277);
-  --sidebar-accent-foreground: oklch(0.97 0.005 277);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.673 0.182 276.935);
-  --brand-gradient: linear-gradient(
-    to right,
-    oklch(0.585 0.233 277.117),
-    oklch(0.606 0.25 292.717)
-  );
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
 }

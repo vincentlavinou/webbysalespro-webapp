@@ -1,6 +1,3 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+// `cn` is shared — both apps carried a byte-identical copy.
+export { cn } from "@lavinou/webbysalespro/ui"
+export type { ClassValue } from "@lavinou/webbysalespro/ui"

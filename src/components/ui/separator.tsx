@@ -1,28 +1,4 @@
-"use client"
-
-import * as React from "react"
-import { Separator as SeparatorPrimitive } from "radix-ui"
-
-import { cn } from "@/lib/utils"
-
-function Separator({
-  className,
-  orientation = "horizontal",
-  decorative = true,
-  ...props
-}: React.ComponentProps<typeof SeparatorPrimitive.Root>) {
-  return (
-    <SeparatorPrimitive.Root
-      data-slot="separator"
-      decorative={decorative}
-      orientation={orientation}
-      className={cn(
-        "bg-border shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-export { Separator }
+// Re-export of the shared primitive. One implementation now lives in
+// @lavinou/webbysalespro/ui; this file exists so the app's existing
+// `@/components/ui/separator` imports keep resolving.
+export * from "@lavinou/webbysalespro/ui/separator"

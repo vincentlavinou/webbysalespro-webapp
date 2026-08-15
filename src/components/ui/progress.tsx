@@ -1,36 +1,4 @@
-"use client"
-
-import * as React from "react"
-import { Progress as ProgressPrimitive } from "radix-ui"
-
-import { cn } from "@/lib/utils"
-
-interface ProgressProps extends React.ComponentProps<typeof ProgressPrimitive.Root> {
-  indicatorStyle?: React.CSSProperties
-}
-
-function Progress({
-  className,
-  value,
-  indicatorStyle,
-  ...props
-}: ProgressProps) {
-  return (
-    <ProgressPrimitive.Root
-      data-slot="progress"
-      className={cn(
-        "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
-        className
-      )}
-      {...props}
-    >
-      <ProgressPrimitive.Indicator
-        data-slot="progress-indicator"
-        className="bg-primary h-full w-full flex-1 transition-all"
-        style={{ transform: `translateX(-${100 - (value || 0)}%)`, ...indicatorStyle }}
-      />
-    </ProgressPrimitive.Root>
-  )
-}
-
-export { Progress }
+// Re-export of the shared primitive. One implementation now lives in
+// @lavinou/webbysalespro/ui; this file exists so the app's existing
+// `@/components/ui/progress` imports keep resolving.
+export * from "@lavinou/webbysalespro/ui/progress"
