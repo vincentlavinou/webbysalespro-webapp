@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { nextStageState } from "@lavinou/webbysalespro/stage";
 import type { StageState } from "@/broadcast/service/type";
 import { getAttendeeStageStateAction } from "@/broadcast/service/action";
 import { onAudienceChatEvent } from "@/audience-events/service/event-emitter";
@@ -29,19 +30,24 @@ export function useAttendeeStageCapability({
   initialStageState,
 }: UseAttendeeStageCapabilityOptions) {
   const [stageState, setStageState] = useState<StageState | undefined>(initialStageState);
-  const revisionRef = useRef(initialStageState?.revision ?? -1);
 
+  /**
+   * The shared ordering rule, replacing the revision ref this used to keep.
+   *
+   * Same semantics it always had — a same-revision payload is kept, because
+   * granting a co-host flips `applies_to_attendees` while `revision` stands
+   * still and dropping it would strand the attendee on the solo path for the
+   * rest of the session. The package now narrows that to "kept when a derived
+   * field actually differs", so an identical payload arriving over both the
+   * metadata and chat transports no longer causes a second render.
+   *
+   * Every source goes through this: metadata, chat, and the hydration refetch
+   * below. A refetch in flight when an event lands comes back older than what
+   * we hold, and comparing revisions is what makes that harmless.
+   */
   const applyStageState = useCallback(
     (state: StageState) => {
-      if (state.session_id !== sessionId) return;
-      // Strictly-older only, where the arrangement path dedupes on `<=`. The
-      // capability can change without the definition changing at all: granting a
-      // co-host flips applies_to_attendees while `revision` stands still, so
-      // dropping a same-revision payload here would strand the attendee on the
-      // solo path for the rest of the session.
-      if (state.revision < revisionRef.current) return;
-      revisionRef.current = state.revision;
-      setStageState(state);
+      setStageState((current) => nextStageState(current, state, { sessionId }));
     },
     [sessionId],
   );
@@ -82,6 +88,13 @@ export function useAttendeeStageCapability({
   // entirely while applies_to_attendees is false (_broadcast_stage_state returns
   // early), so on a solo session an event is not guaranteed to arrive when the
   // flag flips. A refresh is the attendee's own way back to the truth.
+  //
+  // This is this surface's hydration trigger — see the `event-hydration` skill.
+  // `useAttendeeStreamRefresh` dispatches the event on return to visible, on
+  // window focus after a blur, on a bfcache restore, and on a manual refresh,
+  // so this covers every way an attendee comes back to a tab that may have
+  // missed events. There is no subscribe callback to hang off here: the
+  // transports are IVS timed metadata and audience chat, not a Pusher channel.
   useEffect(() => {
     const handleStreamRefresh = () => {
       void refresh();
