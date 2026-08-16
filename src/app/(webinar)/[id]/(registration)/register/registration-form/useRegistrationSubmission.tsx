@@ -10,14 +10,14 @@ import { webinarAppUrl, type Webinar, type WebinarPauseInfo } from "@/webinar/se
 import { WebinarSessionStatus } from "@/webinar/service/enum";
 import { didShortLinkResolutionFail, extractJoinToken, extractJoinUrl } from "@/webinar/service/join";
 import { allowsManualSessionSelection } from "@/webinar/service/guards";
+import { WEBINAR_PAUSED_CODE, isWebinarPauseInfo } from "@lavinou/webbysalespro/webinar";
 import type { AttendeeFormData } from "./schema";
 import { appendRegistrationQuery, findRegisteredSession, getRegistrationSuccessUrl } from "./navigation";
 import type { RegistrationSuccessState } from "./types";
 import { getVisitorId } from "@/lib/visitor-id";
 
-function isPauseInfo(value: unknown): value is WebinarPauseInfo {
-  return Boolean(value && typeof value === "object" && typeof (value as Partial<WebinarPauseInfo>).support_email === "string");
-}
+// `isPauseInfo` lived here and checked `support_email` alone, through a cast.
+// The package's guard checks all four fields and needs no cast.
 
 export function useRegistrationSubmission({ webinarPromise, webinarId, embedSource, embedSuccessUrl, landingPageSource, landingSuccessUrl, onSuccess }: { webinarPromise: Promise<Webinar>; webinarId: string; embedSource?: string; embedSuccessUrl?: string; landingPageSource?: string; landingSuccessUrl?: string | null; onSuccess: (state: RegistrationSuccessState) => void }) {
   const router = useRouter();
@@ -57,7 +57,7 @@ export function useRegistrationSubmission({ webinarPromise, webinarId, embedSour
     onError: ({ error, input }) => {
       setIsLocked(false); setIsNavigating(false);
       if (!error) return notifyErrorUiMessage("Something went wrong. Please try again.");
-      if (error.serverError?.code === "WEB-PAUSED" && isPauseInfo(error.serverError.pauseInfo)) return setPauseInfo(error.serverError.pauseInfo);
+      if (error.serverError?.code === WEBINAR_PAUSED_CODE && isWebinarPauseInfo(error.serverError.payload?.pause_info)) return setPauseInfo(error.serverError.payload.pause_info);
       toast.error(`${input.first_name} ${input.last_name}: ${error.serverError?.detail ?? "Registration failed. Please try again."}`);
     },
   });

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { PausedWebinarNotice } from "@/webinar/components";
 import { anonymousRegisterForWebinarAction } from "@/webinar/service/action";
 import type { WebinarPauseInfo } from "@/webinar/service";
+import { WEBINAR_PAUSED_CODE, isWebinarPauseInfo } from "@lavinou/webbysalespro/webinar";
 import { extractJoinUrl } from "@/webinar/service/join";
 
 interface AnonymousJoinClientProps {
@@ -63,8 +64,15 @@ export function AnonymousJoinClient({ webinarId }: AnonymousJoinClientProps) {
         return;
       }
 
-      if (error.serverError?.code === "WEB-PAUSED" && error.serverError.pauseInfo && typeof error.serverError.pauseInfo === "object") {
-        setPauseInfo(error.serverError.pauseInfo as WebinarPauseInfo);
+      // The notice rides on `payload` now, which keeps every extra key the
+      // backend sent, rather than on a top-level `pauseInfo` this app had to
+      // lift out itself. `isWebinarPauseInfo` replaces the `typeof === "object"`
+      // check and the cast that followed it.
+      if (
+        error.serverError?.code === WEBINAR_PAUSED_CODE &&
+        isWebinarPauseInfo(error.serverError.payload?.pause_info)
+      ) {
+        setPauseInfo(error.serverError.payload.pause_info);
         return;
       }
 

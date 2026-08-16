@@ -30,9 +30,11 @@ export async function generateMetadata({ params }: GeneralJoinPageProps): Promis
     openGraph: {
       title: webinar.title,
       description: webinar.description,
-      images: webinar.media
-        ?.filter((media) => media.file_type === "image" && media.field_type === "thumbnail")
-        .map((media) => ({ url: media.file_url })) ?? [],
+      // `file_url` is nullable — a media row can exist with no file uploaded —
+      // and an OG image with a null url is worse than no OG image.
+      images: (webinar.media ?? [])
+        .filter((media) => media.file_type === "image" && media.field_type === "thumbnail")
+        .flatMap((media) => (media.file_url ? [{ url: media.file_url }] : [])),
     },
     twitter: {
       card: "summary_large_image",

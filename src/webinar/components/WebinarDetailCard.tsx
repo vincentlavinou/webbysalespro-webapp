@@ -101,13 +101,13 @@ export function WebinarDetailCard({
                       {avatar?.file_url ? (
                         <Image
                           src={avatar.file_url}
-                          alt={presenter.name}
+                          alt={presenter.name ?? ""}
                           fill
                           className="object-cover"
                         />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center text-sm font-bold text-primary">
-                          {presenter.name.charAt(0).toUpperCase()}
+                          {(presenter.name ?? "").charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>

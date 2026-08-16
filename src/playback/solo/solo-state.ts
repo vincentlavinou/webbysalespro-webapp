@@ -25,7 +25,9 @@ import {
 export function resolveSoloPublisher(
   participants: WebiSalesProParticipant[],
 ): WebiSalesProParticipant | undefined {
-  const publishing = participants.filter(isRenderable);
+  // Wrapped, not passed by reference: `isRenderable` takes options as its
+  // second argument and `filter` would hand it the index.
+  const publishing = participants.filter((participant) => isRenderable(participant));
   if (publishing.length === 0) return undefined;
 
   return (

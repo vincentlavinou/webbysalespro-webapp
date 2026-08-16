@@ -70,7 +70,13 @@ export function PersistentRealtimePlayback({
   const resolveMainParticipant = useCallback(
     (participants: WebiSalesProParticipant[]) =>
       stageLayoutEnabled
-        ? resolveStageArrangement(stageDefinition, participants).main
+        // Always enabled on this branch: a session without layout setup takes
+        // the solo path beside it and never reaches the resolver. The console
+        // passes `Boolean(definition)` instead, because it has to handle legacy
+        // single-canvas sessions itself.
+        ? resolveStageArrangement(stageDefinition, participants, {
+            stageStateEnabled: true,
+          }).main
         : resolveSoloPublisher(participants),
     [stageDefinition, stageLayoutEnabled],
   );
@@ -86,7 +92,9 @@ export function PersistentRealtimePlayback({
     () =>
       stageLayoutEnabled
         ? {
-            layout: resolveStageArrangement(stageDefinition, connection.participants),
+            layout: resolveStageArrangement(stageDefinition, connection.participants, {
+              stageStateEnabled: true,
+            }),
             stageDefinition,
           }
         : null,

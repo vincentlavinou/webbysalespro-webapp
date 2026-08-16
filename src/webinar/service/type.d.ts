@@ -1,37 +1,74 @@
-import { WebinarMedia } from "@/media"
-import { WebinarOffer } from "@/offer/service"
-import { WebinarSeriesStatus, WebinarSeriesType, WebinarSessionStatus } from "./enum"
-import { Broadcast } from "@/broadcast/service"
+// The webinar domain now comes from the shared package, which mirrors the DRF
+// serializers field for field and carries a test per correction.
+//
+// Types are re-exported under the names this app already uses, so the files
+// importing `Webinar` do not change. What did change is what `Webinar` means:
+// these surfaces read `/v1/webinars/{id}/public/`, which is
+// `PublicWebinarSerializer` — twelve fields — and not the authenticated console
+// payload this file used to describe. Four fields it declared as required are
+// not sent by that endpoint at all:
+//
+//   Webinar.owner, .name, .broadcast, .offers
+//
+// None was read, which is why nothing was visibly broken. `broadcast` and
+// `offers` are not on the authenticated payload either — `broadcast` is not a
+// field anywhere, and `offers` is a reverse relation the serializer never
+// declares.
+//
+// Also corrected: WebinarSeries has no `status` (the serializer emits
+// `lifecycle`), the public presenter payload has no timestamps, and the three
+// `SeriesSession.resolved_*` fields are always present rather than optional.
+//
+// WebinarSeries is a discriminated union on `type` now, because the serializer
+// adds keys per variant. `registration_behavior` exists only on a recurring
+// series — use `allowsManualSessionSelection` rather than reading it directly.
 
+import type {
+    PublicWebinarDto,
+    WebinarPauseInfoDto,
+} from '@lavinou/webbysalespro/webinar'
 
-export type QueryWebinar = {
-    search?: string
-    page?: number
-    page_size?: number
-    session?: string
-    ordering?: string
-    status?: string[]
-}
+// --- read shapes -----------------------------------------------------------
 
-export type WebinarSetting = {
-    id: string
-    is_searchable: boolean
-    waiting_room_start_time: number
-    duration_minutes: number
-    max_attendees: number
-    branding_config: {[key: string]: string}
-    created_at: string
-    updated_at: string
-}
+export type {
+    // These surfaces are public. The authenticated shape is `WebinarDto`, and
+    // this app should not be reaching for it.
+    PublicWebinarDto as Webinar,
+    WebinarSettingDto as WebinarSetting,
+    PublicPresenterDto as WebinarPresenter,
+    SeriesSessionDto as SeriesSession,
+    WebinarSeriesDto as WebinarSeries,
+    SingleWebinarSeriesDto as SingleWebinarSeries,
+    MultiWebinarSeriesDto as MultiWebinarSeries,
+    RecurringWebinarSeriesDto as RecurringWebinarSeries,
+    SeriesRegistrationBehaviorDto as WebinarSeriesRegistrationBehavior,
+    SeriesLinkBehaviorDto as WebinarSeriesLinkBehavior,
+    PublicWebinarRegistrationSettingsDto as WebinarRegistrationSettings,
+    RegistrationThemeDto as WebinarRegistrationTheme,
+    // The paused-webinar notice, which arrives on a 404 body rather than on a
+    // webinar payload. Its text fields are always strings — the backend
+    // substitutes "" — where this file used to type them nullable.
+    WebinarPauseInfoDto as WebinarPauseInfo,
+} from '@lavinou/webbysalespro/webinar'
 
-export type WebinarPresenter = {
-    id: string
-    name: string
-    email: string
-    media?: WebinarMedia[]
-    created_at: string
-    updated_at: string
-}
+// --- write shapes ----------------------------------------------------------
+
+export type {
+    WriteWebinarBody as WebinarRequest,
+    CloneWebinarBody as CloneWebinarRequest,
+    WriteWebinarSeriesBody as WebinarSeriesRequest,
+    WriteSeriesSessionBody as SeriesSessionRequest,
+    // This used to read `{ type: Webinar }` — a whole webinar where the
+    // serializer takes a series type string.
+    ConvertWebinarSeriesBody as ConvertWebinarSeriesRequest,
+    WritePresenterBody as WebinarPresenterRequest,
+    WebinarListQuery as QueryWebinar,
+} from '@lavinou/webbysalespro/webinar'
+
+// --- shapes this app still owns --------------------------------------------
+//
+// The registration and join flows, which are this app's own surface area
+// rather than webinar payloads.
 
 export type WebinarAttendee = {
     id: string
@@ -59,70 +96,6 @@ export type WebinarAttendeeTableRow = {
     updated_at: string
 }
 
-export type WebinarPresenterRequest = {
-    name: string
-    email: string
-}
-
-export type SeriesSession = {
-    id: string
-    status: WebinarSessionStatus
-    scheduled_start: string
-    timezone: string
-    attendee_count: number
-    is_attendee_count_visible: boolean
-    offer_visible: boolean
-    offer_shown_at?: string
-    resolved_attendee_playback_mode?: "channel" | "stage"
-    resolved_audience_event_delivery?: "stream_only" | "chat_only" | "stream_and_chat"
-    resolved_recording_enabled?: boolean
-}
-
-export type WebinarSeriesRegistrationBehavior = {
-    mode: string
-}
-
-export type WebinarSeriesLinkBehavior = {
-    mode: string
-}
-
-export type WebinarSeries = {
-    id: string,
-    type: WebinarSeriesType
-    status: WebinarSeriesStatus,
-    registration_behavior?: WebinarSeriesRegistrationBehavior
-    link_behavior?: WebinarSeriesLinkBehavior
-    sessions: SeriesSession[]
-}
-
-export type SeriesSessionRequest = {
-    id?: string
-    scheduled_start: string
-    timezone: string
-}
-
-export type WebinarSeriesRequest = {
-    type: WebinarSeriesType,
-    session: SeriesSessionRequest
-}
-
-export type ConvertWebinarSeriesRequest = {
-    type: Webinar
-}
-
-export type WebinarRegistrationTheme = {
-    background_color?: string | null
-    primary_color?: string | null
-    secondary_color?: string | null
-    secondary_background_color?: string | null
-    button_text_color?: string | null
-}
-
-export type WebinarRegistrationSettings = {
-    registration_success_url?: string | null
-    theme?: WebinarRegistrationTheme | null
-}
-
 export type RegistrationEmbedConfig = {
     id: string
     name: string
@@ -139,51 +112,17 @@ export type RegistrationEmbedConfig = {
     updated_at: string
 }
 
-export type WebinarPauseInfo = {
-    message: string
-    link_url?: string | null
-    link_label?: string | null
-    support_email: string
-}
-
+/**
+ * What `getPublicWebinarState` resolves to.
+ *
+ * A paused webinar 404s so it vanishes from public surfaces, and the body
+ * carries the notice — so "paused" and "not found" are the same status code
+ * and only the payload separates them.
+ */
 export type WebinarPublicState =
-    | { kind: "webinar"; webinar: Webinar }
-    | { kind: "paused"; pauseInfo: WebinarPauseInfo }
+    | { kind: "webinar"; webinar: PublicWebinarDto }
+    | { kind: "paused"; pauseInfo: WebinarPauseInfoDto }
     | { kind: "not_found" }
-
-export type Webinar = {
-    id: string
-    owner: number
-    name: string
-    title: string
-    sub_title?: string
-    description: string
-    created_at: string
-    updated_at: string
-    broadcast: Broadcast
-    media: WebinarMedia[]
-    settings: WebinarSetting
-    registration_settings?: WebinarRegistrationSettings
-    presenters: WebinarPresenter[]
-    series?: WebinarSeries
-    offers: WebinarOffer[]
-}
-  
-export type WebinarRequest = {
-    name: string
-    title: string
-    description?: string
-    duration_minutes?: number
-    max_attendees?: number
-    media_ids?: string[]
-}
-
-export type CloneWebinarRequest = {
-    title?: string
-    description?: string
-    clone_presenters: boolean
-    clone_attendees: boolean
-}
 
 export type RegisterAttendeeResponse = {
     id: string
@@ -213,7 +152,7 @@ export type RegisterV2Response = {
 }
 
 export type SessionOfferVisibilityUpdate = {
-  session_id: string; // e.g. "Offer visibility updated"
+  session_id: string;
   visible: boolean;
   shown_at?: string; // ISO 8601 datetime or null
 }

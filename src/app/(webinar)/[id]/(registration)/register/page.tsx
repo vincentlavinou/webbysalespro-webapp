@@ -45,9 +45,11 @@ export async function generateMetadata({ params, searchParams }: DefaultRegistra
     openGraph: {
       title: webinar.title,
       description: webinar.description,
-      images: webinar.media
-        ?.filter((m) => m.file_type === 'image' && m.field_type === 'thumbnail')
-        .map((m) => ({ url: m.file_url })) ?? [],
+      // `file_url` is nullable — a media row can exist with no file uploaded —
+      // and an OG image with a null url is worse than no OG image.
+      images: (webinar.media ?? [])
+        .filter((m) => m.file_type === 'image' && m.field_type === 'thumbnail')
+        .flatMap((m) => (m.file_url ? [{ url: m.file_url }] : [])),
     },
     twitter: {
       card: 'summary_large_image',

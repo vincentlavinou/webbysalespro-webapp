@@ -1,38 +1,37 @@
-import { createSafeActionClient } from "next-safe-action";
-import { ApiError } from "./error";
+import { createPlatformActionClient } from "@lavinou/webbysalespro/networking/action";
 import { AlreadyRegisteredError } from "@/webinar/service/error";
-import * as Sentry from "@sentry/nextjs";
+import { report } from "./error";
 
-export type ServerError = {
-  detail: string;
-  code: string;
-  pauseInfo?: unknown;
-};
-
-export const actionClient = createSafeActionClient({
-  handleServerError(e): ServerError {
-    // An ApiError only ever originates from a non-2xx response, and every path
-    // that builds one reports it to Sentry first. Capturing again here would
-    // file a second issue for the same upstream failure.
-    if (e instanceof ApiError) {
-      return {
-        detail: e.message,
-        code: e.code ?? "unknown",
-        pauseInfo: e.payload?.pause_info,
-      };
-    }
-
-    // Expected product outcome, not a fault.
-    if (e instanceof AlreadyRegisteredError) {
-      return { detail: e.message, code: e.code };
-    }
-
-    // Anything else is an unexpected server-side failure nothing upstream saw.
-    Sentry.captureException(e, { tags: { error_type: "action_error" } });
-    return {
-      detail: e instanceof Error ? e.message : "An unexpected error occurred.",
-      code: "unknown",
-    };
-  },
-  defaultValidationErrorsShape: "flattened",
+/**
+ * The shared action client.
+ *
+ * The package owns the error shape, the dedup against failures the request
+ * layer already reported, and the flattened validation-error shape. This app
+ * still owns the two things it cannot: where a failure is reported, and which
+ * of its own errors are expected outcomes rather than faults.
+ *
+ * One shape change reaches the client. `ServerError` was
+ * `{ detail, code, pauseInfo }` here; it is now
+ * `{ detail, code, status?, payload? }`, and the pause notice lives at
+ * `payload.pause_info` rather than at the top level. That is not a rename for
+ * its own sake — `payload` carries every extra key the backend sent, where
+ * `pauseInfo` could only ever carry the one this app had thought to lift out.
+ * `status` is new and was previously discarded.
+ *
+ * Reporting is no longer hand-skipped for `ApiError`. It is skipped for any
+ * error the request layer already marked, which is the same set plus anything
+ * else a caller reports itself — see `alreadyReported` in ./http.ts.
+ */
+export const actionClient = createPlatformActionClient({
+  report,
+  recognize: [
+    // A real product outcome, not a fault: it must reach the client with its
+    // code intact and must never be reported.
+    (error) =>
+      error instanceof AlreadyRegisteredError
+        ? { detail: error.message, code: error.code }
+        : null,
+  ],
 });
+
+export type { ServerError } from "@lavinou/webbysalespro/networking/action";
