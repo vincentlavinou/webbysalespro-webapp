@@ -18,9 +18,6 @@ export {
     ChatMessageBubble
 } from './ChatMessageBubble'
 
-export {
-    ChatInput
-} from './ChatInput'
 
 export {
     ChatControl

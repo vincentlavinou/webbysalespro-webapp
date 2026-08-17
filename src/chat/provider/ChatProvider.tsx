@@ -124,6 +124,7 @@ function ChatContextBridge({ children }: { children: React.ReactNode }) {
     async (content: string, recipient: { label: string; value: string }) => {
       const result = await chat.sendMessage(content, recipient);
       if (result.ok) await recordEvent("chat_message");
+      return result;
     },
     [chat, recordEvent],
   );
