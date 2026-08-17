@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChatServiceRole } from "@lavinou/webbysalespro/chat";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { ChatToken } from "amazon-ivs-chat-messaging";
 import { notifyErrorUiMessage } from "@/lib/notify";
@@ -16,7 +17,7 @@ type ChatManagerProps = {
   sessionId: string;
   registrantId: string;
   region: string;
-  currentUserRole?: "host" | "presenter" | "attendee";
+  currentUserRole?: ChatServiceRole;
   enabled: boolean;
   children: ReactNode;
 };

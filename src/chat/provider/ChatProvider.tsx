@@ -1,376 +1,155 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChatContext } from "../context/ChatContext"
-import { ChatEvent, ChatMessage, ChatRoom, DeleteMessageEvent, DisconnectUserEvent, SendMessageRequest } from "amazon-ivs-chat-messaging";
-import { ChatConfigUpdate, ChatMetadata, ChatRecipient } from "../service/type";
-import { defaultRecipient } from "../service/utils";
-import { DefaultChatRecipient } from "../service/enum";
+'use client';
+
+import { useCallback, useMemo } from "react";
+import type { ChatEvent, ChatMessage } from "amazon-ivs-chat-messaging";
+import {
+  createIvsChatRoom,
+  createRoomController,
+  ivsChatRequests,
+} from "@lavinou/webbysalespro/chat/ivs";
+import {
+  ChatConfigProvider,
+  ChatProvider as PlatformChatProvider,
+  useChat as usePlatformChat,
+  useChatConfig,
+} from "@lavinou/webbysalespro/chat/react";
+import { ChatContext } from "../context/ChatContext";
 import { useChatConfiguration } from "../hooks/use-chat-configuration";
-import { useWebinar } from "@/webinar/hooks";
-import { onPlaybackPlaying } from "@/emitter/playback";
-import { chatConfigUpdateSchema } from "../service/schema";
-import { moderateText } from "../service/moderation";
-import { getAttendeeChatSession } from "../service/action";
 import { useChatRuntime } from "../hooks/use-chat-runtime";
+import { useWebinar } from "@/webinar/hooks";
 import { useAudienceEvent } from "@/audience-events/hooks/use-audience-event";
 import { emitAudienceChatEvent } from "@/audience-events/service/event-emitter";
-
-const RECONNECT_START_DELAY_MS = 1000;
-const RECONNECT_MAX_DELAY_MS = 10000;
-const RECONNECT_MAX_ATTEMPTS = 10;
-const MAX_CHAT_ITEMS = 100;
-const CHAT_SEND_INTERVAL_MS = 1000;
+import { chatConfigUpdateSchema } from "../service/schema";
+import { getAttendeeChatSession } from "../service/action";
+import type { ChatConfigUpdate } from "../service/type";
 
 export type ChatProviderProps = {
-    children: React.ReactNode,
-    initialChatConfig?: ChatConfigUpdate | null
+  children: React.ReactNode;
+  initialChatConfig?: ChatConfigUpdate | null;
+};
+
+/**
+ * Drives the attendee's IVS room through the platform package's controller.
+ *
+ * Replaces 376 lines that owned the socket, the reconnect schedule, the
+ * transcript and the config all at once. What behaves differently now:
+ *
+ * - a redelivered message on reconnect no longer appears twice;
+ * - the send throttle no longer locks the sender out for the size of a
+ *   backwards wall-clock step;
+ * - config re-hydrates on **every** reconnect. The old code latched its
+ *   refetch behind `hasFetchedOnPlayRef`, so it fired at most once for the
+ *   life of the page and a socket that dropped an hour later left the panel
+ *   quietly stale until reload.
+ */
+export function ChatProvider({ children, initialChatConfig }: ChatProviderProps) {
+  const { registrantId, currentUserRole, enabled, sessionId } = useChatRuntime();
+  const { region, tokenProvider } = useChatConfiguration();
+
+  const viewer = useMemo(
+    () => ({ userId: registrantId, role: currentUserRole }),
+    [registrantId, currentUserRole],
+  );
+
+  // Built once per room identity. A new controller reconnects, so nothing that
+  // changes during a session belongs in these deps — `tokenProvider` is
+  // deliberately absent, since ChatManager holds it in a ref for that reason.
+  const controller = useMemo(
+    () =>
+      createRoomController({
+        room: createIvsChatRoom({ region, tokenProvider }),
+        requests: ivsChatRequests,
+        viewer,
+        // The seam that lets audience events ride the IVS chat connection this
+        // attendee already holds, instead of costing a Pusher connection each.
+        onChatEvent: (event) => emitAudienceChatEvent(event as ChatEvent),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [region, registrantId, currentUserRole],
+  );
+
+  const hydrate = useCallback(async () => {
+    if (!sessionId) return null;
+    const result = await getAttendeeChatSession({ sessionId });
+    return result?.data ?? null;
+  }, [sessionId]);
+
+  return (
+    <PlatformChatProvider source={controller} viewer={viewer} autoConnect={enabled}>
+      <ChatConfigProvider initialConfig={initialChatConfig} hydrate={hydrate}>
+        <ChatConfigEvents sessionId={sessionId} />
+        <ChatContextBridge>{children}</ChatContextBridge>
+      </ChatConfigProvider>
+    </PlatformChatProvider>
+  );
 }
 
-export function ChatProvider({ children, initialChatConfig }: ChatProviderProps) {
+/**
+ * Refetches the config when a `chat:config:update` lands.
+ *
+ * The event carries the whole config, but this refetches rather than applying
+ * the payload: the `GET` and the event are built by the same
+ * `build_chat_config_payload`, so they cannot disagree, and going through one
+ * path means there is only one shape to keep correct. Config events are rare —
+ * a host toggling a setting — so the extra request costs nothing.
+ */
+function ChatConfigEvents({ sessionId }: { sessionId: string }) {
+  const { refresh } = useChatConfig();
 
-    const { registrantId, currentUserRole, enabled, sessionId } = useChatRuntime()
-    const { recordEvent } = useWebinar()
-    const { region, tokenProvider } = useChatConfiguration()
-    const roomRef = useRef<ChatRoom | null>(null);
-    const tokenProviderRef = useRef(tokenProvider);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [filteredMessages, setFilteredMessages] = useState<ChatMessage[]>([])
-    const [events, setEvents] = useState<ChatEvent[]>([]);
-    const [connected, setConnected] = useState(false);
-    const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "error">("idle");
-    const [reconnectAttempt, setReconnectAttempt] = useState(0);
-    const [reconnectDelayMs, setReconnectDelayMs] = useState<number | null>(null);
-    const [chatConfig, setChatConfig] = useState<ChatConfigUpdate | null>(initialChatConfig ?? null);
-    const hasFetchedOnPlayRef = useRef(false);
-    const listenerUnsubs = useRef<(() => void)[]>([]);
-    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const reconnectAttemptRef = useRef(0);
-    const connectInFlightRef = useRef(false);
-    const manualDisconnectRef = useRef(false);
-    const connectRef = useRef<(() => Promise<() => void>) | null>(null);
-    const nextLocalMessageIdRef = useRef(0);
-    const lastChatSendAtRef = useRef(0);
-    const sendQueueRef = useRef<Promise<void>>(Promise.resolve());
+  useAudienceEvent({
+    eventType: "chat:config:update",
+    schema: chatConfigUpdateSchema,
+    sessionId,
+    targetAudience: "attendee",
+    getStateScope: (event) => event.payload.chat_session_id,
+    onEvent: () => void refresh(),
+  });
 
-    useEffect(() => {
-        tokenProviderRef.current = tokenProvider;
-    }, [tokenProvider]);
+  return null;
+}
 
-    const stableTokenProvider = useCallback(async () => tokenProviderRef.current(), []);
+/**
+ * Publishes the platform hooks' state on this app's own `ChatContext`.
+ *
+ * A shim, so adopting the shared controller did not mean rewriting every
+ * consumer at once. Call sites can move to the platform hooks a few at a time
+ * and this can go when the last one has.
+ */
+function ChatContextBridge({ children }: { children: React.ReactNode }) {
+  const chat = usePlatformChat();
+  const { config } = useChatConfig();
+  const { recordEvent } = useWebinar();
 
-    const room = useMemo(
-        () =>
-            new ChatRoom({
-                regionOrUrl: `wss://edge.ivschat.${region}.amazonaws.com`,
-                tokenProvider: stableTokenProvider,
-            }),
-        [region, stableTokenProvider]
-    );
+  const sendMessage = useCallback(
+    async (content: string, recipient: { label: string; value: string }) => {
+      const result = await chat.sendMessage(content, recipient);
+      if (result.ok) await recordEvent("chat_message");
+    },
+    [chat, recordEvent],
+  );
 
-    useEffect(() => {
-        const previousRoom = roomRef.current;
-        if (previousRoom && previousRoom !== room) {
-            previousRoom.disconnect();
-        }
+  // The platform provider owns connect and disconnect; these exist only to
+  // satisfy the old context's signature.
+  const connect = useCallback(async () => () => {}, []);
+  const disconnect = useCallback(() => {}, []);
 
-        roomRef.current = room;
+  const value = useMemo(
+    () => ({
+      connected: chat.connected,
+      connectionStatus: chat.status,
+      reconnectAttempt: chat.reconnectAttempt,
+      reconnectDelayMs: chat.reconnectDelayMs,
+      reconnectNow: () => void chat.reconnectNow(),
+      messages: chat.messages as ChatMessage[],
+      filteredMessages: chat.visibleMessages as ChatMessage[],
+      events: chat.events as ChatEvent[],
+      chatConfig: config,
+      sendMessage,
+      connect,
+      disconnect,
+    }),
+    [chat, config, sendMessage, connect, disconnect],
+  );
 
-        return () => {
-            room.disconnect();
-            if (roomRef.current === room) {
-                roomRef.current = null;
-            }
-        };
-    }, [room]);
-
-    const clearReconnectTimer = useCallback(() => {
-        if (!reconnectTimerRef.current) return;
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-        setReconnectDelayMs(null);
-    }, []);
-
-    const scheduleReconnect = useCallback(() => {
-        if (manualDisconnectRef.current) return;
-        if (reconnectTimerRef.current) return;
-
-        const currentAttempt = reconnectAttemptRef.current;
-        if (currentAttempt >= RECONNECT_MAX_ATTEMPTS) {
-            setConnectionStatus("error");
-            setReconnectDelayMs(null);
-            return;
-        }
-        const nextAttempt = currentAttempt + 1;
-        const baseDelay = Math.min(
-            RECONNECT_START_DELAY_MS * Math.pow(2, Math.max(0, currentAttempt)),
-            RECONNECT_MAX_DELAY_MS
-        );
-        const jitter = Math.floor(Math.random() * 300);
-        const delay = baseDelay + jitter;
-
-        reconnectAttemptRef.current = nextAttempt;
-        setReconnectAttempt(nextAttempt);
-        setReconnectDelayMs(delay);
-        setConnectionStatus("reconnecting");
-
-        reconnectTimerRef.current = setTimeout(() => {
-            reconnectTimerRef.current = null;
-            setReconnectDelayMs(null);
-            connectRef.current?.().catch(() => {
-                // next retry will be scheduled by connect failure/disconnect listener
-            });
-        }, delay);
-    }, []);
-
-    const processMessage = (messages: ChatMessage[], role: "host" | "presenter" | "attendee", registrantId: string) => {
-        const isHostTeam = role === "host" || role === "presenter";
-
-        return messages.filter((message) => {
-            const messageRecipient = message.attributes?.recipient;
-            const isSelf = message.sender.userId === registrantId;
-
-            if (messageRecipient === DefaultChatRecipient.EVERYONE || !messageRecipient) return true;
-            if (isSelf) return true;
-
-            if (messageRecipient === DefaultChatRecipient.HOST) return isHostTeam;
-
-            return isHostTeam;
-        });
-    }
-
-    const connect = useCallback(async () => {
-        if (room.state === "connected") return () => {
-            room.disconnect();
-        };;
-        if (connectInFlightRef.current) return () => {
-            room.disconnect();
-        };
-
-        connectInFlightRef.current = true;
-        manualDisconnectRef.current = false;
-        setConnectionStatus(reconnectAttemptRef.current > 0 ? "reconnecting" : "connecting");
-        listenerUnsubs.current.forEach((unsubscribe) => unsubscribe());
-        listenerUnsubs.current = [];
-        clearReconnectTimer();
-
-        listenerUnsubs.current.push(
-            room.addListener('connecting', () => {
-                setConnected(false);
-                setConnectionStatus(reconnectAttemptRef.current > 0 ? "reconnecting" : "connecting");
-            }),
-            room.addListener('connect', () => {
-                setConnected(true);
-                setConnectionStatus("connected");
-                reconnectAttemptRef.current = 0;
-                setReconnectAttempt(0);
-                clearReconnectTimer();
-            }),
-            room.addListener('disconnect', () => {
-                setConnected(false);
-                if (manualDisconnectRef.current) {
-                    setConnectionStatus("disconnected");
-                    return;
-                }
-                scheduleReconnect();
-            }),
-            room.addListener('message', (message: ChatMessage) => {
-                setMessages((prev) => [...prev, message].slice(-MAX_CHAT_ITEMS));
-            }),
-            room.addListener('event', (event: ChatEvent) => {
-                setEvents((prev) => [...prev, event].slice(-MAX_CHAT_ITEMS));
-                emitAudienceChatEvent(event);
-            }),
-            room.addListener('messageDelete', (event: DeleteMessageEvent) => {
-                setMessages((prev) => prev.filter((message) => message.id !== event.messageId));
-            }),
-            room.addListener('userDisconnect', (event: DisconnectUserEvent) => {
-                if(registrantId === event.userId) {
-                    manualDisconnectRef.current = true;
-                    roomRef.current?.disconnect();
-                    setConnected(false);
-                    setConnectionStatus("disconnected");
-                }
-            })
-        )
-
-        try {
-            await room.connect();
-        } catch {
-            setConnected(false);
-            setConnectionStatus("error");
-            scheduleReconnect();
-            throw new Error("Chat connection failed");
-        } finally {
-            connectInFlightRef.current = false;
-        }
-
-        return () => {
-            manualDisconnectRef.current = true;
-            clearReconnectTimer();
-            room.disconnect();
-            setConnected(false);
-            setConnectionStatus("disconnected");
-        };
-    }, [clearReconnectTimer, room, scheduleReconnect, registrantId]);
-
-    useEffect(() => {
-        connectRef.current = connect;
-    }, [connect]);
-
-    const sendMessage = useCallback(async (content: string, recipient: ChatRecipient = defaultRecipient(DefaultChatRecipient.EVERYONE)) => {
-        const validation = moderateText(content, {
-            role: currentUserRole,
-            profanityMode: "block",
-        });
-
-        if (!validation.ok) {
-            nextLocalMessageIdRef.current += 1;
-            setMessages((prev) => [...prev, {
-                id: `local-blocked-${nextLocalMessageIdRef.current}`,
-                sender: {
-                    userId: registrantId
-                },
-                sendTime: new Date(),
-                content: content,
-                attributes: {
-                    "name": "You",
-                } as Record<string, string>
-            } as ChatMessage].slice(-MAX_CHAT_ITEMS));
-            return
-        }
-
-        const queuedSend = sendQueueRef.current.then(async () => {
-            const room = roomRef.current;
-            if (!room || room.state !== "connected") return;
-
-            const elapsedMs = Date.now() - lastChatSendAtRef.current;
-            const waitMs = Math.max(0, CHAT_SEND_INTERVAL_MS - elapsedMs);
-
-            if (waitMs > 0) {
-                await new Promise((resolve) => setTimeout(resolve, waitMs));
-            }
-
-            const activeRoom = roomRef.current;
-            if (!activeRoom || activeRoom.state !== "connected") return;
-
-            lastChatSendAtRef.current = Date.now();
-
-            const request = new SendMessageRequest(content);
-
-            request.attributes = {
-                recipient: recipient.value
-            } as ChatMetadata
-
-            try {
-                await activeRoom.sendMessage(request);
-                await recordEvent("chat_message")
-            } catch (err) {
-                console.error('[IVS Chat] Failed to send message', err);
-            }
-        });
-
-        sendQueueRef.current = queuedSend.catch(() => {});
-        await queuedSend;
-    }, [recordEvent, registrantId, currentUserRole]);
-
-    const disconnect = useCallback(() => {
-        manualDisconnectRef.current = true;
-        clearReconnectTimer();
-        roomRef.current?.disconnect();
-        setConnected(false);
-        setConnectionStatus("disconnected");
-    }, [clearReconnectTimer]);
-
-    const reconnectNow = useCallback(() => {
-        manualDisconnectRef.current = false;
-        reconnectAttemptRef.current = 0;
-        setReconnectAttempt(0);
-        clearReconnectTimer();
-        connectRef.current?.().catch(() => {
-            scheduleReconnect();
-        });
-    }, [clearReconnectTimer, scheduleReconnect]);
-
-    useEffect(() => {
-        if (!enabled) {
-            disconnect();
-            return;
-        }
-
-        connect().catch(() => {
-            scheduleReconnect();
-        });
-    }, [enabled, connect, disconnect, scheduleReconnect]);
-
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            listenerUnsubs.current.forEach((unsubscribe) => unsubscribe());
-            listenerUnsubs.current = [];
-            clearReconnectTimer();
-            disconnect();
-        };
-    }, [disconnect, clearReconnectTimer]);
-
-    useEffect(() => {
-        const filteredMessages = processMessage(messages, currentUserRole, registrantId)
-        setFilteredMessages(filteredMessages)
-    }, [messages, setFilteredMessages, currentUserRole, registrantId])
-
-    useEffect(() => {
-        if (initialChatConfig) {
-            setChatConfig(initialChatConfig);
-        }
-    }, [initialChatConfig])
-
-    useEffect(() => {
-        return onPlaybackPlaying(() => {
-            if (hasFetchedOnPlayRef.current) return;
-            hasFetchedOnPlayRef.current = true;
-            getAttendeeChatSession({ sessionId }).then((result) => {
-                if (result?.data) setChatConfig(result.data);
-            });
-        });
-    }, [sessionId]);
-
-    useEffect(() => {
-        const handleStreamRefresh = () => {
-            getAttendeeChatSession({ sessionId }).then((result) => {
-                if (result?.data) setChatConfig(result.data);
-            });
-        };
-        window.addEventListener("webinar:stream:refresh", handleStreamRefresh);
-        return () => window.removeEventListener("webinar:stream:refresh", handleStreamRefresh);
-    }, [sessionId]);
-
-    useAudienceEvent({
-        eventType: "chat:config:update",
-        schema: chatConfigUpdateSchema,
-        sessionId,
-        getStateScope: (evt) => evt.payload.chat_session_id,
-        compareEventKeys: (incoming, latestApplied) => incoming.localeCompare(latestApplied),
-        onEvent: (event) => {
-            setChatConfig({
-                session_id: event.session_id,
-                ...event.payload,
-            });
-        },
-        getSignature: (evt) => `${evt.payload.chat_session_id}-${evt.payload.mode}-${evt.payload.is_enabled}-${evt.payload.is_active}-${evt.payload.pinned_announcements.length}`,
-    })
-
-    return <ChatContext.Provider value={{
-        connect,
-        disconnect,
-        connectionStatus,
-        reconnectAttempt,
-        reconnectDelayMs,
-        reconnectNow,
-        sendMessage,
-        messages,
-        filteredMessages,
-        events,
-        connected,
-        chatConfig,
-    }}>
-        {children}
-    </ChatContext.Provider>
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }
