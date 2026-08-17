@@ -1,8 +1,4 @@
 export {
-    OfferCarousel
-} from './OfferCarousel'
-
-export {
     OfferCarouselPanel
 } from './OfferCarouselPanel'
 
