@@ -35,11 +35,15 @@ export function ChatManager({
   // identity. Both values come back with every token fetch, so a reconnect
   // after a claim naturally re-syncs them.
   const [requiresRegistration, setRequiresRegistration] = useState(false);
-  // The chat identity minted into the IVS token. Usually equals the
-  // registrantId prop, but a mid-stream claim can merge the guest into an
-  // existing registrant — the token's user_id is the authoritative id for
-  // "is this message mine" checks after that.
-  const [tokenUserId, setTokenUserId] = useState<string | null>(null);
+  // There is no `tokenUserId` here any more. It read `user_id` off the token
+  // response to catch a mid-stream claim merging this guest into an existing
+  // registrant — but `POST /v1/chat/token/` has never returned that field, so
+  // the value was always null and the `registrantId` prop always won. The path
+  // never ran once.
+  //
+  // The authoritative chat identity is minted *into* the token and comes back
+  // on `ChatMessage.sender.userId`. Read it from a received message if the
+  // merge case ever needs handling for real.
   const hasChatContext = sessionId.trim().length > 0 && registrantId.trim().length > 0;
   const resolvedRegion = region.trim().length > 0 ? region : "us-east-1";
   const sessionIdRef = useRef(sessionId);
@@ -65,7 +69,6 @@ export function ChatManager({
       }
 
       setRequiresRegistration(Boolean(result.data.requires_registration));
-      setTokenUserId(result.data.user_id || null);
 
       return {
         token: result.data.chat.token,
@@ -133,7 +136,7 @@ export function ChatManager({
     <ChatConfigurationProvider region={resolvedRegion} tokenProvider={stableTokenProvider.current}>
       <ChatRuntimeProvider
         sessionId={sessionId}
-        registrantId={tokenUserId ?? registrantId}
+        registrantId={registrantId}
         currentUserRole={currentUserRole}
         enabled={isRuntimeEnabled && hasChatContext}
         requiresRegistration={requiresRegistration}

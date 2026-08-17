@@ -1,20 +1,3 @@
-import { DefaultChatRecipient } from "./enum"
-import { ChatRecipient } from "./type"
-
-
-export const defaultRecipient = (recipient: DefaultChatRecipient): ChatRecipient => {
-
-    switch(recipient) {
-        case DefaultChatRecipient.HOST:
-            return {
-                label: 'Host',
-                value: 'host'
-            }
-        default:
-            return {
-                label: 'Everyone',
-                value: 'everyone'
-            }
-        
-    }
-}
+// Re-exported from the platform package. The old local `switch` fell through
+// to Everyone on an unrecognised value, silently making a message public.
+export { defaultRecipient, defaultRecipients } from "@lavinou/webbysalespro/chat"
